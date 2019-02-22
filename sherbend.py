@@ -9,7 +9,8 @@ from shapely import LineString
 
 # Read Options
 
-in_file = 'test.gpkg'
+in_file = r'\data\test.gpkg'
+shapely_features = []
 with fiona.open (in_file, 'r') as source:
     crs = source.crs
     driver = source.driver
@@ -23,6 +24,8 @@ with fiona.open (in_file, 'r') as source:
             coords = geom['coordinates']
             if type = 'LineString':
                 shapely_feature = LineString(coords)
+                shapely_feature.properties = properties
+                shapely_features.append(shapaly_feature)
 
         except Exception, e:
             print ("Error processing feature) {0}".format(feature['id']))
