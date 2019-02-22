@@ -6,8 +6,6 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 
 """
 
-__revision__ = "--REVISION-- : $Id: lib_genmetal.py 201 2011-04-04 12:45:30Z dpilonn $"
-
 from abc import ABCMeta
 from abc import abstractmethod
 import math
@@ -20,6 +18,8 @@ from shapely.geometry.polygon import LinearRing
 from shapely.ops import cascaded_union
 
 from rtree import Rtree
+
+
 
 class GenUtil:
     """This class defines a series of generic utility static method"""
