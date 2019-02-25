@@ -2,15 +2,24 @@
 # -*- coding: utf-8 -*-
 
 """ """
+from dataclasses import dataclass
+from typing import List
 
 import fiona
 
-from lib_geobato import Holder
+#from lib_geobato import Holder
 from shapely.geometry import LineString
 
-# Read Options
+@dataclass
+class Command:
+    first_last: str
+    tolerance: float
+    features: List
 
-command = Holder(com, toto, bozo)
+command = Command("True", 25., [])
+command.features.append('coco')
+print (command)
+
 
 in_file = r'data\simple_file.gpkg'
 
