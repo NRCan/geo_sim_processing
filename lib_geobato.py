@@ -94,23 +94,25 @@ class GenUtil:
             
         return dist
 
+
     @staticmethod
     def print_debug (params, buffer):
         """
         This routine print the buffer id the params debug is True
-        
+
         *Parameters*:
             - params: Parameters
             - buffer: String to print
-            
+
         *Returns*: *None*
-        
+
         """
 
         if params.debug:
             print buffer
 
         return
+
 
     @staticmethod
     def build_bounding_box(tolerance, coord):
