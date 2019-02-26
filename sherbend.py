@@ -1,31 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-""" """
 from dataclasses import dataclass
 from typing import List
 
 import fiona
 
-#from lib_geobato import Holder
 from shapely.geometry import LineString
+
 
 @dataclass
 class Command:
-    first_last: str
-    tolerance: float
-    features: List
+    in_file: str # Name of the input file
+    out_file: str # Name of the output file
+    first_last: bool # Flag to simplify first last vertice
+    tolerance: float # Tolerance of simplification
+    simplicity: bool # Flag to validate the simple feature
+    sidedness: bool # Flag to validate the sidedness
+    crossing: bool # Flag to validate the crossing
+    connection: bool # Flag to verify the connection
 
-command = Command("True", 25., [])
-command.features.append('coco')
-print (command)
+
+@dataclass
+class Layer:
+    name: str # Name of the layer
+    type: str # Type of feature
+    crs: dict # Dictionary of the coordinate reference system
+    schema: dict # Schema dictionary of the layer
+    features: List[object]=None # List of features
 
 
-in_file = r'data\simple_file.gpkg'
+@dataclass
+class Params:
+    command: Command
+    layers: List[Layer]=None
 
-# Extract list of layers
+command = Command(in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
+                  sidedness=True, crossing=True, connection=True)
+params = Params(command=command, layers=[])
+
+params.command.in_file = r'data\simple_file.gpkg'
+params.command.in_file = r'data\simple_file_out.gpkg'
+
+in_file = params.command.in_file
+
+
+# Extract and load the layers of the file
 layers = fiona.listlayers(in_file)
-
 shapely_features = []
 for layer_name in layers:
     with fiona.open(in_file, 'r', layer=layer_name) as source:
@@ -46,7 +67,11 @@ for layer_name in layers:
 
             except:
                 print ("Error processing feature) {0}".format(feature['id']))
+        layer = Layer(name=layer_name, type=type, crs=source.crs, schema=source.schema, features=shapely_features)
+    params.layers.append(layer)
     source.close()
+
+print (1)
 
 
 
