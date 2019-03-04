@@ -99,17 +99,20 @@ for layer_name in layer_names:
 
     src.close()
 
-layer_names = []
-layer_names = [feature.layer_name for feature in params.geo_content.features if feature.layer_name not in layer_names]
+# Extract the name of ech layer
+layer_names = set()
+for feature in params.geo_content.features:
+    layer_names.add(feature.layer_name)
 
-for layer in params.layers:
+
+for layer_name in layer_names:
     with fiona.open(params.command.out_file, 'w',
                     driver=params.geo_content.driver,
-                    layer=layer.name,
-                    crs=params.crs,
-                    schema=schema) as dest:
-        for feature in layer.features:
-            out_feature = {'geometry': {'type': layer.type,
+                    layer=layer_name,
+                    crs=params.geo_content.crs,
+                    schema=params.geo_content.schemas[layer_name]) as dest:
+        for feature in (feature for feature in params.geo_content.features if feature.layer_name==layer_name):
+            out_feature = {'geometry': {'type': feature.geom_type,
                                         'coordinates': list(feature.coords) },
                             'properties': feature.properties }
             dest.write(out_feature)
