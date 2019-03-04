@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import List
 
 import fiona
+import gdal
 
 from shapely.geometry import LineString
 
@@ -33,19 +34,19 @@ class Command:
 
 
 @dataclass
-class Layer:
-    """Contains the parameters of a layer.
+class GeoContent:
+    """Contains the geographical content of the file.
 
         Keyword arguments:
-        name -- name of the layer
-        type -- geometry type
-        schema -- layer schema
-        features -- list of geographic features
+        crs -- coordinate reference system
+        driver -- name of the drive
+        schemas -- dictionary of schema with "layer name" as key
+        features -- list of geographic features in shapely structure
 
-        """
-    name: str
-    type: str
-    schema: dict
+    """
+    crs: str
+    driver: str
+    schemas: dict
     features: List[object]=None
 
 
@@ -55,22 +56,20 @@ class Params:
 
             Keyword arguments:
             command -- parameter of the command line
-            crs -- coordinate reference system
-            driver -- layer schema
-            features -- list of geographic features
+            geo_content -- geographic content of the file
 
-            """
+    """
     command: Command
-    crs: str
-    driver: str
+    geo_content: GeoContent
 
 
-placer le nom du layer dans le feature shapely  et créer un dict de schema
-à l'écriture extraire tous les feature avec schemas identique et faire l'écriture dans le fichier par couche
+#placer le nom du layer dans le feature shapely  et créer un dict de schema
+#à l'écriture extraire tous les feature avec schemas identique et faire l'écriture dans le fichier par couche
 
 command = Command (in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
                   sidedness=True, crossing=True, connection=True)
-params = Params (command=command, crs=None, driver=None)
+geo_content = GeoContent(crs=None, driver=None, schemas={}, features=[])
+params = Params (command=command, geo_content=geo_content)
 
 params.command.in_file = r'data\simple_file.gpkg'
 params.command.out_file = r'data\simple_file_out.gpkg'
@@ -80,30 +79,32 @@ in_file = params.command.in_file
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(in_file)
-features = []
 for layer_name in layer_names:
-    with fiona.open(in_file, 'r', layer=layer_name) as source:
-        params.crs = source.crs
-        params.driver = source.driver
-        schema = source.schema
+    with fiona.open(in_file, 'r', layer=layer_name) as src:
+        params.geo_content.crs = src.crs
+        params.geo_content.driver = src.driver
+        params.geo_content.schemas[layer_name] = src.schema
 
-        for in_feature in source:
+        for in_feature in src:
             try:
                 geom = in_feature['geometry']
                 if geom['type'] == 'LineString':
                     feature = LineString(geom['coordinates'])
+                    feature.layer_name = layer_name # Layer name is the key for the schema
                     feature.properties = in_feature['properties']
-                    features.append(feature)
+                    params.geo_content.features.append(feature)
 
             except:
                 print ("Error processing feature) {0}".format(feature['id']))
-        layer = Layer(name=layer_name, type=type, schema=source.schema, shapely_features=features)
-    params.layers.append(layer)
-    source.close()
+
+    src.close()
+
+layer_names = []
+layer_names = [feature.layer_name for feature in params.geo_content.features if feature.layer_name not in layer_names]
 
 for layer in params.layers:
     with fiona.open(params.command.out_file, 'w',
-                    driver=params.driver,
+                    driver=params.geo_content.driver,
                     layer=layer.name,
                     crs=params.crs,
                     schema=schema) as dest:
