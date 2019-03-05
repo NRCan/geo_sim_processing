@@ -72,14 +72,6 @@ _SIMPLIFIED = 'Simplified'
 _UNKNOWN = 'Unknown'
 _IN_CONFLICT = 'InConflict'
 
-# If psyco is availiable, use it to speed up processing (2x)
-try:
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
-
-
 class SherbendStatistics(GenStatistics):
     """Class that contains the statistics for the Sherbend algorithm
     
@@ -150,11 +142,11 @@ class SherbendStatistics(GenStatistics):
         
         return str_out
 
-class AlgoSherbend(Algorithm):
-    """This is the main class for the sherbend algorithm 
+class AlgoSherbend(object):
+    """Main class for the Sherbend algorithm
     
     Attributes:
-        - out_stats: Contains the statistics of the Sherbend algorithm
+        - None
         
     """
 
@@ -163,23 +155,23 @@ class AlgoSherbend(Algorithm):
                        test_simple_line=True, 
                        test_sidedness=True, 
                        keep_iter_results=False, 
-                       debug=False):
+                       verbose=False):
         """Initialize the attributes of an object of the class DPAlgorithm
 
-        Parameters:
+        Keyword parameters:
             bend_mode: Type of bend processing
                 MULTI_BEND: Process the bends as multi bends
                 SINGLE_BEND: Process te bends as single bend
-                NO_VERTICE: Process the bend as single bend and do not add extra vertice
-            test_crossing_line: Flag to enable(TRUE)/disable(FLASE) checking the line crossing constraint
-            test_simple_line: Flag to enable(TRUE)/disable(FLASE) checking the simple line constraint
-            test_sidedness:  to enable(TRUE)/disable(FLASE) for checking the sidedness constraint
-            keep_iter_results: Flag to enable(TRUE)/disable(FLASE) keeping the iterative results
-            keep_iter_results: Flag for the iterative results
-            debug: Flag to enable(TRUE)/disable(FLASE) for debug output  
+                ADD_VERTICE: Flag to enable (True)/disable(False) the additionof vertices when simplifying a bend
+            test_crossing_line: Flag to enable(True)/disable(False) checking the line crossing constraint
+            test_simple_line: Flag to enable(True)/disable(False) checking the simple line constraint
+            test_sidedness:  Flag to enable(True)/disable(False) for checking the sidedness constraint
+            keep_iter_results: Flag to enable(True)/disable(False) keeping the iterative results
+            keep_iter_results: Flag to enable(True)/disable(False) keeping the intermdiate results
+            verbose: Flag to enable(True)/disable(False) for verbose output
 
         Return value:
-            None
+            geo_content -- contains all the geo content
 
         """
 
@@ -1235,13 +1227,13 @@ class AlgoSherbend(Algorithm):
                 pt_depth_index = n
     
         return (dist_depth, pt_depth_index)
-            
+
+    """"        
     def check_features(self):
-        """
-        Check if the features passed in parameters are of the good class type and have the good attributes
-        
+        """Check if the features passed in parameters are of the good class type and have the good attributes
+
         Parameters: None
-        
+
         Return value: None
         
         """
@@ -1251,33 +1243,33 @@ class AlgoSherbend(Algorithm):
         for feature in self.features:
             if isinstance(feature, MA_LineString):
                 GenUtil.check_feature_integrity(feature, MA_LineString, properties_to_check_to_check)
-    
-    def process(self):
+    """
+
+    def process(self, params):
         """Main routine for the Sherbend algorithm
         
         The algorithm will simplify the lines using the Sherbend algorithm. 
         It will iterate over the lines until there are no more bends to simplify.
-        
-        Parameters:
-            None
-            
-        Return value
-            None
-            
+
+        Keyword arguments:
+            params -- parameters to be used by the sherbend algorithm
+
+        Return value:
+            params -- with the value updated
+
         """
         
-        GenUtil.print_debug (self.params, "Start of sherbend  algorithm)")
-        GenUtil.print_debug (self.params, "Parameter description:")
-        GenUtil.print_debug (self.params, "  - Bend mode: %s" %(self.params.bend_mode))
-        GenUtil.print_debug (self.params, "  - Simple line constraint: %s" %(self.params.test_simple_line))
-        GenUtil.print_debug (self.params, "  - Crossing line constraint: %s" %(self.params.test_crossing_line))
-        GenUtil.print_debug (self.params, "  - Sidedness constraint: %s" %(self.params.test_sidedness))
-        GenUtil.print_debug (self.params, "  - Keep iterative results: %s" %(self.params.keep_iter_results))
-        
+        print ("Start of sherbend  algorithm)")
+        print ("Parameter description:")
+        print ("  - Bend mode: {}".format(params.command.bend_mode))
+        print ("  - Simplicity constraint {}".format(params.command.simplicity))
+        print ("  - Crossing constraint {}".format(params.command.crossing))
+        print ("  - Adjacency constraint {}".format(params.command.adjacency))
+
         # Check the feature's class and attributes
         self.check_features()
-        
-        # Load the shapely features into the spatial container    
+
+        # Load the features into the spatial container
         self.s_container = self.load_features ()
      
         if (self.params.debug):
