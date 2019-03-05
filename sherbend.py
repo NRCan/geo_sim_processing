@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass
 from typing import List
+from algo_sherbend import AlgoSherbend
 
 import fiona
 
@@ -22,6 +23,7 @@ class Command:
         connection -- flag to enable/disable the test for connection constraint
         add_vertex -- flag to enable/disable to add new vertex during bend simplification
         multi_bend -- flag to enable/disable the simplification of multi bends (more than one bend)
+        verbose -- flag to enable/disable the verbose mode
 
         """
     in_file: str
@@ -34,6 +36,7 @@ class Command:
     connection: bool
     add_vertex: bool
     multi_bend: bool
+    verbose: bool
 
 
 @dataclass
@@ -54,7 +57,7 @@ class GeoContent:
 
 
 command = Command (in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
-                  adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False)
+                  adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=False)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, features=[])
 
@@ -62,10 +65,8 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, features=[])
 command.in_file = r'data\simple_file.gpkg'
 command.out_file = r'data\simple_file_out.gpkg'
 
-in_file = command.in_file
-
 # Extract and load the layers of the file
-layer_names = fiona.listlayers(in_file)
+layer_names = fiona.listlayers(command.in_file)
 for layer_name in layer_names:
     with fiona.open(in_file, 'r', layer=layer_name) as src:
         geo_content.crs = src.crs
@@ -93,13 +94,15 @@ print ("Number of layers read: {}".format(len(geo_content.schemas)))
 print ("Number of features read: {}".format(len(geo_content.features)))
 
 # Execute the Sherbend algorithm on the feature read
-
+sherbend = AlgoSherbend(command, geo_content)
+results = sherbend.process()
 
 # Extract the name of aech layer
 layer_names = set()
 for feature in geo_content.features:
     layer_names.add(feature._gbt_layer_name)
 
+# Loop over each layer and write the content of the file
 for layer_name in layer_names:
     with fiona.open(command.out_file, 'w',
                     driver=geo_content.driver,

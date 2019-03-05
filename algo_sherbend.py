@@ -18,7 +18,6 @@
           
 
 """
-__revision__ = "--REVISION-- : $Id: algo_sherbend.py 455 2011-09-27 12:53:29Z dpilon $"
 
 #####################################################################################################################################
 
@@ -28,7 +27,7 @@ from shapely.geometry import Point, LineString, Polygon
 from shapely.prepared import prep
 
 from algo_bends import AlgoBends
-from lib_genmetal import MA_LineString, GenStatistics, Algorithm, GenUtil, \
+from lib_geobato import MA_LineString, GenStatistics, Algorithm, GenUtil, \
                          SpatialContainer, MA_Point, Polygon, Parameters
                                
 # Public key word contants
@@ -150,53 +149,32 @@ class AlgoSherbend(object):
         
     """
 
-    def __init__(self, bend_mode=MULTI_BENDS,
-                       test_crossing_line=True,
-                       test_simple_line=True, 
-                       test_sidedness=True, 
-                       keep_iter_results=False, 
-                       verbose=False):
+    def __init__(self, command, geo_content):
         """Initialize the attributes of an object of the class DPAlgorithm
 
-        Keyword parameters:
-            bend_mode: Type of bend processing
-                MULTI_BEND: Process the bends as multi bends
-                SINGLE_BEND: Process te bends as single bend
-                ADD_VERTICE: Flag to enable (True)/disable(False) the additionof vertices when simplifying a bend
-            test_crossing_line: Flag to enable(True)/disable(False) checking the line crossing constraint
-            test_simple_line: Flag to enable(True)/disable(False) checking the simple line constraint
-            test_sidedness:  Flag to enable(True)/disable(False) for checking the sidedness constraint
-            keep_iter_results: Flag to enable(True)/disable(False) keeping the iterative results
-            keep_iter_results: Flag to enable(True)/disable(False) keeping the intermdiate results
-            verbose: Flag to enable(True)/disable(False) for verbose output
+        Keyword:
+            command: dataclass containing all the commands for the sherbend line reduction algorithm
+            geo_content: dataclass containing the geo information needed for the the sherbend line reduction algorithm
 
         Return value:
-            geo_content -- contains all the geo content
-
+            None
         """
 
-        Algorithm.__init__(self)
+#        Algorithm.__init__(self)
         
-        self.params = Parameters()
-        self.params.bend_mode = bend_mode
-        self.params.test_crossing_line=test_crossing_line
-        self.params.test_simple_line=test_simple_line 
-        self.params.test_sidedness=test_sidedness 
-        self.params.keep_iter_results=keep_iter_results 
-        self.params.debug=debug
-        
-        self.stats = SherbendStatistics()
-        
-        # Set the parameters according to the params.bend_mode parameter
-        if self.params.bend_mode == MULTI_BENDS:
-            self.params.multi_bend = True
-            self.params.big_bend = True
-        elif self.params.bend_mode == SINGLE_BEND:
-            self.params.multi_bend = False
-            self.params.big_bend = True
-        else:
-            self.params.multi_bend = False
-            self.params.big_bend = False
+        self.command = command
+        self.geo_content = geo_content
+
+#        # Set the parameters according to the params.bend_mode parameter
+#        if self.params.bend_mode == MULTI_BENDS:
+#            self.params.multi_bend = True
+#            self.params.big_bend = True
+#        elif self.params.bend_mode == SINGLE_BEND:
+#            self.params.multi_bend = False
+#            self.params.big_bend = True
+#        else:
+#            self.params.multi_bend = False
+#            self.params.big_bend = False
                 
     def add_line_attributes (self):
         """This routine sets different attributes of the lines
@@ -1252,19 +1230,19 @@ class AlgoSherbend(object):
         It will iterate over the lines until there are no more bends to simplify.
 
         Keyword arguments:
-            params -- parameters to be used by the sherbend algorithm
+            none
 
         Return value:
-            params -- with the value updated
+            geo_content: dataclass containing the output information
 
         """
         
-        print ("Start of sherbend  algorithm)")
-        print ("Parameter description:")
-        print ("  - Bend mode: {}".format(params.command.bend_mode))
-        print ("  - Simplicity constraint {}".format(params.command.simplicity))
-        print ("  - Crossing constraint {}".format(params.command.crossing))
-        print ("  - Adjacency constraint {}".format(params.command.adjacency))
+#        print ("Start of sherbend  algorithm)")
+#        print ("Parameter description:")
+#        print ("  - Bend mode: {}".format(params.command.bend_mode))
+#        print ("  - Simplicity constraint {}".format(params.command.simplicity))
+#        print ("  - Crossing constraint {}".format(params.command.crossing))
+#        print ("  - Adjacency constraint {}".format(params.command.adjacency))
 
         # Check the feature's class and attributes
         self.check_features()

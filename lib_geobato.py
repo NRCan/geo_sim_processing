@@ -1113,24 +1113,24 @@ class InternalError (GenException):
 
         GenException.__init__(self, *param_names)
 
-class Parameters(object):
-    """Class to hold parameters.
-
-    The parameters are defines on the fly by each algorithm that instantiate a
-    Parameters object
-
-    """
-
-    def __init__(self):
-        """Create an object of type Parameters
-
-        *Parameters*: *None*
-
-        *Returns*: *None*
-
-        """
-
-        pass
+#class Parameters(object):
+#    """Class to hold parameters.
+#
+#    The parameters are defines on the fly by each algorithm that instantiate a
+#    Parameters object
+#
+#    """
+#
+#    def __init__(self):
+#        """Create an object of type Parameters
+#
+#        *Parameters*: *None*
+#
+#        *Returns*: *None*
+#
+#        """
+#
+#        pass
 
 class MA_Point(Point):
 
