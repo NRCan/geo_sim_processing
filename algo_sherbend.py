@@ -1206,22 +1206,22 @@ class AlgoSherbend(object):
     
         return (dist_depth, pt_depth_index)
 
-    """"        
-    def check_features(self):
-        """Check if the features passed in parameters are of the good class type and have the good attributes
 
-        Parameters: None
-
-        Return value: None
-        
-        """
-                
-        # Check the line string
-        properties_to_check_to_check = [_DIAMETER, _SIMPLIFY_FIRST_LAST] 
-        for feature in self.features:
-            if isinstance(feature, MA_LineString):
-                GenUtil.check_feature_integrity(feature, MA_LineString, properties_to_check_to_check)
-    """
+#    def check_features(self):
+#        """Check if the features passed in parameters are of the good class type and have the good attributes
+#
+#        Parameters: None
+#
+#        Return value: None
+#
+#        """
+#
+#        # Check the line string
+#        properties_to_check_to_check = [_DIAMETER, _SIMPLIFY_FIRST_LAST]
+#        for feature in self.features:
+#            if isinstance(feature, MA_LineString):
+#                GenUtil.check_feature_integrity(feature, MA_LineString, properties_to_check_to_check)
+    
 
     def process(self, params):
         """Main routine for the Sherbend algorithm
@@ -1244,8 +1244,8 @@ class AlgoSherbend(object):
 #        print ("  - Crossing constraint {}".format(params.command.crossing))
 #        print ("  - Adjacency constraint {}".format(params.command.adjacency))
 
-        # Check the feature's class and attributes
-        self.check_features()
+#        # Check the feature's class and attributes
+#        self.check_features()
 
         # Load the features into the spatial container
         self.s_container = self.load_features ()
