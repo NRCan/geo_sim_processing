@@ -53,13 +53,14 @@ class GeoContent:
     crs: None
     driver: None
     schemas: dict
+    bounds: List[object] = None
     features: List[object] = None
 
 
 command = Command (in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
-                  adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=False)
+                   adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=False)
 
-geo_content = GeoContent(crs=None, driver=None, schemas={}, features=[])
+geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
 command.in_file = r'data\simple_file.gpkg'
@@ -68,10 +69,11 @@ command.out_file = r'data\simple_file_out.gpkg'
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
 for layer_name in layer_names:
-    with fiona.open(in_file, 'r', layer=layer_name) as src:
+    with fiona.open(command.in_file, 'r', layer=layer_name) as src:
         geo_content.crs = src.crs
         geo_content.driver = src.driver
         geo_content.schemas[layer_name] = src.schema
+        geo_content.bounds.append(src.bounds)
 
         for in_feature in src:
             try:

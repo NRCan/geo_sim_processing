@@ -28,7 +28,7 @@ from shapely.prepared import prep
 
 from algo_bends import AlgoBends
 from lib_geobato import MA_LineString, GenStatistics, Algorithm, GenUtil, \
-                         SpatialContainer, MA_Point, Polygon, Parameters
+                         SpatialContainer, MA_Point, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -1223,7 +1223,7 @@ class AlgoSherbend(object):
 #                GenUtil.check_feature_integrity(feature, MA_LineString, properties_to_check_to_check)
     
 
-    def process(self, params):
+    def process(self):
         """Main routine for the Sherbend algorithm
         
         The algorithm will simplify the lines using the Sherbend algorithm. 
@@ -1246,6 +1246,8 @@ class AlgoSherbend(object):
 
 #        # Check the feature's class and attributes
 #        self.check_features()
+
+         
 
         # Load the features into the spatial container
         self.s_container = self.load_features ()

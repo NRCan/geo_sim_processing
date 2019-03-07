@@ -11,7 +11,7 @@ from abc import abstractmethod
 import math
 from collections import Iterable, OrderedDict
 from copy import deepcopy
-from itertools import count, izip
+from itertools import count
 
 from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.polygon import LinearRing
@@ -109,7 +109,7 @@ class GenUtil:
         """
 
         if params.debug:
-            print buffer
+            print (buffer)
 
         return
 
@@ -284,7 +284,7 @@ class GenUtil:
             else:
                 in_conflict = True
         except:
-            print "genmetal_lib.py: Problem with shapely routine: is_simple in is_simple_line_constraint_violated"
+            print ("genmetal_lib.py: Problem with shapely routine: is_simple in is_simple_line_constraint_violated")
             in_conflict = True
             
         return in_conflict
@@ -328,7 +328,7 @@ class GenUtil:
                    else:
                        in_conflict = True
             except:
-                print "genmetal_lib.py: Problem with shapely routine: interscts in is_crossing_line_constraint_violated"
+                print ("genmetal_lib.py: Problem with shapely routine: interscts in is_crossing_line_constraint_violated")
                 in_conflict = True
 
         return in_conflict
@@ -365,7 +365,7 @@ class GenUtil:
                 if (features_in_conflict):
                     in_conflict = True
             except:
-                print "genmetal_lib.py: Problem with shapely routine: contains in is_sidedness_constraint_violated"
+                print ("genmetal_lib.py: Problem with shapely routine: contains in is_sidedness_constraint_violated")
                 in_conflict = True
 
 
@@ -386,7 +386,7 @@ class GenUtil:
         """
 
         if log is None:
-            print buffer
+            print (buffer)
         else:
             log.log (buffer)
 
@@ -544,7 +544,7 @@ class GenUtil:
             mean_angles.append(180)                     # for last vertice
 
         # return the smallest flat angle and its list index
-        return min(izip(mean_angles, count()))
+        return min(zip(mean_angles, count()))
 
     @staticmethod
     def find_bounds(coords_list, nbVertices):
@@ -1607,7 +1607,7 @@ class GenStatistics (object):
         strs = self.get_stats(type)
 
         for str in strs:
-            print str
+            print (str)
 
     def add_iteration(self):
         """Add one iteration to the statistics list
@@ -2276,7 +2276,7 @@ class SpatialContainer(object):
             
         #Dynamic execution of the list comprehension
         try:
-            exec str_exec
+            exec (str_exec)
         except:
             raise InternalError ("Cannot execute dynamic code: %s" %(str_exec) )
                       
