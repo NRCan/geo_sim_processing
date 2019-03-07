@@ -175,7 +175,29 @@ class AlgoSherbend(object):
 #        else:
 #            self.params.multi_bend = False
 #            self.params.big_bend = False
-                
+
+    def load_features(self, features):
+        """Load the points, line strings and polygons in the spatial container
+
+        Keyword definition
+            features: List of shapely features
+
+        Return
+            None
+        """
+
+        # Create the spatial container that will receive all the spatial features
+        self.s_container = SpatialContainer()
+
+        # Load all the features in the spatial container
+        self.s_container.add_features(features)
+
+        # Empty the feature list
+        features.clear()
+
+        return
+
+
     def add_line_attributes (self):
         """This routine sets different attributes of the lines
 
@@ -1250,7 +1272,7 @@ class AlgoSherbend(object):
          
 
         # Load the features into the spatial container
-        self.s_container = self.load_features ()
+        self.s_container = self.load_features(self.geo_content.features)
      
         if (self.params.debug):
             #Test if print is needed before scanning the s_container for nothing... waste of time...
