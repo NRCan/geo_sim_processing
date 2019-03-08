@@ -1836,9 +1836,9 @@ class SpatialContainer(object):
     """
 
     # Class variable that contains the Spatial Container Internal ID
-    _sci_id = 0
+    _gbt_sc_id = 0
     
-    def __init__(self, line_opt_value=50):
+    def __init__(self, line_opt_value=0):
         """Create an object of type SpatialContainer
 
         The init will create one container for the feature a dictionary and one
@@ -1861,15 +1861,15 @@ class SpatialContainer(object):
         """
 
         
-        if (line_opt_value == 0 or line_opt_value >=2):
-            self._line_opt_value = line_opt_value
-        else:
-            raise GenException ('Parameter value of line_opt_value (%s) is out of domain' %line_opt_value)
+#        if (line_opt_value == 0 or line_opt_value >=2):
+#            self._line_opt_value = line_opt_value
+#        else:
+##            raise GenException ('Parameter value of line_opt_value (%s) is out of domain' %line_opt_value)
         
-        self._r_tree = Rtree()              # Container for the Rtree
+ #       self._r_tree = Rtree()              # Container for the Rtree
         # Ordered dictionary are used to be able to extract the feature in the same order as they are entered
         self._features = OrderedDict()      # Container to hold the features
-        self._bbox_features = OrderedDict() # container to hold the bounding boxes 
+#        self._bbox_features = OrderedDict() # container to hold the bounding boxes
 
     def _is_bbox_the_same(self, feature, old_lst_bbox, new_lst_bbox):
         """Checks if the bbox are the same
@@ -2064,33 +2064,33 @@ class SpatialContainer(object):
         """
         
         # Check if the type is valid
-        if (isinstance(feature, MA_Point) or
-            isinstance(feature, MA_LineString) or
-            isinstance(feature, MA_Polygon)):
+        if (isinstance(feature, Point) or
+            isinstance(feature, LineString) or
+            isinstance(feature, Polygon)):
             pass
         else:
             raise GenException ('Unsupported feature type...')
         
         # Check if the feature is already in a spatial container
-        if hasattr(feature, "_sci_id"):
+        if hasattr(feature, "_gbt_sc_id"):
             raise GenException ('Feature is already in a spatial container')
         
-        lst_bounds = self._extract_bounding_box(feature)
+#        lst_bounds = self._extract_bounding_box(feature)
 
         # Container unique internal counter
-        SpatialContainer._sci_id += 1
+        SpatialContainer._gbt_sc_id += 1
         
         # Add the spatial id to the feature
-        feature._sci_id = SpatialContainer._sci_id     
+        feature._gbt_sc_id = SpatialContainer._gbt_sc_id
         
         # Add the feature in the feature container 
-        self._features[self._sci_id] = feature
-        # Add the bounding box in the bbox_container
-        self._bbox_features[self._sci_id] = lst_bounds
+        self._features[feature._gbt_sc_id] = feature
+#        # Add the bounding box in the bbox_container
+#        self._bbox_features[self._sci_id] = lst_bounds
         
-        # Add the each boundfing box in the RTree
-        for bounds in lst_bounds:
-            self._r_tree.add(self._sci_id, bounds)
+ #       # Add the each boundfing box in the RTree
+ #       for bounds in lst_bounds:
+ #           self._r_tree.add(self._sci_id, bounds)
 
         return
 
@@ -2255,33 +2255,37 @@ class SpatialContainer(object):
 
         """
         
-        if (bounds != None):
-            # Extract features by bounds
-            keys = self.get_keys_by_bounds(bounds, remove_keys)
-            features = [self._features[key] for key in keys if key in self._features]
-            str_if = self._set_if_statement(filter, None)
-            if (str_if != ""):
-                # Finalize the if statement
-                str_if = "if (%s) " %str_if
-                str_exec = "features = [feature for feature in features %s]" %(str_if)
-            else:
-                # There is no other proceessing to do on the list features
-                str_exec = "pass"
-        else:
-            str_if = self._set_if_statement(filter, remove_keys)
-            if (str_if !=  ""):
-                # Finalize the if statement
-                str_if = "if (%s) " %str_if
-            str_exec = "features = [feature for feature in self._features.values() %s]" %(str_if)
-            
-        #Dynamic execution of the list comprehension
-        try:
-            exec (str_exec)
-        except:
-            raise InternalError ("Cannot execute dynamic code: %s" %(str_exec) )
-                      
+        features = (feature for feature in self._features.values() if filter)
+
         return features
-    
+
+        # if (bounds != None):
+        #     # Extract features by bounds
+        #     keys = self.get_keys_by_bounds(bounds, remove_keys)
+        #     features = [self._features[key] for key in keys if key in self._features]
+        #     str_if = self._set_if_statement(filter, None)
+        #     if (str_if != ""):
+        #         # Finalize the if statement
+        #         str_if = "if (%s) " %str_if
+        #         str_exec = "features = [feature for feature in features %s]" %(str_if)
+        #     else:
+        #         # There is no other proceessing to do on the list features
+        #         str_exec = "pass"
+        # else:
+        #     str_if = self._set_if_statement(filter, remove_keys)
+        #     if (str_if !=  ""):
+        #         # Finalize the if statement
+        #         str_if = "if (%s) " %str_if
+        #     str_exec = "features = [feature for feature in self._features.values() %s]" %(str_if)
+        #
+        # #Dynamic execution of the list comprehension
+        # try:
+        #     exec (str_exec)
+        # except:
+        #     raise InternalError ("Cannot execute dynamic code: %s" %(str_exec) )
+        #
+        # return features
+
 class ChordalAxisTransformer(object):
     """This class is creating  a skeleton and identify bottleneck based on the Chordal Axis Transform CAT
     

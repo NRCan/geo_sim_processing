@@ -58,7 +58,7 @@ class GeoContent:
 
 
 command = Command (in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
-                   adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=False)
+                   adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 

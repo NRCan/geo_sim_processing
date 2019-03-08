@@ -206,8 +206,9 @@ class AlgoSherbend(object):
         Return value: None
 
         """
-    
-        for line in self.s_container.get_features(filter="feature.feature_type==GenUtil.LINE_STRING"):
+        a = list(self.s_container.get_features(filter= lambda feature : feature.geom_type=="LineString"))
+        print (len(a))
+        for line in self.s_container.get_features(filter= lambda feature : feature.geom_type=="LineString"):
             
             line.is_simplest = False
             line.bends = []
@@ -1272,52 +1273,32 @@ class AlgoSherbend(object):
          
 
         # Load the features into the spatial container
-        self.s_container = self.load_features(self.geo_content.features)
+        self.load_features(self.geo_content.features)
      
-        if (self.params.debug):
-            #Test if print is needed before scanning the s_container for nothing... waste of time...
-            nbr_lines = len(self.s_container.get_features(filter="feature.feature_type==GenUtil.LINE_STRING")) 
-            nbr_points = len(self.s_container.get_features(filter="feature.feature_type==GenUtil.POINT")) 
-            GenUtil.print_debug (self.params, "Number of lines imported: %s"  %(nbr_lines) )
-            GenUtil.print_debug (self.params, "Number of points imported: %s"  %(nbr_points) )
-            
         self.add_line_attributes()
         
-        if (self.params.multi_bend):
+        if (self.command.multi_bend):
             nbr_step = 2
         else:
             nbr_step = 1
-    
+        iter_nbr = 0
         for step in range(nbr_step):
-        
-            # The last step is always done with multi_bend to False.  We always process the last iterations to multi_bend to False
+            # The last step is always done with multi_bend to False.  We always process the last iterations of multi_bend to False
             # in order to process alternative bends correctly. An alternative bend is involved when a bend is in conflict and it tries
             # to simplify the bend just before or after the bend in conflict
             if (step == 1):
-                self.params.multi_bend = False
+                self.command.multi_bend = False
             
             # Loop until no more lines are simplifiable
             line_simplified = True
             # Iterate until all the line are simplified or there are no more line have to be simplified
             while (line_simplified):
-                # At each new iteration we create a new itearation
-                self.stats.add_iteration()
-                #Reset stats and error position
-                self.stats.reset_stats_names([GenUtil.SIMPLE_LINE, GenUtil.CROSSING_LINE, GenUtil.SIDEDNESS]) # Reset error counter
-                self.error_positions = []  # Reset error position we don't need the old one
-                GenUtil.print_debug (self.params, 'Start of iteration # %s' %(self.stats.get_nbr_iteration()) )  
-                
-                line_simplified = False
-        
+                print ('Start of iteration # {}'.format(iter_nbr ))
+                line_simplified=False
                 line_simplified = self.manage_lines_simplification()
-                                        
-                GenUtil.print_debug (self.params, 'Number of bend simplified %s: ' %(self.stats.get_stats_name_count_iter(_ALGO)))
-                GenUtil.print_debug (self.params, 'End of iteration # %s' %(self.stats.get_nbr_iteration()) )
-                
-                if (self.params.keep_iter_results):
-                    self.iter_results.add_iteration()
-                    self.iter_results.add_features(self.s_container.get_features(filter="feature_type==GenUtil.LINE_STRING"))
+                print('Number of bend simplified {}'.format(10))
+                print('End of iteration # {}'.format(10))
+
+                iter_nbr += 1
                     
-        self.features = [feature for feature in self.s_container.get_features()] 
-        
-        GenUtil.print_debug (self.params, "End of %s" % (_ALGO))
+        self.features = [feature for feature in self.s_container.get_features()]

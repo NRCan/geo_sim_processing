@@ -1,64 +1,55 @@
-import numpy, sys
-from osgeo import gdal
-from osgeo.gdalconst import *
+from shapely.geometry import LineString
+from time import time
+import timeit
 
-# register all of the GDAL drivers
-gdal.AllRegister()
+lst = []
+coords = []
+x,y = 0,0
+for i in range(100):
+    coords.append((x,y))
+    x+=1
+    y+=1
 
-# open the image
-inDs = gdal.Open("mono_lake_rgb.tif")
-if inDs is None:
-  print ("couldn't open input dataset")
-  sys.exit(1)
-else:
-  print ("opening was successful!")
-cols = inDs.RasterXSize
-rows = inDs.RasterYSize
-bands =  inDs.RasterCount
-driver = inDs.GetDriver()
-#driver.Create("newfile.tif",cols,rows,3)
-#outDs = gdal.Open("newfile.tif")
+loop=10000
+start_time = time()
+for i in range(loop):
+    line = LineString(coords)
+    lst.append(line)
+print ("Le temps 1: {}".format( time() - start_time) )
 
-#if outDs is None:
-#  print ("failure to create new file")
-#  sys.exit(1)
+cpt=0
+cpt_coord=0
+start_time = time()
+for line in lst:
+    if line.geom_type=='LineString':
+        cpt+=1
+    coords = list(line.coords)
+    for i in range(100):
+        if coords[0] != None:
+           cpt_coord+=1
 
+print(cpt)
+print (cpt_coord)
 
-# Create a new raster data source
-outDs = driver.Create("newfile.tif", cols, rows, 3, gdal.GDT_UInt16)
+print ("Le temps 2: {}".format( time() - start_time) )
 
-# Write metadata
-outDs.SetGeoTransform(inDs.GetGeoTransform())
-outDs.SetProjection(inDs.GetProjection())
+lst=[]
+for i in range(loop):
+    line = LineString(coords)
+    line._gbt_type = 'LineString'
+    lst.append(line)
+print ("Le temps 3: {}".format( time() - start_time) )
 
-# Write raster data sets
-for i in range(3):
-    outBand = outDs.GetRasterBand(i + 1)
-    data = inDs.GetRasterBand(i+1).ReadAsArray()
-    print (data[0:5,0:5])
-    outBand.WriteArray(data)
+cpt=0
+cpt_coord=0
+start_time = time()
+for line in lst:
+    if line._gbt_type=='LineString':
+        cpt+=1
+    for i in range(100):
+        if line.coords[0] != None:
+           cpt_coord+=1
+print(cpt)
+print(cpt_coord)
 
-# Close raster file
-print ("Fin")
-outDs = None
-
-#outBand1 = outDs.GetRasterBand(1)
-#outBand2 = outDs.GetRasterBand(2)
-#outBand3 = outDs.GetRasterBand(3)
-#data1 = inDs.GetRasterBand(1).ReadAsArray()
-#data2 = inDs.GetRasterBand(2).ReadAsArray()
-#data3 = inDs.GetRasterBand(3).ReadAsArray()
-
-#outBand1.WriteArray(data1,0,0)
-#outBand2.WriteArray(data2,0,0)
-#outBand3.WriteArray(data3,0,0)
-#outDs.SetProjection(inDs.GetProjection())
-#outDs.SetGeoTransform(inDs.GetGeoTransform())
-#outDs = None
-
-
-outDs = gdal.Open("newfile.tif")
-print ("after reopening")
-print (outDs.GetRasterBand(1).ReadAsArray())
-print (outDs.GetRasterBand(2).ReadAsArray())
-print (outDs.GetRasterBand(3).ReadAsArray())
+print ("Le temps 4: {}".format( time() - start_time) )
