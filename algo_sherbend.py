@@ -198,52 +198,35 @@ class AlgoSherbend(object):
         return
 
 
-    def add_line_attributes (self):
+    def add_line_attributes (self, diameter):
         """This routine sets different attributes of the lines
 
-        Parameters: None
+        Keyword definition
+           diameter -- diameter of the bend to simplify
             
         Return value: None
 
         """
-        a = list(self.s_container.get_features(filter= lambda feature : feature.geom_type=="LineString"))
-        print (len(a))
         for line in self.s_container.get_features(filter= lambda feature : feature.geom_type=="LineString"):
             
-            line.is_simplest = False
-            line.bends = []
-            line.min_adj_area = None
-            line.multi_bend = False
+            line._gbt_is_simplest = False
+            line._gbt_bends = []
+            line._gbt_min_adj_area = None
+            line._gbt_multi_bend = False
             
             # Set the minimal adjusted area
-            ray = line.ma_properties[_DIAMETER] / 2.0
-            line.min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
+            ray = diameter/2.0
+            line._gbt_min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
             
-            # Check if the line is a closed line by comparing  if the first 
-            # and the last vertice are almost at the same place
-            if (GenUtil.distance(line.coords_dual[0], line.coords_dual[-1]) <= GenUtil.ZERO):
-                line.is_closed = True
+            # Check if the line is a closed line by comparing  first and vertice
+            if GenUtil.distance(line.coords[0], line.coords[-1]) <= GenUtil.ZERO:
+                line._gbt_is_closed = True
             else:
-                line.is_closed = False
+                line._gbt_is_closed = False
                 
-            # Set the multi bend attribute
-            line.multi_bend = self.params.multi_bend
-            if (line.is_closed):
-                polygon = Polygon(line.coords_dual)
-                # The next lines of codes are within "try .. except" as in some cases the closed line
-                # may form a bad polygon.  The command line.polygon_line.exterior will create an exception
-                # in that case we disable the multi bends
-                try:
-                    if (polygon.area <= 5. * line.min_adj_area):
-                        # If the line is closed and the area of the polygon is near by the minimum adjusted area
-                        # we disable the multi bend option because in that case the output is better with single bend
-                        line.multi_bend = False
-                except ValueError:
-                    line.multi_bend = False
-                            
         return
 
-    def classify_bends (self, line):   
+    def classify_bends (self, line):
         """Classify the beds
         
         High level routine to classify the bends from _ONE_BEND to _FIVE_BENDS and to calculate
@@ -493,10 +476,11 @@ class AlgoSherbend(object):
         Return value: None  
         """
         
-        # Calculate the bends on the line
+        # Calculate the bends on a line
         algo_bends = AlgoBends()
-        algo_bends.features.append( line )
-        algo_bends.process()
+        line._gbt_bends = algo_bends.process(line)
+#        algo_bends.features.append(line)
+#        algo_bends.process()
         
         for bend in line.bends:
             # Add properties to the bends needed by the SherBend algorithm
@@ -539,12 +523,12 @@ class AlgoSherbend(object):
         
         line_simplified = False
         
-        for line in self.s_container.get_features(filter="feature.feature_type==GenUtil.LINE_STRING and not feature.is_simplest"):
+        for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
                         
             # Copy the coordinates of the line in hand.  During the processing if the line in hand all the modifications
             # area written in the variable in_hand_line_coords.  at the end of the processing the coordinates are rewritten in the 
             # Shapely structure.  This work is done only for performance issue   
-            in_hand_line_coords = list(line.coords_dual)
+            in_hand_line_coords = list(line.coords)
             
             # For the line in hand detect where are the bends and classify the type of bends
             self.detect_bend_location(line)
@@ -1275,7 +1259,7 @@ class AlgoSherbend(object):
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
      
-        self.add_line_attributes()
+        self.add_line_attributes(self.command.diameter)
         
         if (self.command.multi_bend):
             nbr_step = 2

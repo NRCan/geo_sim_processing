@@ -1,6 +1,29 @@
-from shapely.geometry import LineString
+from shapely.geometry import Point, LineString
 from time import time
 import timeit
+
+diag = LineString(((1,1),(2,2), (2,10)))
+a = diag.minimum_rotated_rectangle
+
+
+loop = 100000
+dist = 0.
+start_time = time()
+for i in range(loop):
+    x1,y1,x2,y2 = i, i+1, i+2, i+3
+    dist += ((x2-x1)**2 + (y2-y1)**2)**.5
+print ("Distance: {}".format(dist))
+print ("Le temps 1: {}".format( time() - start_time) )
+
+dist = 0.
+start_time = time()
+for i in range(loop):
+    x1,y1,x2,y2 = i, i+1, i+2, i+3
+    dist += Point(x1,y1).distance(Point(x2,y2))
+print("Distance: {}".format(dist))
+print ("Le temps 2: {}".format( time() - start_time) )
+
+0/0
 
 lst = []
 coords = []
@@ -15,7 +38,7 @@ start_time = time()
 for i in range(loop):
     line = LineString(coords)
     lst.append(line)
-print ("Le temps 1: {}".format( time() - start_time) )
+print ("Le temps 1: {}".format( time() - start_time))
 
 cpt=0
 cpt_coord=0

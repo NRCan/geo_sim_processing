@@ -101,77 +101,71 @@ class AlgoBends(Algorithm):
 
         """
 
-        Algorithm.__init__(self)
-        
-        self.params = Parameters()  
-        self.params.debug=debug       
-        self.stats = Statistics()      
+#        Algorithm.__init__(self)
+#
+#        self.params = Parameters()
+#        self.params.debug=debug
+#        self.stats = Statistics()
         
 
-    def locate_bends(self): 
-        """Calculates the position of each individual bends in the line
+    def locate_bends(self, lst_coords):
+        """Calculates the position of each individual bends in a line
         
         The position of the bends are calculated according to the definition of the bencds 
         in the orginal paper Wang 1998.
         
-        Parameters: None
+        Keyword definition
+            lst_coords -- list of (x,y) tuple forming
         
-        Return value: None  
+        Return value: Bend
         """
         
-        for line in (line for line in self.features):
-        
-            line.i = None
-            line.j = None
-            line.bends = []
-            nbr_pnt = len(line.coords_dual)
-        
-            if (nbr_pnt >= 3):
-                
-                # A first loop to determine the rotation sense of the first 
+        nbr_coords = len(lst_coords)
+
+        if (nbr_coords >= 3):
+
+            # A first loop to determine the rotation sense of the first
+            i = 1
+            orientation = 0.0
+            # We loop until it is not a straight line
+            while  (orientation == 0.0 and i < nbr_coords-1):
+                orientation = self.direction (lst_coords[i-1], lst_coords[i], lst_coords[i+1])
+                i += 1
+
+            if (orientation != 0.0):
                 i = 1
-                orientation = 0.0
-                # We loop until it is not a straight line
-                while  (orientation == 0.0 and i < nbr_pnt-1):
-                    orientation = self.direction (line.coords_dual[i-1], line.coords_dual[i], line.coords_dual[i+1])
+                last_bend_last_angle = 0
+                last_orientation = orientation
+                # Detect all the bends of the line
+                while (i < nbr_coords-1):
+                    orientation = self.direction (lst_coords[i-1], lst_coords[i], lst_coords[i+1])
+                    if (orientation > 0.0 and last_orientation > 0.0):
+                        i_last_angle = i
+                    elif (orientation == 0.0):
+                        pass
+                    elif (orientation < 0.0 and last_orientation < 0.0):
+                        i_last_angle = i
+                    else:
+                        # A new bend is detected and loaded
+                        line._gbt_bends.append(_Bend())
+                        line._gbt_bends[-1].i = last_bend_last_angle
+                        line._gbt_bends[-1].j = i
+                        last_bend_last_angle = i_last_angle
+                        i_last_angle = i
+                        last_orientation = orientation
                     i += 1
-                    
-                if (orientation != 0.0):
-                    i = 1
-                    last_bend_last_angle = 0
-                    last_orientation = orientation
-                    # Detect all the bends of the line
-                    while (i < nbr_pnt-1):
-                        orientation = self.direction (line.coords_dual[i-1], line.coords_dual[i], line.coords_dual[i+1])
-                        if (orientation > 0.0 and last_orientation > 0.0):
-                            i_last_angle = i
-                        elif (orientation == 0.0):
-                            pass
-                        elif (orientation < 0.0 and last_orientation < 0.0):
-                            i_last_angle = i
-                        else:
-                            # A new bend is detected and loaded
-                            line.bends.append(_Bend())
-                            self.stats.add_stats(_BENDS_DETECTED)
-                            line.bends[-1].i = last_bend_last_angle
-                            line.bends[-1].j = i
-                            last_bend_last_angle = i_last_angle
-                            i_last_angle = i
-                            last_orientation = orientation
-                        i += 1
-                    
-                    # Manage the last bend of the line
-                    line.bends.append(_Bend())
-                    self.stats.add_stats(_BENDS_DETECTED)
-                    line.bends[-1].i = last_bend_last_angle
-                    line.bends[-1].j = i
-                            
-                else:
-                    # A straight is detected no bends are created
-                    line.bends = []
+
+                # Manage the last bend of the line
+                line._gbt_bends.append(_Bend())
+                line._gbt_bends[-1].i = last_bend_last_angle
+                line._gbt_bends[-1].j = i
+
             else:
-                # A line with only 2 points will never have a bend
-                line.bends = []
+                # A straight is detected no bends are created
+                line._gtb_bends = []
+        else:
+            # A line with only 2 points will never have a bend
+            line._gbt_bends = []
 
     def direction(self, p0, p1, p2):
         """ Calculate the type angle (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
@@ -188,34 +182,3 @@ class AlgoBends(Algorithm):
         """
         
         return ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
-    
-    def check_features(self):
-        """
-        Check if the features passed in parameters are of the good class type and have the good attributes
-        
-        Parameters: None
-        
-        Return value: None
-        
-        """
-        
-        # Check the MA_LineString
-        class_type = MA_LineString
-        properties_to_check = []
-        for feature in self.features:
-            GenUtil.check_feature_integrity(feature, MA_LineString, properties_to_check)
-               
-    def process(self):
-        """Main routine for the Bend algorithm
-        
-        This method will detect the bends in list of lines.  A list of object of type if
-        is created on each line even if it has no bends. A line with no bend will have an empty list
-        
-        Parameters: None
-            
-        """
-                
-        # Check the feature's class and attributes
-        self.check_features()
-        
-        self.locate_bends()

@@ -17,6 +17,7 @@ class Command:
         Keyword arguments:
         in_file -- name of the input file
         out_file -- name of the output file
+        diameter -- diameter of the bend to simplify
         first_last -- flag to enable/disable the simplification the first/last bend
         simplicity -- flag to enable/disable the test for OGC simple line constraint
         adjacency -- flag to enable/disable the test for adjacency constraint
@@ -29,7 +30,7 @@ class Command:
     in_file: str
     out_file: str
     first_last: bool
-    tolerance: float
+    diameter: float
     simplicity: bool
     adjacency: bool
     crossing: bool
@@ -57,7 +58,7 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', first_last=True, tolerance=10., simplicity=True,
+command = Command (in_file='', out_file='', first_last=True, diameter=10., simplicity=True,
                    adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
