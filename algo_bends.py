@@ -32,21 +32,7 @@ from lib_geobato import MA_LineString, InvalidParameterError, GenUtil,\
 _ALGO = "Bend"
 _BENDS_DETECTED = "Bend detected"
 _UNKNOWN = "Unknown"
-        
-class _Bend(object):
-    """
-    This class defines attributes and operations for bends
-    
-    Attributes: None
-    """
 
-    def __init__(self):
-        """
-        Initialize attributes:
-        """
-        
-        self.i = None
-        self.j = None
 
 class Statistics(GenStatistics):
     """Class that contains the statistics for the talweg cohenrence algorithm
@@ -108,20 +94,21 @@ class AlgoBends(Algorithm):
 #        self.stats = Statistics()
         
 
-    def locate_bends(self, lst_coords):
+    def locate_bends(self, lst_coords, is_closed):
         """Calculates the position of each individual bends in a line
-        
-        The position of the bends are calculated according to the definition of the bencds 
+
+        The position of the bends are calculated according to the definition of the bencds
         in the orginal paper Wang 1998.
-        
+
         Keyword definition
             lst_coords -- list of (x,y) tuple forming
-        
+            is_closed -- Flag indicating if the line is closed or open
+
         Return value: Bend
         """
-        
-        nbr_coords = len(lst_coords)
 
+        nbr_coords = len(lst_coords)
+        bends = []
         if (nbr_coords >= 3):
 
             # A first loop to determine the rotation sense of the first
@@ -147,38 +134,36 @@ class AlgoBends(Algorithm):
                         i_last_angle = i
                     else:
                         # A new bend is detected and loaded
-                        line._gbt_bends.append(_Bend())
-                        line._gbt_bends[-1].i = last_bend_last_angle
-                        line._gbt_bends[-1].j = i
+                        bends.append((last_bend_last_angle, i))
                         last_bend_last_angle = i_last_angle
                         i_last_angle = i
                         last_orientation = orientation
                     i += 1
 
                 # Manage the last bend of the line
-                line._gbt_bends.append(_Bend())
-                line._gbt_bends[-1].i = last_bend_last_angle
-                line._gbt_bends[-1].j = i
+                bends.append((last_bend_last_angle, i))
 
             else:
                 # A straight is detected no bends are created
-                line._gtb_bends = []
+                pass
         else:
             # A line with only 2 points will never have a bend
-            line._gbt_bends = []
+            pass
+
+        return
 
     def direction(self, p0, p1, p2):
         """ Calculate the type angle (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
-        
+
         Parameters:
-            p0, p1, p2: Three (x,y) coordinates tuple 
-            
+            p0, p1, p2: Three (x,y) coordinates tuple
+
         Return value
             float the direction of the line an
                 0: Straight line
                 <0: Counter clockwise angle
                 >0: Clockwise angle
-                
+
         """
-        
+
         return ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))

@@ -141,6 +141,25 @@ class SherbendStatistics(GenStatistics):
         
         return str_out
 
+
+class Bend(object):
+    """
+    This class defines attributes and operations for bends
+
+    Attributes: None
+    """
+
+    def __init__(self, i, j):
+        """
+        Initialize Bend object
+
+
+        """
+
+        self.i = i
+        self.j = j
+
+
 class AlgoSherbend(object):
     """Main class for the Sherbend algorithm
     
@@ -240,14 +259,15 @@ class AlgoSherbend(object):
         
         """ 
     
-        if (self.params.multi_bend and line.multi_bend):
-            self._detect_window_bend (line, _FIVE_BENDS)
-            self._detect_window_bend (line, _FOUR_BENDS)
-            self._detect_window_bend (line, _THREE_BENDS)
-            self._detect_window_bend (line, _TWO_BENDS)
-            self._detect_window_bend (line, _ONE_BEND)
-        else:                
-            self._detect_window_bend (line, _ONE_BEND)
+#        if (self.command.multi_bend and line.multi_bend):
+#            self._detect_window_bend (line, _FIVE_BENDS)
+#            self._detect_window_bend (line, _FOUR_BENDS)
+#            self._detect_window_bend (line, _THREE_BENDS)
+#            self._detect_window_bend (line, _TWO_BENDS)
+#            self._detect_window_bend (line, _ONE_BEND)
+#        else:
+#            self._detect_window_bend (line, _ONE_BEND)
+        self._detect_window_bend(line, _ONE_BEND)
             
         # Detect and flag lines at their simplest form
         self._set_simplest_line(line)
@@ -257,7 +277,8 @@ class AlgoSherbend(object):
         
         # Calculates the replacement line for each bend found
         self._reduce_bends(line)
-            
+
+
     def _set_simplest_line(self, line):
         """ Determine if a line is at its simplest form
         
@@ -266,22 +287,23 @@ class AlgoSherbend(object):
         the minimum adjusted size
         
         Parameter:
-            line: MA_LineString to check if it is at its simplest form
+            line: LineString to check if it is at its simplest form
             
         Return value
             None
             
         """
         
-        if (line.bends):
-            list_unknown = [bend.type for bend in line.bends if bend.type != _UNKNOWN]
+        if line._gbt_bends:
+            list_unknown = [bend.type for bend in line._gbt_bends if bend.type != _UNKNOWN]
             # If list is empty ==> All the bends are of type _UNKNOWN and the line is at its simplest form
             if list_unknown:
                 pass
             else:
-                line.simplest= True
+                line._gbt_simplest= True
         else:
-            line.simplest = True
+            line._gbt_simplest = True
+
 
     def _detect_window_bend(self, line, bend_type):
         """This routine is sliding a window over the bends of a line. 
@@ -304,9 +326,8 @@ class AlgoSherbend(object):
         """
         
         window_length = self._number_of_bends_to_reduce(bend_type)
-        min_adj_area = line.min_adj_area
         
-        nbr_bends = len(line.bends)
+        nbr_bends = len(line._gbt_bends)
         last_bend = nbr_bends - window_length 
         
         # The last bend to process depends on the window length
@@ -317,17 +338,17 @@ class AlgoSherbend(object):
                 # Special case for the first bend
                 surround_before = _UNKNOWN
             else:
-                surround_before = line.bends[i - 1].type
+                surround_before = line._gbt_bends[i - 1].type
             if (i == last_bend):
                 #How the last bend we assume the next bend to _UNKNOWN
                 surround_after = _UNKNOWN
             else:
-                surround_after = line.bends[i + window_length].type
+                surround_after = line._gbt_bends[i + window_length].type
             
             # Check that all the bends over the window are of type UNKNOWN
             bend_unknown = True
             for j in range(window_length):
-                if (line.bends[i + j].type != _UNKNOWN):
+                if (line._gbt_bends[i + j].type != _UNKNOWN):
                     bend_unknown = False
             
             # Check previous and next bend are of type _UNKNOWN
@@ -338,7 +359,7 @@ class AlgoSherbend(object):
                 # Check that all bends are below min_adj_area
                 window_adj_area = True
                 for j in range(window_length):
-                    if (line.bends[i + j].adj_area > min_adj_area):
+                    if (line._gbt_bends[i + j].adj_area > line._gbt_min_adj_area):
                         window_adj_area = False
                     
                 if (window_adj_area):
@@ -347,11 +368,11 @@ class AlgoSherbend(object):
                         
                         lst_bends = []
                         for i_lst in range(window_length):
-                            lst_bends.append(line.bends[i_lst+i])
+                            lst_bends.append(line._gbt_bends[i_lst+i])
                             
                         if ( self._are_bends_similar(lst_bends) ):
                             for i_lst in range(window_length):
-                                line.bends[i_lst+i].type = bend_type
+                                line._gbtbends[i_lst+i].type = bend_type
                         
         return
     
@@ -408,13 +429,13 @@ class AlgoSherbend(object):
               number
         """
         
-        i = len(line.bends)-1 # i is on the last bend
+        i = len(line._gbt_bends)-1 # i is on the last bend
         while (i >= 0):
             nbr_bends = self._number_of_bends_to_reduce (line.bends[i].type)
             if (nbr_bends >=1):
                 lst_bends = []
                 for j in range(nbr_bends):
-                    lst_bends.append(line.bends[i-j])
+                    lst_bends.append(line._gbt_bends[i-j])
                 lst_bends.reverse()
                 
                 i = i - (nbr_bends -1) # Go to the first bend of the multi bend
@@ -422,7 +443,7 @@ class AlgoSherbend(object):
                  
                 # Keep the first bend and delete the remaining bends
                 for dummy in range(nbr_bends-1):
-                    del line.bends[i+1]
+                    del line._gbt_bends[i+1]
     
             i -= 1
             
@@ -433,7 +454,7 @@ class AlgoSherbend(object):
             line: Line object to detect bend
         """
         
-        for bend in line.bends:
+        for bend in line._gbt_bends:
         
             # Choose the good method depending on the number of bend to simplify 
             if (bend.type == _ONE_BEND):
@@ -465,24 +486,26 @@ class AlgoSherbend(object):
                 
                 bend.multi_bends = None
 
-    def detect_bend_location(self, line): 
+    def detect_bend_location(self, line):
         """Calculates the position of each individual bends in the line
         
         The position of the bends are calculated according to the definition of the bencds 
         in the orginal paper Wang 1998.
         
-        Parameter: LineString object to calculate bends
+        Keyword definition
+          line -- LineString object to calculate bends
         
         Return value: None  
         """
         
+        lst_coords = list(line.coords)
+
         # Calculate the bends on a line
-        algo_bends = AlgoBends()
-        line._gbt_bends = algo_bends.process(line)
-#        algo_bends.features.append(line)
-#        algo_bends.process()
-        
-        for bend in line.bends:
+        bends = GenUtil.locate_bends(lst_coords, line._gbt_is_closed)
+        for bend in bends:
+            line._gbt_bends.append = Bend(bend[0], bend[1])
+
+        for gbt_bend in line._gbt_bends:
             # Add properties to the bends needed by the SherBend algorithm
             bend.area = None             # The area of the bend
             bend.perimeter = None        # The perimeter of the bend
@@ -497,7 +520,7 @@ class AlgoSherbend(object):
             bend.multi_bends = None      # List of the bends contains in the multi bend 
             
         # Manage the bend for the first/last bend and for closed line
-        self._adjust_bend_special_cases (line)
+        self._adjust_bend_special_cases(line)
         
         # Calcultes extra attributes on the line
         self._add_bend_attributes(line)
@@ -534,7 +557,7 @@ class AlgoSherbend(object):
             self.detect_bend_location(line)
             self.classify_bends(line)
             
-            last_bend = (len(line.bends))-1
+            last_bend = (len(line._gbt_bends))-1
             
             # Scan backwards all the bends of the lines from the last one to the first one
             i_bend = last_bend
@@ -720,7 +743,7 @@ class AlgoSherbend(object):
         """
     
         # Option to keep or delete the first and last bend on the line    
-        if line.ma_properties[_SIMPLIFY_FIRST_LAST]:
+        if self.command.simplify_first_last:
             pass
         else:
             # Delete the first and last bend
@@ -732,10 +755,10 @@ class AlgoSherbend(object):
             else:
                 pass
             
-        # Special case of a closed line with only one bend this line is at its final state
-        if (len(line.bends) == 1 and line.is_closed):
-            line.bends = []
-            line.simplest = True
+        # Special case of a closed line with only one bend this line is at its simpliest form
+        if (len(line._gbt_bends) == 1 and line._gbt_is_closed):
+            line._gbt_bends = []
+            line._gbt_simplest = True
             
         return
         
@@ -750,7 +773,7 @@ class AlgoSherbend(object):
         """
         
         bend_to_simplify = False
-        for bend in line.bends:
+        for bend in line._gbt_bends:
             i = bend.i
             j = bend.j
             bend_polygon = Polygon(line.coords_dual[i:j+1])
@@ -780,7 +803,7 @@ class AlgoSherbend(object):
                 
         # If there are no potential bend to simplify the line is at its simplest form
         if not bend_to_simplify:
-            line.is_simplest = True
+            line._gbt_is_simplest = True
                 
     def _create_replacement_line(self, bend, lst_coords):
         """Create the replacement line for a bend, from a list of point"""

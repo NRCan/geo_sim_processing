@@ -470,6 +470,83 @@ class GenUtil:
 
         return (GenUtil.angle_vector(p1, p2, p3, type))
 
+
+    @staticmethod
+    def locate_bends(lst_coords, is_closed):
+        """Calculates the position of each individual bends in a line
+
+        The position of the bends are calculated according to the definition of the bencds
+        in the orginal paper Wang 1998.
+
+        Keyword definition
+            lst_coords -- list of (x,y) tuple forming
+            is_closed -- Flag indicating if the line is closed or open
+
+        Return value: Bend
+        """
+
+        nbr_coords = len(lst_coords)
+        bends = []
+        if (nbr_coords >= 3):
+
+            # A first loop to determine the rotation sense of the first
+            i = 1
+            orientation = 0.0
+            # We loop until it is not a straight line
+            while (orientation == 0.0 and i < nbr_coords - 1):
+                orientation = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                i += 1
+
+            if (orientation != 0.0):
+                i = 1
+                last_bend_last_angle = 0
+                last_orientation = orientation
+                # Detect all the bends of the line
+                while (i < nbr_coords - 1):
+                    orientation = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                    if (orientation > 0.0 and last_orientation > 0.0):
+                        i_last_angle = i
+                    elif (orientation == 0.0):
+                        pass
+                    elif (orientation < 0.0 and last_orientation < 0.0):
+                        i_last_angle = i
+                    else:
+                        # A new bend is detected and loaded
+                        bends.append((last_bend_last_angle, i))
+                        last_bend_last_angle = i_last_angle
+                        i_last_angle = i
+                        last_orientation = orientation
+                    i += 1
+
+                # Manage the last bend of the line
+                bends.append((last_bend_last_angle, i))
+
+            else:
+                # A straight is detected no bends are created
+                pass
+        else:
+            # A line with only 2 points will never have a bend
+            pass
+
+        return bends
+
+    @staticmethod
+    def direction(p0, p1, p2):
+        """ Calculate the type angle (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
+
+        Parameters:
+            p0, p1, p2: Three (x,y) coordinates tuple
+
+        Return value
+            float the direction of the line an
+                0: Straight line
+                <0: Counter clockwise angle
+                >0: Clockwise angle
+
+        """
+
+        return ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
+
     @staticmethod
     def compute_angles(coords_list):
         """
@@ -1136,16 +1213,16 @@ class MA_Point(Point):
 
     """
     The MA_Point class extends the Point of the shapely library by adding
-    new methods and attributes that enables the creation of Meta algorithm. 
+    new methods and attributes that enables the creation of Meta algorithm.
     Here are some possibilities of this class:
      - MA_Point can be stored  in an instance of a SpatialContainer class
-     - MA_Point can have than coordinates updated through the update_coords 
+     - MA_Point can have than coordinates updated through the update_coords
        method which also updates the spatial index if used
      - MA_Point disable the capacity to update a coordinate through the property coords;
        you must always use the update_coords method to update coordinates
      - MA_Point can have a copy of the coordinates in an the attribute coords_dual;
        this copy of the attributes allows a faster access to the coordinates than
-       when accessing them through Shapely coords attributes. This can be an advantage when 
+       when accessing them through Shapely coords attributes. This can be an advantage when
        you have to loop over and over each coordinates of your features.
 
     """
@@ -1156,10 +1233,10 @@ class MA_Point(Point):
           -feature_type: The type of feature
           - _coords_dual: duplicate of the coordinates
           - ma_properties: Attributes of the spatial feature
-        
+
         *Parameters*:
             - coords: Coordinates of the point
-            - dual: Flag to enable (True) or disable (False) the dual property 
+            - dual: Flag to enable (True) or disable (False) the dual property
         """
 
         # Convert the coords in float equivalent to c_double which is the internal type of the Geos library
@@ -1169,26 +1246,26 @@ class MA_Point(Point):
             self._coords_dual = tuple_coords
         else:
             Point.__init__(self, tuple_coords)
-            
+
         self.feature_type = GenUtil.POINT
         self.ma_properties = {} # Dictionary for attributes
 
     def _coords_to_tuple (self, coords):
         """Convert a coords which can be either an iterable (x,y) or ((x,y)) into a tuple (x,y) containing floats"""
-        
+
         if (len(coords) == 2):
             tuple_coords = ((float(coords[0]),float(coords[1])),) # Creation of a tuple
         else:
             tuple_coords = ((float(coords[0][0]),float(coords[0][1])),)
-            
+
         return tuple_coords
-    
+
     @property
     def coords_dual(self):
         # Manage the coords_dual property
         if self.is_dual():
             return self._coords_dual
-        else:   
+        else:
             raise GenException ("Dual property no set... cannot access it")
 
     @coords_dual.setter
@@ -1198,25 +1275,25 @@ class MA_Point(Point):
     @property
     def coords(self):
         return Point.coords.__get__(self, Point)
-    
+
     @coords.setter
     def coords (self, coords):
         raise InternalError ("Cannot set coordinates using .coords. Use .coords_dual instead...")
 
     def is_dual(self):
         """Return True if the feature is dual; false otherwise
-        
+
         *Parameters*: *None*
 
         *Returns*: True: The feature is dual
                    False: The feature is not dual
         """
-        
+
         if (hasattr(self, "_coords_dual")):
             return True
         else:
             return False
-    
+
     def mid_point(self, point):
         """Return a point in the middle of the 2 points"""
 
@@ -1228,7 +1305,7 @@ class MA_Point(Point):
     def cloner (self):
         """This method clones the object
 
-        *Parameters*:  
+        *Parameters*:
             *None*
 
         *Returns*:
@@ -1238,25 +1315,25 @@ class MA_Point(Point):
 
         # Clone the geometry
         clone = MA_Point(self.coords_dual)
-        
+
         # Clone the attributes
         clone.ma_properties = self.ma_properties.copy()
 
         return clone
-    
+
     def update_coords (self, coords, s_container=None):
         """Update the coordinates of the feature and update the bounding in the spatial container
-        
+
         *Parameters*:
             - coords: List of the new coordinates to apply to the feature
             - s_container: SpatialContainer which contains the feature to update. If None the feature
                            is not contained in a spatial container.
-            
+
         *Returns*:
             *None*
-        
+
         """
-        
+
         # Update the coordinates
         if (self.is_dual()):
             # Manage the coords dual property
@@ -1266,29 +1343,29 @@ class MA_Point(Point):
             self._coords_dual = tuple_coords
         else:
             Point.coords.__set__(self,coords)
-        
+
         # If the feature is placed in a spatial container; once must update the spatial index
         if s_container is not None:
             s_container.update_spatial_index(self)
         else:
             if s_container is None and hasattr(self, "_sci_id"):
                 raise InternalError("Feature is in a spatial container and no spatial container is supplied...")
-                
+
 
 class MA_LineString(LineString):
 
     """
     The MA_LineString class extends the LineString of the shapely library by adding
-    new methods and attributes that enables the creation of Meta algorithm. 
+    new methods and attributes that enables the creation of Meta algorithm.
     Here are some possibilities of this class:
      - MA_LineString can be stored  in an instance of a SpatialContainer class
-     - MA_LineString can have than coordinates updated through the update_coords 
+     - MA_LineString can have than coordinates updated through the update_coords
        method which also updates the spatial index if used
      - MA_LineString disable the capacity to update a coordinate through the property coords;
        you must always use the update_coords method to update coordinates
      - MA_LineString can have a copy of the coordinates in an the attribute coords_dual;
        this copy of the attributes allows a faster access to the coordinates than
-       when accessing them through Shapely coords attributes. This can be an advantage when 
+       when accessing them through Shapely coords attributes. This can be an advantage when
        you have to loop over and over each coordinates of your features.
 
     """
@@ -1299,24 +1376,24 @@ class MA_LineString(LineString):
           -feature_type: The type of feature
           - _coords_dual: duplicate of the coordinates
           - ma_properties: Attributes of the spatial feature
-        
+
         *Parameters*:
             coords: List or tuple of coordinates
             dual: Enable (true) or diable (False) the possibility of a dual property
-            
+
         *Return*: None
-        
+
         """
 
         # Convert the coords in float equivalent to c_double which is the internal type of the Geos library
         tuple_coords = tuple( (float(x),float(y)) for x,y in coords)
-        
+
         if dual:
             self._coords_dual = tuple_coords
             LineString.__init__(self, tuple_coords)
         else:
             LineString.__init__(self, tuple_coords)
-            
+
         self.feature_type = GenUtil.LINE_STRING
         self.ma_properties = {} # Dictionary for attributes
 
@@ -1324,7 +1401,7 @@ class MA_LineString(LineString):
     def coords_dual(self):
         if (self.is_dual()):
             return self._coords_dual
-        else:   
+        else:
             raise GenException ("Dual property no set... cannot acces it")
 
     @coords_dual.setter
@@ -1340,23 +1417,23 @@ class MA_LineString(LineString):
 
     def is_dual(self):
         """Return True if the feature is dual; false otherwise
-        
+
         *Parameters*: *None*
 
         *Returns*: True: The feature is dual
                    False: The feature is not dual
         """
-        
+
         if (hasattr(self, "_coords_dual")):
             return True
         else:
             return False
-    
+
     def cloner (self):
         """
         This method clones the object
 
-        *Parameters*: 
+        *Parameters*:
             *None*
 
         *Returns*:
@@ -1366,25 +1443,25 @@ class MA_LineString(LineString):
 
         # Clone the geometry
         clone = MA_LineString(self.coords_dual)
-        
+
         # Clone the attributes
         clone.ma_properties = self.ma_properties.copy()
-        
+
         return clone
-    
+
     def update_coords (self, coords, s_container=None):
         """Update the coordinates of the feature and update the bounding in the spatial container
-        
+
         *Parameters*:
             - coords: List of the new coordinates to apply to the feature
             - s_container: SpatialContainer which contains the feature to update. If None the feature
                            is not contained in a spatial container.
-            
+
         *Returns*:
             *None*
-        
+
         """
-        
+
         # Update the coordinates
         if (self.is_dual()):
             # Convert the coords in float equivalent to c_double which is the internal type of the Geos library
@@ -1393,7 +1470,7 @@ class MA_LineString(LineString):
             LineString.coords.__set__(self,tuple_coords)
         else:
             LineString.coords.__set__(self,coords)
-        
+
         # If the feature is placed in a spatial container; once must update the spatial index
         if s_container is not None:
             s_container.update_spatial_index(self)
@@ -1401,15 +1478,15 @@ class MA_LineString(LineString):
             # The feature is in a spatial container and no spatial container is supplied...ERROR
             if s_container is None and hasattr(self, "_sci_id"):
                 raise InternalError("Feature is in a spatial container and no spatial container is supplied...")
-        
+
 class MA_Polygon(Polygon):
-    
+
     """
     The MA_Polygon class extends the Polygon of the shapely library by adding
-    new methods and attributes that enables the creation of Meta algorithm. 
+    new methods and attributes that enables the creation of Meta algorithm.
     Here are some possibilities of this class:
      - MA_Polygon can be stored  in an instance of a SpatialContainer class
-     - MA_Polygon can have than coordinates updated through the update_coords 
+     - MA_Polygon can have than coordinates updated through the update_coords
        method which also updates the spatial index if used
      - MA_Polygon disable the capacity to update a coordinate through the property coords;
        you must always use the update_coords method to update coordinates
@@ -1427,7 +1504,7 @@ class MA_Polygon(Polygon):
         """
         This method clones the object
 
-        *Parameters*: 
+        *Parameters*:
             *None*
 
         *Returns*:
@@ -1437,24 +1514,24 @@ class MA_Polygon(Polygon):
 
         # Clone the geometry
         clone = MA_Polygon(self.exterior, self.interiors)
-        
+
         # Clone the attributes
         clone.ma_properties = self.ma_properties.copy()
-        
+
         return clone
 
     def update_coords (self, coords):
         """Update the coordinates of the feature and update the bounding in the spatial container
-        
+
         *Parameters*:
             - coords: List of the new coordinates to apply to the feature
             - container: Spatial container into which we update the spatial index
-            
+
         *Returns*:
             *None*
-        
+
         """
-        
+
         # Update the coordinates
         raise InternalError ("Method not yet implemented...")
 

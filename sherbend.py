@@ -29,7 +29,7 @@ class Command:
         """
     in_file: str
     out_file: str
-    first_last: bool
+    simplify_first_last: bool
     diameter: float
     simplicity: bool
     adjacency: bool
@@ -58,7 +58,7 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', first_last=True, diameter=10., simplicity=True,
+command = Command (in_file='', out_file='', simplify_first_last=True, diameter=10., simplicity=True,
                    adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
