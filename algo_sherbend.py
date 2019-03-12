@@ -470,16 +470,14 @@ class AlgoSherbend(object):
             nbr_bends = self._number_of_bends_to_reduce (bend.type)
             
             if (nbr_bends >= 1):
-                lst_bends = bend.multi_bends
-                
-                if (self._are_bends_big(lst_bends, line._gbt_min_adj_area)):
+                if (self._are_bends_big(bend, line._gbt_min_adj_area)):
                     bend_size = _BIG
                 else:
                     bend_size = _SMALL
                 
-                sim_function (lst_bends, bend_size, line)
+                sim_function (bend, bend_size, line)
                 
-                bend.replacement_line = lst_bends[0].replacement_line
+                bend.replacement_line = bends[0].replacement_line
                 bend.i = lst_bends[0].i
                 bend.j = lst_bends[-1].j
                 
@@ -810,11 +808,11 @@ class AlgoSherbend(object):
         
         bend.replacement_line = MA_LineString(lst_coords)
     
-    def _reduce_one_bend(self, lst_bends, bend_size, line):
+    def _reduce_one_bend(self, bend, bend_size, line):
         """Compute the replacement line for the case of a one bend
         
         Parameter:
-            lst_bends: list of bend to process (in the case of a one bend the list contains only one element)
+            bend: bend to process (in the case of a one bend the list contains only one element)
             bend_size: Type of bend BIG or SMALL bend
             line: line object to process
         
@@ -822,9 +820,7 @@ class AlgoSherbend(object):
             None
         
         """
-       
-        bend = lst_bends[0]
-        
+
         if (bend_size == _BIG):
             # Find the coordinate of the replacement line
             lst_coord = self._reduce_bend (bend, line)
@@ -832,9 +828,9 @@ class AlgoSherbend(object):
             # Bend is small no middle coordinates
             lst_coord = []
         
-        # Add first last coordinates
-        lst_coord.insert(0, line.coords_dual[bend.i]) 
-        lst_coord.append(line.coords_dual[bend.j])
+        # Add first and last coordinates
+        lst_coord.insert(0, line.coords[bend.i])
+        lst_coord.append(line.coords[bend.j])
         
         self._create_replacement_line(bend, lst_coord)
     
@@ -987,14 +983,14 @@ class AlgoSherbend(object):
         self._create_replacement_line(bend1, lst_coords)
      
 
-    def _are_bends_big(self, bends, min_adj_area):
+    def _are_bends_big(self, bend, min_adj_area):
         """This routine if the bend are big bend
         
         To be considered as big bend the list of bends must have a adjusted area and the compactness index
         over a certain threshold     
         
         Parameters:
-            bends: List of bend to process
+            bends: Bend to process
             min_adj_area: minimum adjusted area for the line
              
         Return value
@@ -1002,26 +998,17 @@ class AlgoSherbend(object):
                 True: The bends are big bend
                 False: Otherwise
         """
-        
-        if (self.params.big_bend):
-            nbr_bends = len(bends)
-            list_adj_area = []
-            list_cmp_index = []
-            for i in range(nbr_bends):
-                list_adj_area.append(bends[i].adj_area)
-                list_cmp_index.append(bends[i].cmp_index)
-            
-            delta_adj_area  = 1.0 - (min(list_adj_area)/ min_adj_area)
-            delta_cmp_index = 1.0 - (min(list_cmp_index))
-            if (delta_adj_area  < _BIG_BEND_MAX_ADJ_AREA_RATIO and
-                delta_cmp_index < _BIG_BEND_CMP_INDEX_RATIO ):  
-                big = True
-            else:
-                big = False
+
+        adj_area_ratio = 1.0 - (bend.adj_area/ min_adj_area)
+        cmp_index_ratio = 1.0 - bend.cmp_index
+        if (adj_area_ratio  < _BIG_BEND_MAX_ADJ_AREA_RATIO and
+            cmp_index_ratio < _BIG_BEND_CMP_INDEX_RATIO ):
+            is_big_bend = True
         else:
-            big = False
-            
-        return big
+            is_big_bend = False
+
+        return is_big_bend
+
 
     def _number_of_bends_to_reduce (self, bend_type):
         """
