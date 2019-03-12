@@ -273,7 +273,7 @@ class AlgoSherbend(object):
         self._set_simplest_line(line)
         
         # Compaction of the bends in the list of bends.  This compactness will speedup the search process
-        self._compact_bends(line)
+#        self._compact_bends(line)
         
         # Calculates the replacement line for each bend found
         self._reduce_bends(line)
@@ -372,12 +372,12 @@ class AlgoSherbend(object):
                             
                         if ( self._are_bends_similar(lst_bends) ):
                             for i_lst in range(window_length):
-                                line._gbtbends[i_lst+i].type = bend_type
+                                line._gbt_bends[i_lst+i].type = bend_type
                         
         return
     
     def _are_neighbours_bigger(self, line, first_bend, last_bend):
-        """Checks if the bends is surrounded by bigger bends. This means bigger adjusted area.
+        """Checks if the bends is surrounded by bigger area bends.
         
         Parameters:
             line: Line object to check
@@ -385,26 +385,25 @@ class AlgoSherbend(object):
             last_bend: Number of the last bend of the line to check
             
         Return value:
-            Boolean flag for the state of the bend in comparison if its neighbours 
+            Boolean flag for the state of the bend in comparison to its neighbours
                 True: The neighbours are bigger
                 False:  The neighbours are smaller
-        
         """
         
         # If it is the first bend of the line we assume previous bend as infinite
         if (first_bend == 0):
             previous_adj_area = 1.0e+99
         else:
-            previous_adj_area = line.bends[first_bend - 1].adj_area
+            previous_adj_area = line._gbt_bends[first_bend - 1].adj_area
         
         # If it is the last bend of the line we assume the next bend as infinite    
-        if (last_bend == len(line.bends) - 1):
+        if (last_bend == len(line._gbt_bends) - 1):
             next_adj_area = 1.0e+99
         else:
-            next_adj_area = line.bends[last_bend + 1].adj_area
+            next_adj_area = line._gbt_bends[last_bend + 1].adj_area
             
-        if (previous_adj_area >= line.bends[first_bend].adj_area and
-             next_adj_area >= line.bends[last_bend].adj_area):
+        if (previous_adj_area >= line._gbt_bends[first_bend].adj_area and
+             next_adj_area >= line._gbt_bends[last_bend].adj_area):
             
             bigger = True
         else:
@@ -473,7 +472,7 @@ class AlgoSherbend(object):
             if (nbr_bends >= 1):
                 lst_bends = bend.multi_bends
                 
-                if (self._are_bends_big(lst_bends, line.min_adj_area)):
+                if (self._are_bends_big(lst_bends, line._gbt_min_adj_area)):
                     bend_size = _BIG
                 else:
                     bend_size = _SMALL
@@ -501,11 +500,11 @@ class AlgoSherbend(object):
         lst_coords = list(line.coords)
 
         # Calculate the bends on a line
-        bends = GenUtil.locate_bends(lst_coords, line._gbt_is_closed)
-        for bend in bends:
-            line._gbt_bends.append = Bend(bend[0], bend[1])
+        lst_ij = GenUtil.locate_bends(lst_coords, line._gbt_is_closed)
+        for (i,j) in lst_ij:
+            line._gbt_bends.append(Bend(i, j))
 
-        for gbt_bend in line._gbt_bends:
+        for bend in line._gbt_bends:
             # Add properties to the bends needed by the SherBend algorithm
             bend.area = None             # The area of the bend
             bend.perimeter = None        # The perimeter of the bend
@@ -592,7 +591,9 @@ class AlgoSherbend(object):
             line.bends = []
             
             # Update the Shapely structure using the coordinates in the temporary structure
-            line.update_coords(in_hand_line_coords, self.s_container)
+            if (line_simplified):
+                line.coords = in_hand_line_coords
+#            line.update_coords(in_hand_line_coords, self.s_container)
         
         return line_simplified
 
@@ -776,13 +777,11 @@ class AlgoSherbend(object):
         for bend in line._gbt_bends:
             i = bend.i
             j = bend.j
-            bend_polygon = Polygon(line.coords_dual[i:j+1])
+            bend_polygon = Polygon(line.coords[i:j+1])
             area = bend_polygon.area
             if area <= GenUtil.ZERO:
-                area = GenUtil.ZERO # In case of area=0 we assume very small area
-            else:
-                area = area
-            base = GenUtil.distance (line.coords_dual[i], line.coords_dual[j])
+                area = GenUtil.ZERO # In case of area=0 we assume almost 0 area
+            base = GenUtil.distance(line.coords[i], line.coords[j])
             if base <= GenUtil.ZERO: base = GenUtil.ZERO  # Avoid a case of division by zero
             perimeter = bend_polygon.length
             bend.base = base
@@ -794,17 +793,18 @@ class AlgoSherbend(object):
             # It has to call many Shapely routines those attributes are only evaluated
             # for bend that are below the min_adj_are and are real candidates for 
             # simplification
-            if (bend.adj_area <= line.min_adj_area):
+            if (bend.adj_area <= line._gbt_min_adj_area):
                 bend_to_simplify = True
                 (depth, peak_index) = self._calculate_bend_depth(line, bend)
                 bend.depth = depth
                 bend.peak_index = peak_index
-                bend.peak_coords = line.coords_dual[peak_index]
+                bend.peak_coords = line.coords[peak_index]
                 
         # If there are no potential bend to simplify the line is at its simplest form
         if not bend_to_simplify:
             line._gbt_is_simplest = True
-                
+
+
     def _create_replacement_line(self, bend, lst_coords):
         """Create the replacement line for a bend, from a list of point"""
         
@@ -1094,8 +1094,8 @@ class AlgoSherbend(object):
         
         """This routine reduce one bend"""
     
-        first_coord = line.coords_dual[bend.i]
-        last_coord = line.coords_dual[bend.j]
+        first_coord = line.coords[bend.i]
+        last_coord = line.coords[bend.j]
             
         if (bend.base / bend.depth < 1.0):
             offset_factor = bend.base / bend.depth
@@ -1103,10 +1103,9 @@ class AlgoSherbend(object):
             offset_factor = bend.depth / bend.base
         
         bend_depth = bend_depth * offset_factor 
-               
-            
+
         # Calculate the position of the middle of the bend base line
-        base_mid_point = MA_Point(first_coord).mid_point(MA_Point(last_coord))
+        base_mid_point = Point(first_coord).mid_point(Point(last_coord))
             
         # Offset the point in direction of the bend peak
         scaled_point = self.rescale_vector (base_mid_point, MA_Point(bend.peak_coords),  bend_depth)
@@ -1223,13 +1222,13 @@ class AlgoSherbend(object):
         dist_depth = - 1.
         
 #        bend_base_line = LineString((line.coords_dual[bend.i], line.coords_dual[bend.j]))
-        base_line_p1 = line.coords_dual[bend.i]
-        base_line_p2 = line.coords_dual[bend.j]
+        base_line_p1 = line.coords[bend.i]
+        base_line_p2 = line.coords[bend.j]
         
-        for n in xrange(bend.i + 1, bend.j):
+        for n in range(bend.i + 1, bend.j):
             
 #            distance = bend_base_line.distance(Point(line.coords_dual[n]))
-            distance = GenUtil.distance_line_point (base_line_p1, base_line_p2, line.coords_dual[n])
+            distance = GenUtil.distance_line_point (base_line_p1, base_line_p2, line.coords[n])
             if (distance > dist_depth):
                 dist_depth = distance
                 pt_depth_index = n

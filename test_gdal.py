@@ -3,6 +3,11 @@ from time import time
 import timeit
 
 diag = LineString(((1,1),(2,2), (2,10)))
+diag1 = LineString(((1,1),(2,2), (2,10)))
+print (diag1)
+diag1.coords = ((0,0),(10,10))
+print (diag1)
+diag1.coords[0] = (3,3)
 a = diag.minimum_rotated_rectangle
 
 
