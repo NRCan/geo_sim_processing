@@ -325,8 +325,12 @@ class AlgoSherbend(object):
     
         """
         
-        window_length = self._number_of_bends_to_reduce(bend_type)
-        
+#        window_length = self._number_of_bends_to_reduce(bend_type)
+        if bend_type == _ONE_BEND:
+            window_length = 1
+        else:
+            window_length = 0
+
         nbr_bends = len(line._gbt_bends)
         last_bend = nbr_bends - window_length 
         
@@ -454,34 +458,14 @@ class AlgoSherbend(object):
         """
         
         for bend in line._gbt_bends:
-        
-            # Choose the good method depending on the number of bend to simplify 
-            if (bend.type == _ONE_BEND):
-                sim_function = self._reduce_one_bend
-            elif (bend.type == _TWO_BENDS):
-                sim_function = self._reduce_two_bends
-            elif (bend.type == _THREE_BENDS):
-                sim_function = self._reduce_three_bends
-            elif (bend.type == _FOUR_BENDS):
-                sim_function = self._reduce_four_bends
-            elif (bend.type == _FIVE_BENDS):
-                sim_function = self._reduce_five_bends
-                
-            nbr_bends = self._number_of_bends_to_reduce (bend.type)
-            
-            if (nbr_bends >= 1):
+            if bend.type == _ONE_BEND:
                 if (self._are_bends_big(bend, line._gbt_min_adj_area)):
                     bend_size = _BIG
                 else:
                     bend_size = _SMALL
-                
-                sim_function (bend, bend_size, line)
-                
-                bend.replacement_line = bends[0].replacement_line
-                bend.i = lst_bends[0].i
-                bend.j = lst_bends[-1].j
-                
-                bend.multi_bends = None
+
+                bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
+
 
     def detect_bend_location(self, line):
         """Calculates the position of each individual bends in the line
@@ -497,30 +481,87 @@ class AlgoSherbend(object):
         
         lst_coords = list(line.coords)
 
-        # Calculate the bends on a line
+        # Calculate the inflexion in the line
         lst_ij = GenUtil.locate_bends(lst_coords, line._gbt_is_closed)
+
+        # Create the bend
         for (i,j) in lst_ij:
             line._gbt_bends.append(Bend(i, j))
 
-        for bend in line._gbt_bends:
-            # Add properties to the bends needed by the SherBend algorithm
-            bend.area = None             # The area of the bend
-            bend.perimeter = None        # The perimeter of the bend
-            bend.cmp_index = None        # Compactness index (base ** 2) / (perimeter - base)
-            bend.adj_area = None         # Adjusted area of the bend area * 0.75 /cmp_index)
-            bend.type = _UNKNOWN         # Type of bend by default:UNKNOWN
-            bend.base = None             # The length of the base of the bend
-            bend.depth = None            # The distance from the bend peak to the base_line
-            bend.peak_index = None       # Vertice number of the peak's bend 
-            bend.polygon = None          # Polygon of the bend
-            bend.replacement_line = None # LineString that will replace the bend   
-            bend.multi_bends = None      # List of the bends contains in the multi bend 
-            
         # Manage the bend for the first/last bend and for closed line
         self._adjust_bend_special_cases(line)
-        
-        # Calcultes extra attributes on the line
-        self._add_bend_attributes(line)
+
+        for bend in line._gbt_bends:
+            # Add properties to the bends needed by the SherBend algorithm
+            i = bend.i
+            j = bend.j
+            bend_polygon = Polygon(line.coords[i:j + 1])
+            bend.area = bend_polygon.area             # The area of the bend
+            if bend.area <= GenUtil.ZERO:
+                bend.area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area
+            bend.base = GenUtil.distance(line.coords[i], line.coords[j])  # The length of the base of the bend
+            if bend.base <= GenUtil.ZERO:
+                base = GenUtil.ZERO  # Avoid a case of division by zero
+            bend.perimeter = bend_polygon.length        # The perimeter of the bend
+            bend.cmp_index = 4*bend.area*math.pi / (bend.perimeter**2.0)  # Compactness index (base**2)/(perimeter - base)
+            bend.adj_area = bend.area * (0.75 / bend.cmp_index)  # Adjusted area of the bend area * 0.75 /cmp_index)
+            bend.type = _UNKNOWN  # Type of bend by default:UNKNOWN
+
+            # Because the evaluation on the next attributes are costly in time machine
+            # It has to call many Shapely routines those attributes are only evaluated
+            # for bend that are below the min_adj_are and are real candidates for
+            # simplification
+            if (bend.adj_area <= line._gbt_min_adj_area):
+                bend_to_simplify = True
+                (bend.depth, bend.peak_index) = self._calculate_bend_depth(line, bend)
+#                bend.depth = depth
+#                bend.peak_index = peak_index
+                bend.peak_coords = line.coords[bend.peak_index]
+
+            # If there are no potential bend to simplify the line is at its simplest form
+            if not bend_to_simplify:
+                line._gbt_is_simplest = True
+
+#            bend.depth = None            # The distance from the bend peak to the base_line
+#            bend.peak_index = None       # Vertice number of the peak's bend
+#            bend.polygon = None          # Polygon of the bend
+#            bend.replacement_line = None # LineString that will replace the bend
+#            bend.multi_bends = None      # List of the bends contains in the multi bend
+#
+#        bend_to_simplify = False
+#        for bend in line._gbt_bends:
+#            i = bend.i
+#            j = bend.j
+#            bend_polygon = Polygon(line.coords[i:j + 1])
+#            area = bend_polygon.area
+#            if area <= GenUtil.ZERO:
+#                area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area
+#            base = GenUtil.distance(line.coords[i], line.coords[j])
+#            if base <= GenUtil.ZERO: base = GenUtil.ZERO  # Avoid a case of division by zero
+#            perimeter = bend_polygon.length
+#            bend.base = base
+#            bend.perimeter = perimeter
+#            bend.cmp_index = 4 * area * math.pi / (perimeter ** 2.0)
+#            bend.adj_area = area * (0.75 / bend.cmp_index)
+
+            # Because the evaluation on the next attributes are costly in time machine
+            # It has to call many Shapely routines those attributes are only evaluated
+            # for bend that are below the min_adj_are and are real candidates for
+            # simplification
+#            if (bend.adj_area <= line._gbt_min_adj_area):
+#                bend_to_simplify = True
+#                (depth, peak_index) = self._calculate_bend_depth(line, bend)
+#                bend.depth = depth
+#                bend.peak_index = peak_index
+#                bend.peak_coords = line.coords[peak_index]
+
+#        # If there are no potential bend to simplify the line is at its simplest form
+#        if not bend_to_simplify:
+#            line._gbt_is_simplest = True
+#
+#
+#        # Calcultes extra attributes on the line
+#        self._add_bend_attributes(line)
 
     def manage_lines_simplification (self):
         """Main routine to simplify the lines
@@ -559,9 +600,13 @@ class AlgoSherbend(object):
             # Scan backwards all the bends of the lines from the last one to the first one
             i_bend = last_bend
             while (i_bend >= 0):
-                            
-                nbr_bends = self._number_of_bends_to_reduce(line.bends[i_bend].type)        
-                if (nbr_bends >=1):
+
+#                nbr_bends = self._number_of_bends_to_reduce(line._gbt_bends[i_bend].type)
+                if line._gbt_bends[i_bend].type == _ONE_BEND:
+                    nbr_bends = 1
+                else:
+                    nbr_bends = 0
+                if (nbr_bends ==1):
                     bend_status = self._manage_bend_constraints(i_bend, line, in_hand_line_coords)
                     if (bend_status == _SIMPLIFIED):
                         line_simplified = line_simplified or True
@@ -613,7 +658,7 @@ class AlgoSherbend(object):
         
         
         conflict_type = None
-        bend_to_check = line.bends[i_bend]
+        bend_to_check = line._gbt_bends[i_bend]
                 
         # Build the features used for constraint checking 
         self._finalize_bend_information(bend_to_check, line, in_hand_line_coords)
@@ -760,227 +805,175 @@ class AlgoSherbend(object):
             line._gbt_simplest = True
             
         return
-        
-    def _add_bend_attributes(self, line):       
-        """This routine computes the different attributes of the bends of a line.
-        
-        Parameter:
-            line: line object to process
-            
-        Return value:
-            None
-        """
-        
-        bend_to_simplify = False
-        for bend in line._gbt_bends:
-            i = bend.i
-            j = bend.j
-            bend_polygon = Polygon(line.coords[i:j+1])
-            area = bend_polygon.area
-            if area <= GenUtil.ZERO:
-                area = GenUtil.ZERO # In case of area=0 we assume almost 0 area
-            base = GenUtil.distance(line.coords[i], line.coords[j])
-            if base <= GenUtil.ZERO: base = GenUtil.ZERO  # Avoid a case of division by zero
-            perimeter = bend_polygon.length
-            bend.base = base
-            bend.perimeter = perimeter
-            bend.cmp_index = 4 * area * math.pi / (perimeter ** 2.0)
-            bend.adj_area = area * (0.75 / bend.cmp_index)
-            
-            # Because the evaluation on the next attributes are costly in time machine
-            # It has to call many Shapely routines those attributes are only evaluated
-            # for bend that are below the min_adj_are and are real candidates for 
-            # simplification
-            if (bend.adj_area <= line._gbt_min_adj_area):
-                bend_to_simplify = True
-                (depth, peak_index) = self._calculate_bend_depth(line, bend)
-                bend.depth = depth
-                bend.peak_index = peak_index
-                bend.peak_coords = line.coords[peak_index]
-                
-        # If there are no potential bend to simplify the line is at its simplest form
-        if not bend_to_simplify:
-            line._gbt_is_simplest = True
 
 
-    def _create_replacement_line(self, bend, lst_coords):
-        """Create the replacement line for a bend, from a list of point"""
-        
-        bend.replacement_line = MA_LineString(lst_coords)
-    
-    def _reduce_one_bend(self, bend, bend_size, line):
-        """Compute the replacement line for the case of a one bend
-        
-        Parameter:
-            bend: bend to process (in the case of a one bend the list contains only one element)
-            bend_size: Type of bend BIG or SMALL bend
-            line: line object to process
-        
-        Return value:
-            None
-        
-        """
-
-        if (bend_size == _BIG):
-            # Find the coordinate of the replacement line
-            lst_coord = self._reduce_bend (bend, line)
-        else:
-            # Bend is small no middle coordinates
-            lst_coord = []
-        
-        # Add first and last coordinates
-        lst_coord.insert(0, line.coords[bend.i])
-        lst_coord.append(line.coords[bend.j])
-        
-        self._create_replacement_line(bend, lst_coord)
-    
-        return
-    
-    def _reduce_two_bends(self, lst_bends, bend_size, line):
-        """Compute the replacement line for the case of a two bend
-        
-        Parameter:
-            lst_bends: list of bend to process
-            bend_size: Type of bend BIG or SMALL bend
-            line: line object to process
-        
-        Return value:
-            None
-        
-        """  
-        
-        bend1 = lst_bends[0]
-        bend2 = lst_bends[1]
-        
-        # Calculate the mid position between the beginning of the first and second bend
-        base_mid_point = MA_Point(line.coords_dual[bend1.j]).mid_point(MA_Point(line.coords_dual[bend2.i]))    
-        
-        if (bend_size == _BIG):
-            # Calculate the middle coordinates of each bend
-            lst_coords_bend1 = self._reduce_bend(bend1, line)
-            lst_coords_bend2 = self._reduce_bend(bend2, line)
-            # Add the mid position and the middle coordinates of each bend
-            lst_coords = lst_coords_bend1 + list(base_mid_point.coords_dual) +  lst_coords_bend2
-        
-        else:
-            # Bend is small
-            lst_coords = list(base_mid_point.coords_dual)
-    
-        # Add the first/last vertice of the bends
-        lst_coords.insert(0, line.coords_dual[bend1.i]) 
-        lst_coords.append(line.coords_dual[bend2.j])   
-    
-        self._create_replacement_line(bend1, lst_coords)
-      
-      
-    def _reduce_three_bends(self, lst_bends, bend_size, line):
-        """Compute the replacement line for the case of a three bend
-        
-        Parameter:
-            lst_bends: list of bend to process
-            bend_size: Type of bend BIG or SMALL bend
-            line: line object to process
-        
-        Return value:
-            None
-        
-        """
-    
-        bend1 = lst_bends[0]
-        bend2 = lst_bends[1]
-        bend3 = lst_bends[2]
-        
-        if (bend_size == _BIG):
-            # Calculate the middle coordinates of each bend
-            lst_coords_bend1 = self._reduce_bend (bend1, line)
-            lst_coords_bend2 = self._reduce_bend (bend2, line)
-            lst_coords_bend3 = self._reduce_bend (bend3, line)
-            lst_coords = lst_coords_bend1 + lst_coords_bend2 + lst_coords_bend3
-        else:
-            # Bend is small so only find the middle position of the second bend
-            lst_coords = self._reduce_bend (bend2, line)
-    
-        # Add the first/last vertice of the bends
-        lst_coords.insert(0, line.coords_dual[bend1.i]) 
-        lst_coords.append(line.coords_dual[bend3.j]) 
-            
-        self._create_replacement_line(bend1, lst_coords)
-            
-    
-    def _reduce_four_bends(self, lst_bends, bend_size, line):
-        """Compute the replacement line for the case of a four bend
-        
-        Parameter:
-            lst_bends: list of bend to process
-            bend_size: Type of bend BIG or SMALL bend
-            line: line object to process
-        
-        Return value:
-            None
-        
-        """
-        
-        bend1 = lst_bends[0] 
-        bend2 = lst_bends[1]
-        bend3 = lst_bends[2]
-        bend4 = lst_bends[3]
-        
-        # Calculate the mid position between the bends
-        base_mid_point12 = MA_Point(line.coords_dual[bend1.j]).mid_point(MA_Point(line.coords_dual[bend2.i]))
-        base_mid_point23 = MA_Point(line.coords_dual[bend2.j]).mid_point(MA_Point(line.coords_dual[bend3.i]))
-        base_mid_point34 = MA_Point(line.coords_dual[bend3.j]).mid_point(MA_Point(line.coords_dual[bend4.i]))    
-        
-        
-        if (bend_size == _BIG):
-            # Calculate the mid position of each bend
-            lst_coords_bend1 = self._reduce_bend(bend1, line)
-            lst_coords_bend2 = self._reduce_bend(bend2, line)
-            lst_coords_bend3 = self._reduce_bend(bend3, line)
-            lst_coords_bend4 = self._reduce_bend(bend4, line)
-            lst_coords = lst_coords_bend1 + list(base_mid_point12.coords_dual) + \
-                         lst_coords_bend2 + list(base_mid_point23.coords_dual) + \
-                         lst_coords_bend3 + list(base_mid_point34.coords_dual) + \
-                         lst_coords_bend4
-    
-        else:
-            # Bend is small so just use mid position between bends
-            lst_coords = list(base_mid_point12.coords_dual) +\
-                         list(base_mid_point23.coords_dual) +\
-                         list(base_mid_point34.coords_dual) 
-    
-        
-        
-        # Add the first/last vertice of the bends
-        lst_coords.insert(0, line.coords_dual[bend1.i]) 
-        lst_coords.append(line.coords_dual[bend4.j]) 
-    
-        self._create_replacement_line(bend1, lst_coords)
-           
-    def _reduce_five_bends(self, lst_bends, bend_size, line):
-        """Compute the replacement line for the case of a five bend
-        
-        Parameter:
-            lst_bends: list of bend to process
-            bend_size: Type of bend BIG or SMALL bend
-            line: line object to process
-        
-        Return value:
-            None
-        
-        """
-    
-        bend1 = lst_bends[0]
-        bend2 = lst_bends[1]
-    #    bend3 = lst_bends[2]
-        bend4 = lst_bends[3]
-        bend5 = lst_bends[4]
-            
-        lst_coords = self._reduce_bend(bend2, line) + self._reduce_bend(bend4, line)
-        
-        lst_coords.insert(0, line.coords_dual[bend1.i]) #
-        lst_coords.append(line.coords_dual[bend5.j])   #
-        
-        self._create_replacement_line(bend1, lst_coords)
+#    def _create_replacement_line(self, bend, lst_coords):
+#        """Create the replacement line for a bend, from a list of point"""
+#
+#        bend.replacement_line = MA_LineString(lst_coords)
+#
+#    def _reduce_one_bend(self, bend, line):
+#        """Compute the replacement line for the case of a one bend
+#
+#        Parameter:
+#            bend: bend to process (in the case of a one bend the list contains only one element)
+#            line: line object to process
+#
+#        Return value:
+#            None
+#
+#        """
+#
+#        bend._gbt_replacement_line = (line.coords[bend.i], line.coords[bend.j])
+#
+#
+#        return
+#
+#     def _reduce_two_bends(self, lst_bends, bend_size, line):
+#         """Compute the replacement line for the case of a two bend
+#
+#         Parameter:
+#             lst_bends: list of bend to process
+#             bend_size: Type of bend BIG or SMALL bend
+#             line: line object to process
+#
+#         Return value:
+#             None
+#
+#         """
+#
+#         bend1 = lst_bends[0]
+#         bend2 = lst_bends[1]
+#
+#         # Calculate the mid position between the beginning of the first and second bend
+#         base_mid_point = MA_Point(line.coords_dual[bend1.j]).mid_point(MA_Point(line.coords_dual[bend2.i]))
+#
+#         if (bend_size == _BIG):
+#             # Calculate the middle coordinates of each bend
+#             lst_coords_bend1 = self._reduce_bend(bend1, line)
+#             lst_coords_bend2 = self._reduce_bend(bend2, line)
+#             # Add the mid position and the middle coordinates of each bend
+#             lst_coords = lst_coords_bend1 + list(base_mid_point.coords_dual) +  lst_coords_bend2
+#
+#         else:
+#             # Bend is small
+#             lst_coords = list(base_mid_point.coords_dual)
+#
+#         # Add the first/last vertice of the bends
+#         lst_coords.insert(0, line.coords_dual[bend1.i])
+#         lst_coords.append(line.coords_dual[bend2.j])
+#
+#         self._create_replacement_line(bend1, lst_coords)
+#
+#
+#     def _reduce_three_bends(self, lst_bends, bend_size, line):
+#         """Compute the replacement line for the case of a three bend
+#
+#         Parameter:
+#             lst_bends: list of bend to process
+#             bend_size: Type of bend BIG or SMALL bend
+#             line: line object to process
+#
+#         Return value:
+#             None
+#
+#         """
+#
+#         bend1 = lst_bends[0]
+#         bend2 = lst_bends[1]
+#         bend3 = lst_bends[2]
+#
+#         if (bend_size == _BIG):
+#             # Calculate the middle coordinates of each bend
+#             lst_coords_bend1 = self._reduce_bend (bend1, line)
+#             lst_coords_bend2 = self._reduce_bend (bend2, line)
+#             lst_coords_bend3 = self._reduce_bend (bend3, line)
+#             lst_coords = lst_coords_bend1 + lst_coords_bend2 + lst_coords_bend3
+#         else:
+#             # Bend is small so only find the middle position of the second bend
+#             lst_coords = self._reduce_bend (bend2, line)
+#
+#         # Add the first/last vertice of the bends
+#         lst_coords.insert(0, line.coords_dual[bend1.i])
+#         lst_coords.append(line.coords_dual[bend3.j])
+#
+#         self._create_replacement_line(bend1, lst_coords)
+#
+#
+    # def _reduce_four_bends(self, lst_bends, bend_size, line):
+    #     """Compute the replacement line for the case of a four bend
+    #
+    #     Parameter:
+    #         lst_bends: list of bend to process
+    #         bend_size: Type of bend BIG or SMALL bend
+    #         line: line object to process
+    #
+    #     Return value:
+    #         None
+    #
+    #     """
+    #
+    #     bend1 = lst_bends[0]
+    #     bend2 = lst_bends[1]
+    #     bend3 = lst_bends[2]
+    #     bend4 = lst_bends[3]
+    #
+    #     # Calculate the mid position between the bends
+    #     base_mid_point12 = MA_Point(line.coords_dual[bend1.j]).mid_point(MA_Point(line.coords_dual[bend2.i]))
+    #     base_mid_point23 = MA_Point(line.coords_dual[bend2.j]).mid_point(MA_Point(line.coords_dual[bend3.i]))
+    #     base_mid_point34 = MA_Point(line.coords_dual[bend3.j]).mid_point(MA_Point(line.coords_dual[bend4.i]))
+    #
+    #
+    #     if (bend_size == _BIG):
+    #         # Calculate the mid position of each bend
+    #         lst_coords_bend1 = self._reduce_bend(bend1, line)
+    #         lst_coords_bend2 = self._reduce_bend(bend2, line)
+    #         lst_coords_bend3 = self._reduce_bend(bend3, line)
+    #         lst_coords_bend4 = self._reduce_bend(bend4, line)
+    #         lst_coords = lst_coords_bend1 + list(base_mid_point12.coords_dual) + \
+    #                      lst_coords_bend2 + list(base_mid_point23.coords_dual) + \
+    #                      lst_coords_bend3 + list(base_mid_point34.coords_dual) + \
+    #                      lst_coords_bend4
+    #
+    #     else:
+    #         # Bend is small so just use mid position between bends
+    #         lst_coords = list(base_mid_point12.coords_dual) +\
+    #                      list(base_mid_point23.coords_dual) +\
+    #                      list(base_mid_point34.coords_dual)
+    #
+    #
+    #
+    #     # Add the first/last vertice of the bends
+    #     lst_coords.insert(0, line.coords_dual[bend1.i])
+    #     lst_coords.append(line.coords_dual[bend4.j])
+    #
+    #     self._create_replacement_line(bend1, lst_coords)
+    #
+    # def _reduce_five_bends(self, lst_bends, bend_size, line):
+    #     """Compute the replacement line for the case of a five bend
+    #
+    #     Parameter:
+    #         lst_bends: list of bend to process
+    #         bend_size: Type of bend BIG or SMALL bend
+    #         line: line object to process
+    #
+    #     Return value:
+    #         None
+    #
+    #     """
+    #
+    #     bend1 = lst_bends[0]
+    #     bend2 = lst_bends[1]
+    # #    bend3 = lst_bends[2]
+    #     bend4 = lst_bends[3]
+    #     bend5 = lst_bends[4]
+    #
+    #     lst_coords = self._reduce_bend(bend2, line) + self._reduce_bend(bend4, line)
+    #
+    #     lst_coords.insert(0, line.coords_dual[bend1.i]) #
+    #     lst_coords.append(line.coords_dual[bend5.j])   #
+    #
+    #     self._create_replacement_line(bend1, lst_coords)
      
 
     def _are_bends_big(self, bend, min_adj_area):
@@ -1010,29 +1003,29 @@ class AlgoSherbend(object):
         return is_big_bend
 
 
-    def _number_of_bends_to_reduce (self, bend_type):
-        """
-        Output the number of bends depending on the type of bend
-        _ONE_BEND ==> 1
-        ...
-        _FIVE_BENDS === 5
-        If bend type is _IN_CONFLICT, UNKNOWN the value 0 is returned
-        """
-        
-        if (bend_type == _ONE_BEND):
-            nbr_bends = 1    
-        elif (bend_type == _TWO_BENDS):
-            nbr_bends = 2
-        elif (bend_type == _THREE_BENDS):
-            nbr_bends = 3
-        elif (bend_type == _FOUR_BENDS):
-            nbr_bends = 4
-        elif (bend_type == _FIVE_BENDS):
-            nbr_bends = 5
-        else:
-            nbr_bends = 0
-                   
-        return nbr_bends
+    # def _number_of_bends_to_reduce (self, bend_type):
+    #     """
+    #     Output the number of bends depending on the type of bend
+    #     _ONE_BEND ==> 1
+    #     ...
+    #     _FIVE_BENDS === 5
+    #     If bend type is _IN_CONFLICT, UNKNOWN the value 0 is returned
+    #     """
+    #
+    #     if (bend_type == _ONE_BEND):
+    #         nbr_bends = 1
+    #     elif (bend_type == _TWO_BENDS):
+    #         nbr_bends = 2
+    #     elif (bend_type == _THREE_BENDS):
+    #         nbr_bends = 3
+    #     elif (bend_type == _FOUR_BENDS):
+    #         nbr_bends = 4
+    #     elif (bend_type == _FIVE_BENDS):
+    #         nbr_bends = 5
+    #     else:
+    #         nbr_bends = 0
+    #
+    #     return nbr_bends
 
     def _finalize_bend_information (self, bend, line, in_hand_line_coords):
         """This routine calculates extra attributes and informaion for the bends and line  that will be simplified.
@@ -1060,9 +1053,9 @@ class AlgoSherbend(object):
         bend.new_line = LineString(new_line_coords)
         
         # Calculate the sidedness region to use for the constraints
-        old_sub_line = list(line.coords_dual[first_pt:last_pt+1])
-        new_sub_line = list(bend.replacement_line.coords_dual[0:])
-        bend.sidedness_polygon = GenUtil.calculate_sidedness_polygon(LineString(old_sub_line),
+#        old_sub_line = list(line.coords[first_pt:last_pt+1])
+#        new_sub_line = list(bend.replacement_line.coords[0:])
+#        bend.sidedness_polygon = GenUtil.calculate_sidedness_polygon(LineString(old_sub_line),
                                                                      LineString(new_sub_line) )
         
 
