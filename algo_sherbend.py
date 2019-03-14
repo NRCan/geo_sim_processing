@@ -149,15 +149,73 @@ class Bend(object):
     Attributes: None
     """
 
-    def __init__(self, i, j):
+    def __init__(self, i, j, lst_coord):
         """
         Initialize Bend object
 
 
         """
 
-        self.i = i
-        self.j = j
+        self.i = i  # Index of the start of the bend coordinate
+        self.j = j  #  Index of the end of the bend coordinate
+        self.type = _UNKNOWN  # Type of bend by default:UNKNOWN
+        self.lst_coord = lst_coord  # List of the coordinate forming the bend
+
+
+    @property
+    def polygon(self):  # Polygon formed by the bend
+        try:
+            return self._polygon
+        except AttributeError:
+            self._polygon = Polygon(self.lst_coord)
+            return self._polygon
+
+
+    @property
+    def area(self):  # Area formed by the bend
+        try:
+            return self._area
+        except AttributeError:
+            self._area = self.polygon.area
+            if self._area <= GenUtil.ZERO: self.area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area instead
+            return self._area
+
+
+    @property
+    def base(self):  # The length of the base of the bend
+        try:
+            return self._base
+        except AttributeError:
+            self._base = GenUtil.distance(self.lst_coord[0], self.lst_coord[-1])
+            if self._base <= GenUtil.ZERO: self._base = GenUtil.ZERO # Avois a case of division by zero
+            return self._base
+
+
+    @property
+    def perimeter(self):  # The length of the base of the bend
+        try:
+            return self._perimeter
+        except AttributeError:
+            self._perimeter = self.polygon.length
+            return self._perimeter
+
+
+    @property
+    def cmp_index(self):  # The compactness index of the bend
+        try:
+            return self._cmp_index
+        except AttributeError:
+            self._cmp_index = 4*self._area*math.pi / (self.perimeter**2.0)
+            return self._cmp_index
+
+
+    @property
+    def adj_area(self):  # The adjusted area of the bend
+        try:
+            return self._adj_area
+        except AttributeError:
+            self._adj_area = self.area * (0.75 / self.cmp_index)
+            return self._adj_area
 
 
 class AlgoSherbend(object):
@@ -230,9 +288,6 @@ class AlgoSherbend(object):
             
             line._gbt_is_simplest = False
             line._gbt_bends = []
-            line._gbt_min_adj_area = None
-            line._gbt_multi_bend = False
-            
             # Set the minimal adjusted area
             ray = diameter/2.0
             line._gbt_min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
@@ -245,20 +300,20 @@ class AlgoSherbend(object):
                 
         return
 
-    def classify_bends (self, line):
-        """Classify the beds
-        
-        High level routine to classify the bends from _ONE_BEND to _FIVE_BENDS and to calculate
-        the replacement line for the bends that are not of type "_UNKNOWN"
-        
-        Parameter: 
-            s_container: Object of type SpatialContainer containing the features nd the spatial index
-            
-        Return value:
-            None
-        
-        """ 
-    
+#    def classify_bends (self, line):
+#        """Classify the beds
+#
+#        High level routine to classify the bends from _ONE_BEND to _FIVE_BENDS and to calculate
+#        the replacement line for the bends that are not of type "_UNKNOWN"
+#
+#        Parameter:
+#            s_container: Object of type SpatialContainer containing the features nd the spatial index
+#
+#        Return value:
+#            None
+#
+#        """
+#
 #        if (self.command.multi_bend and line.multi_bend):
 #            self._detect_window_bend (line, _FIVE_BENDS)
 #            self._detect_window_bend (line, _FOUR_BENDS)
@@ -267,16 +322,16 @@ class AlgoSherbend(object):
 #            self._detect_window_bend (line, _ONE_BEND)
 #        else:
 #            self._detect_window_bend (line, _ONE_BEND)
-        self._detect_window_bend(line, _ONE_BEND)
-            
-        # Detect and flag lines at their simplest form
-        self._set_simplest_line(line)
-        
-        # Compaction of the bends in the list of bends.  This compactness will speedup the search process
+#        self._detect_window_bend(line, _ONE_BEND)
+#
+#        # Detect and flag lines at their simplest form
+#        self._set_simplest_line(line)
+#
+#        # Compaction of the bends in the list of bends.  This compactness will speedup the search process
 #        self._compact_bends(line)
-        
-        # Calculates the replacement line for each bend found
-        self._reduce_bends(line)
+#
+#        # Calculates the replacement line for each bend found
+#        self._reduce_bends(line)
 
 
     def _set_simplest_line(self, line):
@@ -305,8 +360,8 @@ class AlgoSherbend(object):
             line._gbt_simplest = True
 
 
-    def _detect_window_bend(self, line, bend_type):
-        """This routine is sliding a window over the bends of a line. 
+    def classify_bends(self, line):
+        """This routine is sliding a window over the bends of a line in order to classify bend for simplification.
         
         It tries to find consecutives bends
         that meet the following criterias:
@@ -318,7 +373,6 @@ class AlgoSherbend(object):
                
         Parameter:
             line: line object to check for consecutives bend
-            bend_type: type of multi bend to check (from 1 to 5)
             
         Return value:
             None
@@ -326,10 +380,12 @@ class AlgoSherbend(object):
         """
         
 #        window_length = self._number_of_bends_to_reduce(bend_type)
-        if bend_type == _ONE_BEND:
-            window_length = 1
-        else:
-            window_length = 0
+        window_length = 1
+        bend_type = _ONE_BEND
+#        if bend_type == _ONE_BEND:
+#            window_length = 1
+#        else:
+#            window_length = 0
 
         nbr_bends = len(line._gbt_bends)
         last_bend = nbr_bends - window_length 
@@ -416,39 +472,39 @@ class AlgoSherbend(object):
         return bigger
 
     
-    def _compact_bends (self, line):
-        """This routine compacts the bends.
-        
-        When there are multiple bends we compact them as one bend and with the those bends
-        in the attribute multi_bends
-        
-        Parameters:
-            line: Line object to compact the bends
-            
-        Return value:
-            None
-            
-        Note: We start the compaction by the end to avoid index problem when it remove
-              number
-        """
-        
-        i = len(line._gbt_bends)-1 # i is on the last bend
-        while (i >= 0):
-            nbr_bends = self._number_of_bends_to_reduce (line.bends[i].type)
-            if (nbr_bends >=1):
-                lst_bends = []
-                for j in range(nbr_bends):
-                    lst_bends.append(line._gbt_bends[i-j])
-                lst_bends.reverse()
-                
-                i = i - (nbr_bends -1) # Go to the first bend of the multi bend
-                line.bends[i].multi_bends = lst_bends  
-                 
-                # Keep the first bend and delete the remaining bends
-                for dummy in range(nbr_bends-1):
-                    del line._gbt_bends[i+1]
-    
-            i -= 1
+    # def _compact_bends (self, line):
+    #     """This routine compacts the bends.
+    #
+    #     When there are multiple bends we compact them as one bend and with the those bends
+    #     in the attribute multi_bends
+    #
+    #     Parameters:
+    #         line: Line object to compact the bends
+    #
+    #     Return value:
+    #         None
+    #
+    #     Note: We start the compaction by the end to avoid index problem when it remove
+    #           number
+    #     """
+    #
+    #     i = len(line._gbt_bends)-1 # i is on the last bend
+    #     while (i >= 0):
+    #         nbr_bends = self._number_of_bends_to_reduce (line.bends[i].type)
+    #         if (nbr_bends >=1):
+    #             lst_bends = []
+    #             for j in range(nbr_bends):
+    #                 lst_bends.append(line._gbt_bends[i-j])
+    #             lst_bends.reverse()
+    #
+    #             i = i - (nbr_bends -1) # Go to the first bend of the multi bend
+    #             line.bends[i].multi_bends = lst_bends
+    #
+    #             # Keep the first bend and delete the remaining bends
+    #             for dummy in range(nbr_bends-1):
+    #                 del line._gbt_bends[i+1]
+    #
+    #         i -= 1
             
     def _reduce_bends(self, line):
         """Detect the bends to simplify in the line 
@@ -479,89 +535,26 @@ class AlgoSherbend(object):
         Return value: None  
         """
         
-        lst_coords = list(line.coords)
+        # For a question of performance extract a list of coord instead to have to always call C calls in Shapely
+        lst_coord = list(line.coords)
 
         # Calculate the inflexion in the line
-        lst_ij = GenUtil.locate_bends(lst_coords, line._gbt_is_closed)
+        lst_ij = GenUtil.locate_bends(lst_coord, line._gbt_is_closed)
 
         # Create the bend
         for (i,j) in lst_ij:
-            line._gbt_bends.append(Bend(i, j))
+            line._gbt_bends.append(Bend(i, j, lst_coord[i:j+1]))
 
         # Manage the bend for the first/last bend and for closed line
         self._adjust_bend_special_cases(line)
 
-        for bend in line._gbt_bends:
-            # Add properties to the bends needed by the SherBend algorithm
-            i = bend.i
-            j = bend.j
-            bend_polygon = Polygon(line.coords[i:j + 1])
-            bend.area = bend_polygon.area             # The area of the bend
-            if bend.area <= GenUtil.ZERO:
-                bend.area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area
-            bend.base = GenUtil.distance(line.coords[i], line.coords[j])  # The length of the base of the bend
-            if bend.base <= GenUtil.ZERO:
-                base = GenUtil.ZERO  # Avoid a case of division by zero
-            bend.perimeter = bend_polygon.length        # The perimeter of the bend
-            bend.cmp_index = 4*bend.area*math.pi / (bend.perimeter**2.0)  # Compactness index (base**2)/(perimeter - base)
-            bend.adj_area = bend.area * (0.75 / bend.cmp_index)  # Adjusted area of the bend area * 0.75 /cmp_index)
-            bend.type = _UNKNOWN  # Type of bend by default:UNKNOWN
+        # If there is one potential bend to simplify the line is not at its simplest form
+        min_adj_area =  min(bend.adj_area for bend in line._gbt_bends)
+        if min_adj_area <= line._gbt_min_adj_area:
+            line._gbt_is_simplest = False
+        else:
+            line._gbt_is_simplest = True
 
-            # Because the evaluation on the next attributes are costly in time machine
-            # It has to call many Shapely routines those attributes are only evaluated
-            # for bend that are below the min_adj_are and are real candidates for
-            # simplification
-            if (bend.adj_area <= line._gbt_min_adj_area):
-                bend_to_simplify = True
-                (bend.depth, bend.peak_index) = self._calculate_bend_depth(line, bend)
-#                bend.depth = depth
-#                bend.peak_index = peak_index
-                bend.peak_coords = line.coords[bend.peak_index]
-
-            # If there are no potential bend to simplify the line is at its simplest form
-            if not bend_to_simplify:
-                line._gbt_is_simplest = True
-
-#            bend.depth = None            # The distance from the bend peak to the base_line
-#            bend.peak_index = None       # Vertice number of the peak's bend
-#            bend.polygon = None          # Polygon of the bend
-#            bend.replacement_line = None # LineString that will replace the bend
-#            bend.multi_bends = None      # List of the bends contains in the multi bend
-#
-#        bend_to_simplify = False
-#        for bend in line._gbt_bends:
-#            i = bend.i
-#            j = bend.j
-#            bend_polygon = Polygon(line.coords[i:j + 1])
-#            area = bend_polygon.area
-#            if area <= GenUtil.ZERO:
-#                area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area
-#            base = GenUtil.distance(line.coords[i], line.coords[j])
-#            if base <= GenUtil.ZERO: base = GenUtil.ZERO  # Avoid a case of division by zero
-#            perimeter = bend_polygon.length
-#            bend.base = base
-#            bend.perimeter = perimeter
-#            bend.cmp_index = 4 * area * math.pi / (perimeter ** 2.0)
-#            bend.adj_area = area * (0.75 / bend.cmp_index)
-
-            # Because the evaluation on the next attributes are costly in time machine
-            # It has to call many Shapely routines those attributes are only evaluated
-            # for bend that are below the min_adj_are and are real candidates for
-            # simplification
-#            if (bend.adj_area <= line._gbt_min_adj_area):
-#                bend_to_simplify = True
-#                (depth, peak_index) = self._calculate_bend_depth(line, bend)
-#                bend.depth = depth
-#                bend.peak_index = peak_index
-#                bend.peak_coords = line.coords[peak_index]
-
-#        # If there are no potential bend to simplify the line is at its simplest form
-#        if not bend_to_simplify:
-#            line._gbt_is_simplest = True
-#
-#
-#        # Calcultes extra attributes on the line
-#        self._add_bend_attributes(line)
 
     def manage_lines_simplification (self):
         """Main routine to simplify the lines
@@ -610,24 +603,7 @@ class AlgoSherbend(object):
                     bend_status = self._manage_bend_constraints(i_bend, line, in_hand_line_coords)
                     if (bend_status == _SIMPLIFIED):
                         line_simplified = line_simplified or True
-#                    # The next lines are now disable as well as the routine to find alternate bends
-#                    # i.e. _find_alternate_bends  The routine was used determine the best alternate
-#                    # bend to simplify when a bend to simplify was not simplify because of a contraint violation
-#                    # This concept was not used very often and needed more complex code.
-#                    else:
-#                        # Alternate bend simplification for _ONE_BEND
-#                        if (nbr_bends == 1):
-#                            # Detect if the sibbling bends to the ONE_BEND in conflict could be a candidate 
-#                            # bend for bend simplification
-#                            (next_bend, preceding_bend) = self._find_alternate_bends (line, i_bend)
-#                            for alt_bend in (next_bend, preceding_bend):
-#                                if ( alt_bend is not None):
-#                                    bend_status = self._manage_bend_constraints(alt_bend, line, in_hand_line_coords)
-#                                    if (bend_status == _SIMPLIFIED):
-#                                        line_simplified = line_simplified or True
-#                            if (preceding_bend is not None):
-#                                i_bend -= 1
-                # Skip to the preceding bend
+
                 i_bend -= 1
                 
             # Reset the bends to save some space...
@@ -1056,7 +1032,7 @@ class AlgoSherbend(object):
 #        old_sub_line = list(line.coords[first_pt:last_pt+1])
 #        new_sub_line = list(bend.replacement_line.coords[0:])
 #        bend.sidedness_polygon = GenUtil.calculate_sidedness_polygon(LineString(old_sub_line),
-                                                                     LineString(new_sub_line) )
+#                                                                     LineString(new_sub_line) )
         
 
     def _calculate_number_of_bends (self, lines):
