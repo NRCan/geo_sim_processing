@@ -2,6 +2,15 @@ from shapely.geometry import Point, LineString
 from time import time
 import timeit
 
+from shapely import affinity
+
+line1 = LineString()
+line2 = LineString(((0,0),(1,1)))
+
+print (line2.crosses(line1))
+
+
+
 diag = LineString(((1,1),(2,2), (2,10)))
 diag1 = LineString(((1,1),(2,2), (2,10)))
 print (diag1)

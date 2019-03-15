@@ -24,11 +24,14 @@
 import math
 
 from shapely.geometry import Point, LineString, Polygon
-from shapely.prepared import prep
+from shapely import affinity
+
+line = LineString([(0, 0), (1, 1)])
+line_a = affinity.scale(line, xfact=.9999, yfact=.9999)
 
 from algo_bends import AlgoBends
-from lib_geobato import MA_LineString, GenStatistics, Algorithm, GenUtil, \
-                         SpatialContainer, MA_Point, Polygon
+from lib_geobato import GenStatistics, Algorithm, GenUtil, \
+                         SpatialContainer, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -142,6 +145,54 @@ class SherbendStatistics(GenStatistics):
         return str_out
 
 
+class SpatialConstraints(object):
+    """
+    """
+
+    _simplicity = []
+    _intersection = []
+
+    def validateSimplicity(self, start_line, middle_line, end_line):
+        """Check if the middle line is crossing the start_line or the end_line
+
+        Keyword definition
+           start_line -- LineString to check
+           middle_line -- LineString to check
+           end_line -- LineString to check
+
+        Return
+            Boolean indicating if the line pass(True) or failed(False) the validation
+        """
+        crosses = middle_line.crosses(start_line) or middle_line.crosses(end_line)
+
+        return crosses
+
+    def validateIntersection(self, sp_container, line, bend):
+        """Check that the new sub line does not intersect against another line
+
+        Keyword definition
+           sp_container -- SpatialContainer containing all the features
+           line -- Linestring line to validate
+           bend -- Bend to verify
+
+        Return
+            Boolean indicating if the line pass(True) or failed(False) the validation
+        """
+
+        lst_lines = sp_container.get_features(filter= lambda feature: feature.geom_type == 'LineString'
+                                                                      and not feature._id == line._gbt_sc_id)
+
+        gen_crosses = filter(line.crosses, lst_lines)
+
+        intersection = False
+        for crosses in gen_crosses:
+            if crosses:
+                intersection = False
+                break # One crossing is enough... we can stop
+
+        return intersection
+
+
 class Bend(object):
     """
     This class defines attributes and operations for bends
@@ -216,6 +267,14 @@ class Bend(object):
         except AttributeError:
             self._adj_area = self.area * (0.75 / self.cmp_index)
             return self._adj_area
+
+    @property
+    def _replacement_line(self):  # The adjusted area of the bend
+        try:
+            return self._replacement_line
+        except AttributeError:
+            self._replacement_line = LineString(lst_coord)
+            return self._replacement_line
 
 
 class AlgoSherbend(object):
@@ -523,22 +582,19 @@ class AlgoSherbend(object):
                 bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
 
 
-    def detect_bend_location(self, line):
+    def detect_bend_location(self, lst_coord, line):
         """Calculates the position of each individual bends in the line
         
         The position of the bends are calculated according to the definition of the bencds 
         in the orginal paper Wang 1998.
         
         Keyword definition
+          lst_coord -- List of coord of the line (for performance)
           line -- LineString object to calculate bends
         
         Return value: None  
         """
-        
-        # For a question of performance extract a list of coord instead to have to always call C calls in Shapely
-        lst_coord = list(line.coords)
-
-        # Calculate the inflexion in the line
+                # Calculate the inflexion in the line
         lst_ij = GenUtil.locate_bends(lst_coord, line._gbt_is_closed)
 
         # Create the bend
@@ -579,13 +635,13 @@ class AlgoSherbend(object):
         
         for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
                         
-            # Copy the coordinates of the line in hand.  During the processing if the line in hand all the modifications
-            # area written in the variable in_hand_line_coords.  at the end of the processing the coordinates are rewritten in the 
+            # Copy the coordinates of the current line.  During the processing if the current line all the vertice edition
+            # are written in the variable lst_coord.  At the end of the processing the coordinates of lst_coord are rewritten in the
             # Shapely structure.  This work is done only for performance issue   
-            in_hand_line_coords = list(line.coords)
+            lst_coord = list(line.coords)
             
             # For the line in hand detect where are the bends and classify the type of bends
-            self.detect_bend_location(line)
+            self.detect_bend_location(lst_coord, line)
             self.classify_bends(line)
             
             last_bend = (len(line._gbt_bends))-1
@@ -595,13 +651,15 @@ class AlgoSherbend(object):
             while (i_bend >= 0):
 
 #                nbr_bends = self._number_of_bends_to_reduce(line._gbt_bends[i_bend].type)
-                if line._gbt_bends[i_bend].type == _ONE_BEND:
+                bend = line._gbt_bends[i_bend]
+                if bend.type == _ONE_BEND:
                     nbr_bends = 1
                 else:
                     nbr_bends = 0
                 if (nbr_bends ==1):
-                    bend_status = self._manage_bend_constraints(i_bend, line, in_hand_line_coords)
+                    bend_status = self._manage_bend_constraints(bend, lst_coord)
                     if (bend_status == _SIMPLIFIED):
+                        lst_coord = lst_coord[0:bend.i] + lst_coord.replacment_line + lst_coord[bend.j:]
                         line_simplified = line_simplified or True
 
                 i_bend -= 1
@@ -616,14 +674,14 @@ class AlgoSherbend(object):
         
         return line_simplified
 
-    def _manage_bend_constraints(self, i_bend, line, in_hand_line_coords):
+    def _manage_bend_constraints(self, bend, lst_coords):
         """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
         
         Parameters
             i_bend: Bend object to simplify
             line: line object to simplify
-            in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
-                                 the Sahpely structure we keep them in that list
+            lst_coords: In order to increase performance we are not rewriting the coordinates in
+                        the Sahpely structure we keep them in that list
             
         Return value
             Flag indicating the status of the constraint verification
@@ -631,27 +689,24 @@ class AlgoSherbend(object):
                 _IN_CONFLICT:  The bend simplification did violate a constraint and was not simplified
         
         """
-        
-        
-        conflict_type = None
-        bend_to_check = line._gbt_bends[i_bend]
-                
-        # Build the features used for constraint checking 
-        self._finalize_bend_information(bend_to_check, line, in_hand_line_coords)
-        line_simple_line = bend_to_check.new_line
-        line_crossing_line = bend_to_check.replacement_line
-        sideness_polygon = bend_to_check.sidedness_polygon
-                
-        conflict_type = GenUtil.test_constraints (self, None, line_simple_line, line_crossing_line, 
-                                                  sideness_polygon, self.s_container, line._sci_id)
+        conflict = False
 
-        if (conflict_type is None):
+        if not conflict:
+            start_line = LineString(lst_coord[:bend.i+1])
+            end_line = LineString(lst_coord[bend.j:])
+            middle_line = smaller_replacement_line = affinity.scale(bend.replacment_line,
+                                                                    xfact=1.-GenUtil.ZERO, yfact=1.-GenUtil.ZERO)
+            conflict = self.spatial_constraints.validateSimplicity(start_line, middle_line, end_line)
+
+        if not conflict:
+            conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
+
+        if not conflict:
             # No conflict replace the bend by its replacement line
-            self._replace_bend (i_bend, line, in_hand_line_coords)
             status = _SIMPLIFIED
         else:
             status = _IN_CONFLICT
-            line.bends[i_bend].type = _IN_CONFLICT
+            bend.type = _IN_CONFLICT
                     
         return status
 
@@ -1105,23 +1160,20 @@ class AlgoSherbend(object):
         
         return similar_bends
     
-    def _replace_bend (self, i_bend, line, in_hand_line_coords):
+    def _replace_bend (self, bend, line, in_hand_line_coords):
         """
         This function replace  the vertices of the bend (excluding the first and last point) by  the replacement 
         line (excluding the first and last point which are the same as the first/last vertice of the bend)
         
         Parameters:
-           i_bend: Bend number to process
+           bend: Bend to process
            line: LineString object being processed
            in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
                                 the Sahpely structure we keep them in that list
         """
-    
-        bend_to_check = line.bends[i_bend]
-    
         # Determine the position of the bend limits
         first = bend_to_check.i
-        last = bend_to_check.j    
+        last = bend_to_check.j
     
         # Replace the coordinate with the new line in the temporary line coordinates (but we do not create a new object)
         in_hand_line_coords[0:] = list(bend_to_check.new_line.coords)
@@ -1130,7 +1182,7 @@ class AlgoSherbend(object):
             self.stats.add_stats(_BIG)
         else:
             self.stats.add_stats(_SMALL)
-            
+
         self.stats.add_stats(_ALGO)
         self.stats.add_stats(bend_to_check.type)
     
@@ -1232,7 +1284,7 @@ class AlgoSherbend(object):
 #        # Check the feature's class and attributes
 #        self.check_features()
 
-         
+        self.spatial_constraints = SpatialConstraints()
 
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
