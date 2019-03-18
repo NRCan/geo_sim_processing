@@ -7,7 +7,7 @@ from algo_sherbend import AlgoSherbend
 
 import fiona
 
-from shapely.geometry import LineString
+from shapely.geometry import Point, LineString, Polygon
 
 
 @dataclass
@@ -58,7 +58,7 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', simplify_first_last=True, diameter=10., simplicity=True,
+command = Command (in_file='', out_file='', simplify_first_last=True, diameter=2., simplicity=True,
                    adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
@@ -77,17 +77,24 @@ for layer_name in layer_names:
         geo_content.bounds.append(src.bounds)
 
         for in_feature in src:
-            try:
-                geom = in_feature['geometry']
-                if geom['type'] == 'LineString':
-                    feature = LineString(geom['coordinates'])
-                    feature._gbt_layer_name = layer_name  # Layer name is the key for the schema
-                    feature._gbt_properties = in_feature['properties']
-                    geo_content.features.append(feature)
-
-            except:
-                print ("Error processing feature) {0}".format(feature['id']))
-
+            geom = in_feature['geometry']
+            if geom['type'] == 'Point':
+                feature = Point(geom['coordinates'])
+            elif geom['type'] == 'LineString':
+                feature = LineString(geom['coordinates'])
+            elif geom['type'] == 'Polygon':
+                exterior = geom['coordinates'][0]
+                interiors = geom['coordinates'][1:]
+                if len(geom['coordinates']) == 2:
+                    interiors = geom['coordinates'][1]
+                else:
+                    interior = None
+                feature = Polygon(exterior, interiors)
+            else:
+                print ("The following geometry type is unsupported: {}".format(geom['type']))
+            feature._gbt_layer_name = layer_name  # Layer name is the key for the schema
+            feature._gbt_properties = in_feature['properties']
+            geo_content.features.append(feature)
     src.close()
 
 
@@ -102,7 +109,7 @@ results = sherbend.process()
 
 # Extract the name of aech layer
 layer_names = set()
-for feature in geo_content.features:
+for feature in results:
     layer_names.add(feature._gbt_layer_name)
 
 # Loop over each layer and write the content of the file
@@ -112,7 +119,7 @@ for layer_name in layer_names:
                     layer=layer_name,
                     crs=geo_content.crs,
                     schema=geo_content.schemas[layer_name]) as dest:
-        for feature in (feature for feature in geo_content.features if feature._gbt_layer_name==layer_name):
+        for feature in (feature for feature in results if feature._gbt_layer_name==layer_name):
             out_feature = {'geometry': {'type': feature.geom_type,
                                         'coordinates': list(feature.coords)},
                             'properties': feature._gbt_properties}
