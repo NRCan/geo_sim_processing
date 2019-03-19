@@ -1,13 +1,18 @@
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, Polygon
 from time import time
 import timeit
 
 from shapely import affinity
 
-line1 = LineString()
-line2 = LineString(((0,0),(1,1)))
+pol = Polygon([(0,0),(10,10),(10,0)], [[(1,1),(2,2),(2,1)]])
+coord = list(pol.coords)
+int = list(pol.interiors)
+pol.interiors = []
+int_coords = pol.interiors.coords
 
-print (line2.crosses(line1))
+
+print (pol)
+0/0
 
 
 

@@ -328,18 +328,27 @@ class AlgoSherbend(object):
         # Load all the features in the spatial container
         for feature in features:
             if feature.geom_type == 'Polygon':
-                exterior = list(feature.exterior.coords)
-                ext_feature = LineString(exterior)
-                ext_feature._gbt_layer_name = feature._gbt_layer_name
-                ext_feature._gbt_properties = feature._gbt_properties
+                # Deconstruct the Polygon into a list of LineString with supplementary information
+                # needed to reconstruct the original Polygon
+                ext_feature = LineString(feature.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
+                # Extract the interiors
                 for interior in interiors:
-                    int_features.append(LineString(interior.coords))
+                    interior = LineString(interior.coords)  # Transform from LinearRing to LineString
+                    interior._gbt_original_type = 'Polygon-Interiors'
+                    int_features.append(interior)
+
+                # Add attributes needed for reconstruction
                 ext_feature._gbt_interiors = int_features
+                ext_feature._gbt_layer_name = feature._gbt_layer_name
+                ext_feature._gbt_properties = feature._gbt_properties
+                ext_feature._gbt_original_type = 'Polygon-Exterior'
+
                 self.s_container.add_feature(ext_feature)
                 self.s_container.add_features(int_features)
             else:  # Geometry is Point or LinseString
+                feature._gbt_original_type = feature.geom_type
                 self.s_container.add_feature(feature)
 
         # Empty the feature list
@@ -1329,6 +1338,22 @@ class AlgoSherbend(object):
 
                 iter_nbr += 1
                     
-        features =  [feature for feature in self.s_container.get_features()]
+        features = []
+        for feature in self.s_container.get_features():
+            if feature.geom_type == 'Point':
+                features.append(feature)
+            elif feature.geom_type == 'LineString':
+                if feature._gbt_original_type == 'LineString':
+                    features.append(feature)
+                else:
+                    if feature._gbt_original_type == 'Polygon-Exterior':
+                        # The LineString was an exterior Polygon so reconstruct the originalPolygon
+                        interiors = [list(interior.coords) for interior in feature._gbt_interiors]
+                        polygon = Polygon(feature.coords, interiors)
+                        polygon._gbt_layer_name = feature._gbt_layer_name
+                        polygon._gbt_properties = feature._gbt_properties
+                        features.append(polygon)
+                    else:
+                        pass  # Nothing to do with the holes here
 
         return features

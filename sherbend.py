@@ -83,12 +83,9 @@ for layer_name in layer_names:
             elif geom['type'] == 'LineString':
                 feature = LineString(geom['coordinates'])
             elif geom['type'] == 'Polygon':
+                print (geom['coordinates'])
                 exterior = geom['coordinates'][0]
                 interiors = geom['coordinates'][1:]
-                if len(geom['coordinates']) == 2:
-                    interiors = geom['coordinates'][1]
-                else:
-                    interior = None
                 feature = Polygon(exterior, interiors)
             else:
                 print ("The following geometry type is unsupported: {}".format(geom['type']))
@@ -107,7 +104,7 @@ print ("Number of features read: {}".format(len(geo_content.features)))
 sherbend = AlgoSherbend(command, geo_content)
 results = sherbend.process()
 
-# Extract the name of aech layer
+# Extract the name of each layer
 layer_names = set()
 for feature in results:
     layer_names.add(feature._gbt_layer_name)
@@ -120,8 +117,17 @@ for layer_name in layer_names:
                     crs=geo_content.crs,
                     schema=geo_content.schemas[layer_name]) as dest:
         for feature in (feature for feature in results if feature._gbt_layer_name==layer_name):
+            # Transform the Shapely features for fiona writing
+            if feature.geom_type == 'Point' or feature.geom_type == 'LineString':
+                coordinates = list(feature.coords)
+            elif feature.geom_type == 'Polygon':
+                exterior = list(feature.exterior.coords)
+                interior = [list(interior.coords) for interior in feature.interiors]
+                coordinates = [exterior]+interior
+
+
             out_feature = {'geometry': {'type': feature.geom_type,
-                                        'coordinates': list(feature.coords)},
+                                        'coordinates': coordinates},
                             'properties': feature._gbt_properties}
             dest.write(out_feature)
 
