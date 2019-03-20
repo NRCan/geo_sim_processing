@@ -152,7 +152,7 @@ class SpatialConstraints(object):
     _simplicity = []
     _intersection = []
 
-    def validateSimplicity(self, start_line, middle_line, end_line):
+    def validateSimplicity(self, line, start_line, middle_line, end_line):
         """Check if the middle line is crossing the start_line or the end_line
 
         Keyword definition
@@ -163,7 +163,20 @@ class SpatialConstraints(object):
         Return
             Boolean indicating if the line pass(True) or failed(False) the validation
         """
-        crosses = middle_line.crosses(start_line) or middle_line.crosses(end_line)
+        # Create a very short line so that the line does not touch the start and end line (increase performance)
+        smaller_middle_line = affinity.scale(middle_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
+        crosses = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
+
+        if not crosses:
+            if line._gbt_original_type == 'Polygon-Exterior':
+                # Manage the interiors of a polygon
+                lst_holes = line._gbt_interiors
+
+                gen_crosses = list(filter(middle_line.crosses, lst_holes))  # Creates a generator
+                crosses = False
+                for element in gen_crosses:
+                    crosses = True
+                    break
 
         return crosses
 
@@ -182,13 +195,11 @@ class SpatialConstraints(object):
         lst_lines = sp_container.get_features(filter= lambda feature: feature.geom_type == 'LineString'
                                                                       and not feature._id == line._gbt_sc_id)
 
-        gen_crosses = filter(replacement_line.crosses, lst_lines)
-
+        gen_crosses = filter(replacement_line.crosses, lst_lines) # Creates a generator
         intersection = False
-        for crosses in gen_crosses:
-            if crosses:
-                intersection = False
-                break # One crossing is enough... we can stop
+        for element in gen_crosses:
+            intersection = True
+            break # One crossing is enough... we can stop
 
         return intersection
 
@@ -680,7 +691,7 @@ class AlgoSherbend(object):
                 else:
                     nbr_bends = 0
                 if (nbr_bends ==1):
-                    bend_status = self._manage_bend_constraints(bend, lst_coord)
+                    bend_status = self._manage_bend_constraints(line, bend, lst_coord)
                     if (bend_status == _SIMPLIFIED):
                         lst_coord = lst_coord[0:bend.i] + list(bend.replacement_line.coords) + lst_coord[bend.j:]
                         line_simplified = line_simplified or True
@@ -697,11 +708,11 @@ class AlgoSherbend(object):
         
         return line_simplified
 
-    def _manage_bend_constraints(self, bend, lst_coord):
+    def _manage_bend_constraints(self, line, bend, lst_coord):
         """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
         
         Parameters
-            i_bend: Bend object to simplify
+            bend: Bend object to simplify
             line: line object to simplify
             lst_coord: In order to increase performance we are not rewriting the coordinates in
                        the Sahpely structure we keep them in that list
@@ -712,19 +723,18 @@ class AlgoSherbend(object):
                 _IN_CONFLICT:  The bend simplification did violate a constraint and was not simplified
         
         """
-        conflict = False
+        in_conflict = False
 
-        if not conflict:
+        if self.command.simplicity and not in_conflict:
             start_line = LineString(lst_coord[:bend.i+1])
             end_line = LineString(lst_coord[bend.j:])
-            smaller_replacement_line = affinity.scale(bend.replacement_line,
-                                                      xfact=1.-GenUtil.ZERO, yfact=1.-GenUtil.ZERO)
-            conflict = self.spatial_constraints.validateSimplicity(start_line, smaller_replacement_line, end_line)
 
-        if not conflict:
+            in_conflict = self.spatial_constraints.validateSimplicity(line, start_line, bend.replacement_line, end_line)
+
+        if self.command.simplicity and not in_conflict:
             conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
 
-        if not conflict:
+        if not in_conflict:
             # No conflict replace the bend by its replacement line
             status = _SIMPLIFIED
         else:
@@ -845,11 +855,11 @@ class AlgoSherbend(object):
             pass
         else:
             # Delete the first and last bend
-            if (len(line.bends) >= 2):
-                del line.bends[-1]
-                del line.bends[0]
-            elif (len(line.bends) == 1):
-                del line.bends[0]
+            if (len(line._gbt_bends) >= 2):
+                del line._gbt_bends[0]
+                del line._gbt_bends[-1]
+            elif (len(line._gbt_bends) == 1):
+                del line._gbt_bends[0]
             else:
                 pass
             
@@ -1314,10 +1324,10 @@ class AlgoSherbend(object):
      
         self.add_line_attributes(self.command.diameter)
         
-        if (self.command.multi_bend):
-            nbr_step = 2
-        else:
-            nbr_step = 1
+#        if (self.command.multi_bend):
+#            nbr_step = 2
+#        else:
+        nbr_step = 1
         iter_nbr = 0
         for step in range(nbr_step):
             # The last step is always done with multi_bend to False.  We always process the last iterations of multi_bend to False

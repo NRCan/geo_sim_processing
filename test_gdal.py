@@ -4,7 +4,11 @@ import timeit
 
 from shapely import affinity
 
-pol = Polygon([(0,0),(10,10),(10,0)], [[(1,1),(2,2),(2,1)]])
+pol = Polygon([(0,0),(0,10), (10,10),(10,0)], [[(5,5),(5,15),(8,15),(8,5)]])
+print (pol.is_simple)
+print (pol.area)
+line = LineString( ((-1,-1), (11,11) ) )
+print (pol.crosses(line))
 coord = list(pol.coords)
 int = list(pol.interiors)
 pol.interiors = []
