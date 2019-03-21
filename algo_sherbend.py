@@ -26,12 +26,7 @@ import math
 from shapely.geometry import Point, LineString, Polygon
 from shapely import affinity
 
-line = LineString([(0, 0), (1, 1)])
-line_a = affinity.scale(line, xfact=.9999, yfact=.9999)
-
-from algo_bends import AlgoBends
-from lib_geobato import GenStatistics, Algorithm, GenUtil, \
-                         SpatialContainer, Polygon
+from lib_geobato import GenUtil, SpatialContainer, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -74,75 +69,75 @@ _SIMPLIFIED = 'Simplified'
 _UNKNOWN = 'Unknown'
 _IN_CONFLICT = 'InConflict'
 
-class SherbendStatistics(GenStatistics):
-    """Class that contains the statistics for the Sherbend algorithm
-    
-    Attributes
-        stat_names: Name of the statistics for the SherbendStatistics class. These name are
-                    used by the Statistics class
-
-    """
-    
-    def __init__(self):
-        """Initialize the attributes of an object of the class Sherbend statistics
-        
-        Parameter: 
-            None
-            
-        Return value
-            None
-            
-        """
-        
-        GenStatistics.__init__(self)
-        self.stats_names = ((_ALGO, GenUtil.SIMPLE_LINE, GenUtil.CROSSING_LINE, GenUtil.SIDEDNESS,  \
-                             _BIG, _SMALL, _ONE_BEND, _TWO_BENDS, _THREE_BENDS, _FOUR_BENDS, _FIVE_BENDS ))
-        
-    def get_stats (self, type=GenStatistics.SUMMARY):
-        """Extract the current statistics and build  a list of string that forms the statistical message"
-        
-        Parameters:
-            type: Give the form of statistics to extract. Can take 2 values.
-                SUMMARY: Summary information
-                DETAILED: Detailed information
-        
-        """
-        
-        str_out = []
-        str_out.append( "Sherbend algorithm Statistics" )
-        
-        str_out.append( "--------------------------" )
-        if (type == GenStatistics.DETAILED):
-            for i in xrange((self.get_nbr_iteration())):
-                str_out.append("Detailed statistics")
-                str_out.append("Iteration # " + str(i))
-                str_out.append("Bend simplified: " + str(self.get_stats_name_count_iter( _ALGO, i)))
-                str_out.append( "--------" )
-                str_out.append( "Conflicts:" )
-                str_out.append( "    Simple Line   :  " + str(self.get_stats_name_count_iter( GenUtil.SIMPLE_LINE, i)))
-                str_out.append( "    Crossing Line :  " + str(self.get_stats_name_count_iter( GenUtil.CROSSING_LINE, i)))
-                str_out.append( "    Sidedness     :  " + str(self.get_stats_name_count_iter( GenUtil.SIDEDNESS, i)))
-                str_out.append( "--------" )
-        str_out.append( "Summary statistics" )
-        str_out.append("Total bend simplified: " + str(self.get_stats_name_count_total(_ALGO)))
-        str_out.append( "--------" )
-        str_out.append("Statistics by bends")
-        str_out.append("     One bend      :  " +  str(self.get_stats_name_count_total(_ONE_BEND)))
-        str_out.append("     Two bends     :  " +  str(self.get_stats_name_count_total(_TWO_BENDS)))
-        str_out.append("     Three bends   :  " +  str(self.get_stats_name_count_total(_THREE_BENDS)))
-        str_out.append("     Four bends    :  " +  str(self.get_stats_name_count_total(_FOUR_BENDS)))
-        str_out.append("     Five bends    :  " +  str(self.get_stats_name_count_total(_FIVE_BENDS)))
-        str_out.append("     Small bends   :  " +  str(self.get_stats_name_count_total(_SMALL)))
-        str_out.append("     Big bends    :  " +  str(self.get_stats_name_count_total(_BIG)))
-        str_out.append( "--------" )
-        str_out.append( "Conflicts:" )
-        str_out.append( "    Simple Line   :  " + str(self.get_stats_name_count_total( GenUtil.SIMPLE_LINE)))
-        str_out.append( "    Crossing Line :  " + str(self.get_stats_name_count_total( GenUtil.CROSSING_LINE)))
-        str_out.append( "    Sidedness     :  " + str(self.get_stats_name_count_total( GenUtil.SIDEDNESS)))
-        str_out.append( "--------" )
-        str_out.append( "Number of iteration: " + str(self.get_nbr_iteration()) )
-        
-        return str_out
+# class SherbendStatistics(GenStatistics):
+#     """Class that contains the statistics for the Sherbend algorithm
+#
+#     Attributes
+#         stat_names: Name of the statistics for the SherbendStatistics class. These name are
+#                     used by the Statistics class
+#
+#     """
+#
+#     def __init__(self):
+#         """Initialize the attributes of an object of the class Sherbend statistics
+#
+#         Parameter:
+#             None
+#
+#         Return value
+#             None
+#
+#         """
+#
+#         GenStatistics.__init__(self)
+#         self.stats_names = ((_ALGO, GenUtil.SIMPLE_LINE, GenUtil.CROSSING_LINE, GenUtil.SIDEDNESS,  \
+#                              _BIG, _SMALL, _ONE_BEND, _TWO_BENDS, _THREE_BENDS, _FOUR_BENDS, _FIVE_BENDS ))
+#
+#     def get_stats (self, type=GenStatistics.SUMMARY):
+#         """Extract the current statistics and build  a list of string that forms the statistical message"
+#
+#         Parameters:
+#             type: Give the form of statistics to extract. Can take 2 values.
+#                 SUMMARY: Summary information
+#                 DETAILED: Detailed information
+#
+#         """
+#
+#         str_out = []
+#         str_out.append( "Sherbend algorithm Statistics" )
+#
+#         str_out.append( "--------------------------" )
+#         if (type == GenStatistics.DETAILED):
+#             for i in xrange((self.get_nbr_iteration())):
+#                 str_out.append("Detailed statistics")
+#                 str_out.append("Iteration # " + str(i))
+#                 str_out.append("Bend simplified: " + str(self.get_stats_name_count_iter( _ALGO, i)))
+#                 str_out.append( "--------" )
+#                 str_out.append( "Conflicts:" )
+#                 str_out.append( "    Simple Line   :  " + str(self.get_stats_name_count_iter( GenUtil.SIMPLE_LINE, i)))
+#                 str_out.append( "    Crossing Line :  " + str(self.get_stats_name_count_iter( GenUtil.CROSSING_LINE, i)))
+#                 str_out.append( "    Sidedness     :  " + str(self.get_stats_name_count_iter( GenUtil.SIDEDNESS, i)))
+#                 str_out.append( "--------" )
+#         str_out.append( "Summary statistics" )
+#         str_out.append("Total bend simplified: " + str(self.get_stats_name_count_total(_ALGO)))
+#         str_out.append( "--------" )
+#         str_out.append("Statistics by bends")
+#         str_out.append("     One bend      :  " +  str(self.get_stats_name_count_total(_ONE_BEND)))
+#         str_out.append("     Two bends     :  " +  str(self.get_stats_name_count_total(_TWO_BENDS)))
+#         str_out.append("     Three bends   :  " +  str(self.get_stats_name_count_total(_THREE_BENDS)))
+#         str_out.append("     Four bends    :  " +  str(self.get_stats_name_count_total(_FOUR_BENDS)))
+#         str_out.append("     Five bends    :  " +  str(self.get_stats_name_count_total(_FIVE_BENDS)))
+#         str_out.append("     Small bends   :  " +  str(self.get_stats_name_count_total(_SMALL)))
+#         str_out.append("     Big bends    :  " +  str(self.get_stats_name_count_total(_BIG)))
+#         str_out.append( "--------" )
+#         str_out.append( "Conflicts:" )
+#         str_out.append( "    Simple Line   :  " + str(self.get_stats_name_count_total( GenUtil.SIMPLE_LINE)))
+#         str_out.append( "    Crossing Line :  " + str(self.get_stats_name_count_total( GenUtil.CROSSING_LINE)))
+#         str_out.append( "    Sidedness     :  " + str(self.get_stats_name_count_total( GenUtil.SIDEDNESS)))
+#         str_out.append( "--------" )
+#         str_out.append( "Number of iteration: " + str(self.get_nbr_iteration()) )
+#
+#         return str_out
 
 
 class SpatialConstraints(object):
@@ -163,6 +158,7 @@ class SpatialConstraints(object):
         Return
             Boolean indicating if the line pass(True) or failed(False) the validation
         """
+
         # Create a very short line so that the line does not touch the start and end line (increase performance)
         smaller_middle_line = affinity.scale(middle_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
         crosses = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
@@ -172,7 +168,7 @@ class SpatialConstraints(object):
                 # Manage the interiors of a polygon
                 lst_holes = line._gbt_interiors
 
-                gen_crosses = list(filter(middle_line.crosses, lst_holes))  # Creates a generator
+                gen_crosses = list(filter(middle_line.intersects, lst_holes))  # Creates a generator
                 crosses = False
                 for element in gen_crosses:
                     crosses = True
@@ -192,10 +188,10 @@ class SpatialConstraints(object):
             Boolean indicating if the line pass(True) or failed(False) the validation
         """
 
-        lst_lines = sp_container.get_features(filter= lambda feature: feature.geom_type == 'LineString'
+        lst_lines = sp_container.get_features(filter= lambda feature: feature._gbt_geom_type == 'LineString'
                                                                       and not feature._id == line._gbt_sc_id)
 
-        gen_crosses = filter(replacement_line.crosses, lst_lines) # Creates a generator
+        gen_crosses = filter(replacement_line.intersects, lst_lines)  # Creates a generator
         intersection = False
         for element in gen_crosses:
             intersection = True
@@ -239,7 +235,7 @@ class Bend(object):
             return self._area
         except AttributeError:
             self._area = self.polygon.area
-            if self._area <= GenUtil.ZERO: self.area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area instead
+            if self._area <= GenUtil.ZERO: self._area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area instead
             return self._area
 
 
@@ -339,14 +335,16 @@ class AlgoSherbend(object):
         # Load all the features in the spatial container
         for feature in features:
             if feature.geom_type == 'Polygon':
+                feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
                 ext_feature = LineString(feature.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
-                # Extract the interiors
+                # Extract the interiors as LineString
                 for interior in interiors:
                     interior = LineString(interior.coords)  # Transform from LinearRing to LineString
+                    interior._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                     interior._gbt_original_type = 'Polygon-Interiors'
                     int_features.append(interior)
 
@@ -354,12 +352,14 @@ class AlgoSherbend(object):
                 ext_feature._gbt_interiors = int_features
                 ext_feature._gbt_layer_name = feature._gbt_layer_name
                 ext_feature._gbt_properties = feature._gbt_properties
+                ext_feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 ext_feature._gbt_original_type = 'Polygon-Exterior'
 
                 self.s_container.add_feature(ext_feature)
                 self.s_container.add_features(int_features)
             else:  # Geometry is Point or LinseString
-                feature._gbt_original_type = feature.geom_type
+                feature._gbt_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
+                feature._gbt_original_type = feature._gbt_geom_type
                 self.s_container.add_feature(feature)
 
         # Empty the feature list
@@ -377,7 +377,7 @@ class AlgoSherbend(object):
         Return value: None
 
         """
-        for line in self.s_container.get_features(filter= lambda feature : feature.geom_type=="LineString"):
+        for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type=="LineString"):
             
             line._gbt_is_simplest = False
             line._gbt_bends = []
@@ -598,22 +598,22 @@ class AlgoSherbend(object):
     #                 del line._gbt_bends[i+1]
     #
     #         i -= 1
-            
-    def _reduce_bends(self, line):
-        """Detect the bends to simplify in the line 
-        
-        Parameters: 
-            line: Line object to detect bend
-        """
-        
-        for bend in line._gbt_bends:
-            if bend.type == _ONE_BEND:
-                if (self._are_bends_big(bend, line._gbt_min_adj_area)):
-                    bend_size = _BIG
-                else:
-                    bend_size = _SMALL
-
-                bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
+    #
+    # def _reduce_bends(self, line):
+    #     """Detect the bends to simplify in the line
+    #
+    #     Parameters:
+    #         line: Line object to detect bend
+    #     """
+    #
+    #     for bend in line._gbt_bends:
+    #         if bend.type == _ONE_BEND:
+    #             if (self._are_bends_big(bend, line._gbt_min_adj_area)):
+    #                 bend_size = _BIG
+    #             else:
+    #                 bend_size = _SMALL
+    #
+    #             bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
 
 
     def detect_bend_location(self, lst_coord, line):
@@ -731,7 +731,7 @@ class AlgoSherbend(object):
 
             in_conflict = self.spatial_constraints.validateSimplicity(line, start_line, bend.replacement_line, end_line)
 
-        if self.command.simplicity and not in_conflict:
+        if self.command.intersection and not in_conflict:
             conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
 
         if not in_conflict:
@@ -1134,27 +1134,27 @@ class AlgoSherbend(object):
             
         return nbr_bends
     
-    def _reduce_bend(self, bend, line, bend_depth=_DEPTH_OFFSET_RATIO): 
-        
-        """This routine reduce one bend"""
-    
-        first_coord = line.coords[bend.i]
-        last_coord = line.coords[bend.j]
-            
-        if (bend.base / bend.depth < 1.0):
-            offset_factor = bend.base / bend.depth
-        else:
-            offset_factor = bend.depth / bend.base
-        
-        bend_depth = bend_depth * offset_factor 
-
-        # Calculate the position of the middle of the bend base line
-        base_mid_point = Point(first_coord).mid_point(Point(last_coord))
-            
-        # Offset the point in direction of the bend peak
-        scaled_point = self.rescale_vector (base_mid_point, MA_Point(bend.peak_coords),  bend_depth)
-            
-        return [scaled_point.coords_dual[0]]
+    # def _reduce_bend(self, bend, line, bend_depth=_DEPTH_OFFSET_RATIO):
+    #
+    #     """This routine reduce one bend"""
+    #
+    #     first_coord = line.coords[bend.i]
+    #     last_coord = line.coords[bend.j]
+    #
+    #     if (bend.base / bend.depth < 1.0):
+    #         offset_factor = bend.base / bend.depth
+    #     else:
+    #         offset_factor = bend.depth / bend.base
+    #
+    #     bend_depth = bend_depth * offset_factor
+    #
+    #     # Calculate the position of the middle of the bend base line
+    #     base_mid_point = Point(first_coord).mid_point(Point(last_coord))
+    #
+    #     # Offset the point in direction of the bend peak
+    #     scaled_point = self.rescale_vector (base_mid_point, MA_Point(bend.peak_coords),  bend_depth)
+    #
+    #     return [scaled_point.coords_dual[0]]
 
     def _are_bends_similar(self, lst_bends):
         
@@ -1193,59 +1193,59 @@ class AlgoSherbend(object):
         
         return similar_bends
     
-    def _replace_bend (self, bend, line, in_hand_line_coords):
-        """
-        This function replace  the vertices of the bend (excluding the first and last point) by  the replacement 
-        line (excluding the first and last point which are the same as the first/last vertice of the bend)
+    # def _replace_bend (self, bend, line, in_hand_line_coords):
+    #     """
+    #     This function replace  the vertices of the bend (excluding the first and last point) by  the replacement
+    #     line (excluding the first and last point which are the same as the first/last vertice of the bend)
+    #
+    #     Parameters:
+    #        bend: Bend to process
+    #        line: LineString object being processed
+    #        in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
+    #                             the Sahpely structure we keep them in that list
+    #     """
+    #     # Determine the position of the bend limits
+    #     first = bend_to_check.i
+    #     last = bend_to_check.j
+    #
+    #     # Replace the coordinate with the new line in the temporary line coordinates (but we do not create a new object)
+    #     in_hand_line_coords[0:] = list(bend_to_check.new_line.coords)
+    #
+    #     if (self._are_bends_big([bend_to_check], line.min_adj_area)):
+    #         self.stats.add_stats(_BIG)
+    #     else:
+    #         self.stats.add_stats(_SMALL)
+    #
+    #     self.stats.add_stats(_ALGO)
+    #     self.stats.add_stats(bend_to_check.type)
+    #
+    #     return
         
-        Parameters:
-           bend: Bend to process
-           line: LineString object being processed
-           in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
-                                the Sahpely structure we keep them in that list
-        """
-        # Determine the position of the bend limits
-        first = bend_to_check.i
-        last = bend_to_check.j
-    
-        # Replace the coordinate with the new line in the temporary line coordinates (but we do not create a new object)
-        in_hand_line_coords[0:] = list(bend_to_check.new_line.coords)
-    
-        if (self._are_bends_big([bend_to_check], line.min_adj_area)):
-            self.stats.add_stats(_BIG)
-        else:
-            self.stats.add_stats(_SMALL)
-
-        self.stats.add_stats(_ALGO)
-        self.stats.add_stats(bend_to_check.type)
-    
-        return
-        
-    def rescale_vector(self, p1, p2, scale_factor):
-        """This routine rescale the vector defined by the points P1 and P2 by a factor
-        of SCALE_FACTOR
-        
-        P1: Point vector origin (first point)
-        P2: Point vector to rescale (second point)
-        scale_factor: factor to scale the vector (same for x and y)
-        
-        """ 
-        
-        x1 = p1.coords_dual[0][0]
-        y1 = p1.coords_dual[0][1]
-        x2 = p2.coords_dual[0][0]
-        y2 = p2.coords_dual[0][1]
-        
-        vec_x = x2 - x1
-        vec_y = y2 - y1
-        
-        vec_x = vec_x * scale_factor
-        vec_y = vec_y * scale_factor
-        
-        x_out = vec_x + x1
-        y_out = vec_y + y1
-        
-        return MA_Point([x_out, y_out])     
+#    def rescale_vector(self, p1, p2, scale_factor):
+#        """This routine rescale the vector defined by the points P1 and P2 by a factor
+#        of SCALE_FACTOR
+#
+#        P1: Point vector origin (first point)
+#        P2: Point vector to rescale (second point)
+#        scale_factor: factor to scale the vector (same for x and y)
+#
+#        """
+#
+#        x1 = p1.coords_dual[0][0]
+#        y1 = p1.coords_dual[0][1]
+#        x2 = p2.coords_dual[0][0]
+#        y2 = p2.coords_dual[0][1]
+#
+#        vec_x = x2 - x1
+#        vec_y = y2 - y1
+#
+#        vec_x = vec_x * scale_factor
+#        vec_y = vec_y * scale_factor
+#
+#        x_out = vec_x + x1
+#        y_out = vec_y + y1
+#
+#        return MA_Point([x_out, y_out])
     
     def _calculate_bend_depth(self, line, bend):
         """
@@ -1306,16 +1306,8 @@ class AlgoSherbend(object):
             geo_content: dataclass containing the output information
 
         """
-        
-#        print ("Start of sherbend  algorithm)")
-#        print ("Parameter description:")
-#        print ("  - Bend mode: {}".format(params.command.bend_mode))
-#        print ("  - Simplicity constraint {}".format(params.command.simplicity))
-#        print ("  - Crossing constraint {}".format(params.command.crossing))
-#        print ("  - Adjacency constraint {}".format(params.command.adjacency))
 
-#        # Check the feature's class and attributes
-#        self.check_features()
+
 
         self.spatial_constraints = SpatialConstraints()
 
@@ -1350,9 +1342,9 @@ class AlgoSherbend(object):
                     
         features = []
         for feature in self.s_container.get_features():
-            if feature.geom_type == 'Point':
+            if feature._gbt_geom_type == 'Point':
                 features.append(feature)
-            elif feature.geom_type == 'LineString':
+            elif feature._gbt_geom_type == 'LineString':
                 if feature._gbt_original_type == 'LineString':
                     features.append(feature)
                 else:

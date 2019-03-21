@@ -21,7 +21,7 @@ class Command:
         first_last -- flag to enable/disable the simplification the first/last bend
         simplicity -- flag to enable/disable the test for OGC simple line constraint
         adjacency -- flag to enable/disable the test for adjacency constraint
-        connection -- flag to enable/disable the test for connection constraint
+        intersection -- flag to enable/disable the test for connection constraint
         add_vertex -- flag to enable/disable to add new vertex during bend simplification
         multi_bend -- flag to enable/disable the simplification of multi bends (more than one bend)
         verbose -- flag to enable/disable the verbose mode
@@ -34,7 +34,7 @@ class Command:
     simplicity: bool
     adjacency: bool
     crossing: bool
-    connection: bool
+    intersection: bool
     add_vertex: bool
     multi_bend: bool
     verbose: bool
@@ -58,14 +58,14 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', simplify_first_last=False, diameter=2., simplicity=True,
-                   adjacency=True, crossing=True, connection=True, add_vertex=True, multi_bend=False, verbose=True)
+command = Command (in_file='', out_file='', simplify_first_last=False, diameter=25., simplicity=True,
+                   adjacency=True, crossing=True, intersection=False, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-command.in_file = r'data\simple_file.gpkg'
-command.out_file = r'data\simple_file_out.gpkg'
+command.in_file = r'data\hydro_pol.shp'
+command.out_file = r'data\canvec_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
@@ -83,7 +83,6 @@ for layer_name in layer_names:
             elif geom['type'] == 'LineString':
                 feature = LineString(geom['coordinates'])
             elif geom['type'] == 'Polygon':
-                print (geom['coordinates'])
                 exterior = geom['coordinates'][0]
                 interiors = geom['coordinates'][1:]
                 feature = Polygon(exterior, interiors)

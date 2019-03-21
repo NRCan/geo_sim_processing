@@ -17,7 +17,7 @@ from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.polygon import LinearRing
 from shapely.ops import cascaded_union
 
-from rtree import Rtree
+#from rtree import Rtree
 
 
 
