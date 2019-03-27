@@ -1,8 +1,134 @@
 from shapely.geometry import Point, LineString, Polygon
 from time import time
+import lib_geobato
 import timeit
+import math
+import matplotlib.pyplot as plt
 
 from shapely import affinity
+
+bend_i = 1
+bend_j = 4
+#line_ori = [(5,12),(10,10),(10,15),(15,15),(15,10),(20,12)]
+line_ori = [(5,8),(10,10),(10,5),(15,5),(15,10),(20,12)]
+for order, angle in ((0,0.), (0,45.), (0,90.), (0,135.), (0,180.), (0,225.), (0,270.), (0,315), (1,0.), (1,45.), (1,90.), (1,135.), (1,180.), (1,225.), (1,270.), (1,315)):
+    if order == 0:
+        line=LineString(line_ori)
+    else:
+        line_tmp = list(line_ori)
+        line_tmp.reverse()
+        line=LineString(line_tmp)
+    a = math.cos(angle)
+    b = -math.sin(angle)
+    d = math.sin(angle)
+    e = math.cos(angle)
+
+    line1 = affinity.rotate(line, angle, line.coords[1])
+    x, y = zip(*list(line1.coords))
+    plt.plot(x, y)
+
+    # Translate the line
+    xoff, yoff = line1.coords[bend_i][0], line1.coords[bend_i][1]
+    line2 = affinity.affine_transform(line1, [1, 0, 0, 1, -xoff, -yoff])
+
+    x,y = zip(*list(line2.coords))
+    plt.plot(x,y)
+    x,y = zip(*list(line1.coords))
+    plt.plot(x,y)
+
+    line1_coord = list(line2.coords)
+    p0_x = line1_coord[bend_j][0]
+    p0_y = line1_coord[bend_j][1]
+    p1_x = abs(p0_x) + 1.  # In case x == 0
+    p1_y = 0.
+
+    dot = p0_x*p1_x + p0_y*p1_y
+    len_a = (p0_x**2+p0_y**2)**.5
+    len_b = (p1_x**2+p1_y**2)**.5
+
+    angle = math.acos(dot/(len_a*len_b))
+    angle =  (angle*180/math.pi)
+    print (angle)
+
+    if p0_y >= 0.:
+        angle = -angle
+    a = math.cos(angle)
+    b = -math.sin(angle)
+    d = math.sin(angle)
+    e = math.cos(angle)
+
+    line4 = affinity.rotate(line2, angle, origin=(0,0))
+
+    x,y = zip(*list(line4.coords))
+    plt.plot(x,y)
+
+    lst_coords = list(line4.coords)
+    line_i = LineString(lst_coords[0:3])
+    line_j = LineString(lst_coords[-2:])
+    theta_i = lib_geobato.GenUtil.compute_angle(lst_coords[0], lst_coords[1], lst_coords[bend_j])
+    theta_j = lib_geobato.GenUtil.compute_angle(lst_coords[bend_j], lst_coords[-2], lst_coords[-1])
+
+    (minx, miny, maxx, maxy) = line4.bounds
+    y_dynamic = (abs(miny) + abs(maxy))* 10.
+    x_middle = (lst_coords[bend_i][0] + lst_coords[bend_j][0]) / 2.
+    line_y_positive = LineString(((x_middle,0),(x_middle, y_dynamic)))
+    line_y_negative = LineString(((x_middle, 0), (x_middle, -y_dynamic)))
+    if line4.crosses(line_y_positive):
+        bend_side = +1
+    else:
+        if line4.crosses(line_y_negative):
+            bend_side = -1
+
+    if lst_coords[0][1] >= 0.:
+        start_line_side = 1
+    else:
+        start_line_side = -1
+
+    if lst_coords[-1][1] >= 0.:
+        end_line_side = 1
+    else:
+        end_line_side = -1
+
+    if (start_line_side*end_line_side == -1):
+        print ("Nothing to do....")
+        line5 = LineString(lst_coords[0:bend_i+1] + lst_coords[bend_j:])
+    else:
+        # Both line are on the same side
+        if start_line_side == 1 and end_line_side == 1:
+            if bend_side == -1:
+                angle_bias = 2.
+                y_offset = -1
+            else:
+                angle_bias = 3.
+                y_offset = -1
+        if start_line_side == -1 and end_line_side == -1:
+            if bend_side == 1:
+                angle_bias = 2.
+                y_offset = 1
+            else:
+                angle_bias = 3.
+                y_offset = 1
+
+        theta_i = (180. - theta_i) / angle_bias
+        if theta_i >= 5.:
+            hypothenus = x_middle / math.cos(theta_i*math.pi/180.)
+            y_height = math.sqrt(hypothenus**2 - x_middle**2)
+            if bend_side == -1:
+                y_height *= y_offset
+            new_coord = (x_middle, y_height)
+            line5 = LineString(lst_coords[0:bend_i+1] + [new_coord] + lst_coords[bend_j:])
+        else:
+            print("Nothing to do....")
+            line5 = LineString(lst_coords[0:bend_i+1] + lst_coords[bend_j:])
+
+    x, y = zip(*list(line5.coords))
+    plt.plot(x, y)
+    plt.xlim(-20, 20)
+    plt.ylim(-20, 20)
+    plt.show()
+
+
+
 
 pol = Polygon([(0,0),(0,10), (10,10),(10,0)], [[(5,5),(5,15),(8,15),(8,5)]])
 print (pol.is_simple)

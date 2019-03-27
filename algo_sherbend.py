@@ -283,6 +283,106 @@ class Bend(object):
             self._replacement_line = LineString((self.lst_coord[0], self.lst_coord[-1]))
             return self._replacement_line
 
+    def create_replacement_line (lst_coords, bend, diameter):
+        """Calculate the replacement line for a bend"""
+
+        # Extract the sub line containing the bend with one extra vertice on each side
+        sub_line = LineString(lst_coords[bend.i-1:bend.j+1])
+        bend_i = 1
+        bend_j = len(bend.j)-1
+
+        # Translate to sub line so that the bend starts at 0,0
+        xoff, yoff = lst_coords[bend.i][0], lst_coords[bend.i][1]
+        line_translate = affinity.affine_transform(sub_line, [1, 0, 0, 1, -xoff, -yoff])
+
+        # Calculate the angle between the base of the bend and the x axis
+        line_translate_coord = list(line_translate.coords)
+        p0_x = line_translate_coord[bend_j][0]
+        p0_y = line_translate_coord[bend_j][1]
+        p1_x = abs(p0_x) + 1.  # In case x == 0
+        p1_y = 0.
+
+        dot = p0_x * p1_x + p0_y * p1_y
+        len_a = (p0_x ** 2 + p0_y ** 2) ** .5
+        len_b = (p1_x ** 2 + p1_y ** 2) ** .5
+
+        angle = math.acos(dot / (len_a * len_b))
+        angle = (angle * 180 / math.pi)
+        print(angle)
+
+        if p0_y >= 0.:
+            angle = -angle
+        a = math.cos(angle)
+        b = -math.sin(angle)
+        d = math.sin(angle)
+        e = math.cos(angle)
+
+        line4 = affinity.rotate(line2, angle, origin=(0, 0))
+
+        x, y = zip(*list(line4.coords))
+        plt.plot(x, y)
+
+        lst_coords = list(line4.coords)
+        line_i = LineString(lst_coords[0:3])
+        line_j = LineString(lst_coords[-2:])
+        theta_i = lib_geobato.GenUtil.compute_angle(lst_coords[0], lst_coords[1], lst_coords[bend_j])
+        theta_j = lib_geobato.GenUtil.compute_angle(lst_coords[bend_j], lst_coords[-2], lst_coords[-1])
+
+        (minx, miny, maxx, maxy) = line4.bounds
+        y_dynamic = (abs(miny) + abs(maxy)) * 10.
+        x_middle = (lst_coords[bend_i][0] + lst_coords[bend_j][0]) / 2.
+        line_y_positive = LineString(((x_middle, 0), (x_middle, y_dynamic)))
+        line_y_negative = LineString(((x_middle, 0), (x_middle, -y_dynamic)))
+        if line4.crosses(line_y_positive):
+            bend_side = +1
+        else:
+            if line4.crosses(line_y_negative):
+                bend_side = -1
+
+        if lst_coords[0][1] >= 0.:
+            start_line_side = 1
+        else:
+            start_line_side = -1
+
+        if lst_coords[-1][1] >= 0.:
+            end_line_side = 1
+        else:
+            end_line_side = -1
+
+        if (start_line_side * end_line_side == -1):
+            print("Nothing to do....")
+            line5 = LineString(lst_coords[0:bend_i + 1] + lst_coords[bend_j:])
+        else:
+            # Both line are on the same side
+            if start_line_side == 1 and end_line_side == 1:
+                if bend_side == -1:
+                    angle_bias = 2.
+                    y_offset = -1
+                else:
+                    angle_bias = 3.
+                    y_offset = 1
+            if start_line_side == -1 and end_line_side == -1:
+                if bend_side == 1:
+                    angle_bias = 2.
+                    y_offset = 1
+                else:
+                    angle_bias = 3.
+                    y_offset = 1
+
+            theta_i = (180. - theta_i) / angle_bias
+            if theta_i >= 5.:
+                hypothenus = x_middle / math.cos(theta_i * math.pi / 180.)
+                y_height = math.sqrt(hypothenus ** 2 - x_middle ** 2)
+                if bend_side == -1:
+                    y_height *= y_offset
+                new_coord = (x_middle, y_height)
+                line5 = LineString(lst_coords[0:bend_i + 1] + [new_coord] + lst_coords[bend_j:])
+            else:
+                print("Nothing to do....")
+                line5 = LineString(lst_coords[0:bend_i + 1] + lst_coords[bend_j:])
+
+
+
 
 class AlgoSherbend(object):
     """Main class for the Sherbend algorithm
