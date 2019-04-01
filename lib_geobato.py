@@ -9,7 +9,7 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 from abc import ABCMeta
 from abc import abstractmethod
 import math
-from collections import Iterable, OrderedDict
+from collections import Iterable
 from copy import deepcopy
 from itertools import count
 
@@ -17,7 +17,7 @@ from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.polygon import LinearRing
 from shapely.ops import cascaded_union
 
-#from rtree import Rtree
+from rtree import Rtree
 
 
 
@@ -1898,17 +1898,14 @@ class SpatialContainer(object):
 
     This class enables the management of spatial features by incorporation 
     transparently a spatial index.  The spatial index is an implementation
-    of the Rtree open source softawre. An enhancement to the spatial index is done 
-    in order to offer the possibility to split the bounding box of very large features 
-    into a list of smaller bounding box. The spatial container offers the following
+    of the Rtree open source softawre.  The spatial container offers the following
     main options:
       - add features in the constainer and update the spatial index
       - delete features in the container and update the spatial index
       - update the coordinates of a feature and update the spatial index if needed
       - make spatial queries by bounding box
       - make attributes queries
-      - delete the container and remove cycling reference to by pass a garbage
-        collector problem due to the use of the C libraries.
+      - delete the container
 
     """
 
@@ -1937,16 +1934,9 @@ class SpatialContainer(object):
 
         """
 
-        
-#        if (line_opt_value == 0 or line_opt_value >=2):
-#            self._line_opt_value = line_opt_value
-#        else:
-##            raise GenException ('Parameter value of line_opt_value (%s) is out of domain' %line_opt_value)
-        
- #       self._r_tree = Rtree()              # Container for the Rtree
-        # Ordered dictionary are used to be able to extract the feature in the same order as they are entered
-        self._features = OrderedDict()      # Container to hold the features
-#        self._bbox_features = OrderedDict() # container to hold the bounding boxes
+        self._r_tree = Rtree()  # Container for the Rtree
+        self._features = {}  # Container to hold the features
+        self._bbox_features = {}  # Container to hold the bounding boxes
 
     def _is_bbox_the_same(self, feature, old_lst_bbox, new_lst_bbox):
         """Checks if the bbox are the same
@@ -2012,7 +2002,7 @@ class SpatialContainer(object):
         return is_the_same
     
     def _adjust_bounding_box (self, bounds):
-        """Modify the bounds of a feature (*because of a little bug in Rtree which should be corrected by next release > 0.6*)
+        """Modify the bounds of a feature when the bounds of almost zero
         
         *Parameters*: 
             - bounds: Tuple of a bounding box (xmin, ymin, xmax, ymax)
@@ -2029,13 +2019,13 @@ class SpatialContainer(object):
             else:
                 xmin = bounds[0] - GenUtil.ZERO
                 xmax = bounds[2] + GenUtil.ZERO
-            if abs(bounds[3]-bounds[1]) >= GenUtil.ZERO:
-                ymin = bounds[1]
-                ymax = bounds[3]
-            else:
-                ymin = bounds[1] - GenUtil.ZERO
-                ymax = bounds[3] + GenUtil.ZERO
-            bounds = (xmin, ymin, xmax, ymax)
+        if abs(bounds[3]-bounds[1]) >= GenUtil.ZERO:
+            ymin = bounds[1]
+            ymax = bounds[3]
+        else:
+            ymin = bounds[1] - GenUtil.ZERO
+            ymax = bounds[3] + GenUtil.ZERO
+        bounds = (xmin, ymin, xmax, ymax)
             
         return bounds
     
@@ -2054,78 +2044,79 @@ class SpatialContainer(object):
         
         """
         
-        if (isinstance(feature, MA_Point) or isinstance(feature, MA_Polygon)):
-            lst_bounds = [feature.bounds]
-        else:
-            if (self._line_opt_value == 0):
-                # Line optimizer is diabled
-                lst_bounds = [feature.bounds]
-            else:
-                if (feature.is_dual()):
-                    line_coords = feature.coords_dual    
-                else:
-                    line_coords = list(feature.coords)
-                
-                max_coords = self._line_opt_value - 1
-                # Split the list of coordinates into a list of list of coordinates where each list of coordinates contains a
-                # maximum of max_coords. It also copy the last coordinate of one group as the first coordinate of the next group 
-                split_coords = [line_coords[i:i+max_coords+1] for i in range(0, len(line_coords), max_coords)]
-                # If the last group contains only 1 coordinate (x,y) we delete it
-                if (len(split_coords[-1]) == 1):
-                    del split_coords[-1]
-                
-                # Calculates for each list of coordinates its bounding box in the form (xmin,ymin,xmax,ymax)
-                lst_min_max   =  [ map((lambda lst: (min(lst),max(lst)) ),zip(*coords)) for coords in split_coords]
-                lst_bounds    =  [ (min_max[0][0],min_max[1][0], min_max[0][1], min_max[1][1]) for min_max in lst_min_max ]
-                
-        if len(lst_bounds) == 1:
+        bounds = feature.bounds
+        # if (isinstance(feature, MA_Point) or isinstance(feature, MA_Polygon)):
+        #     lst_bounds = [feature.bounds]
+        # else:
+        #     if (self._line_opt_value == 0):
+        #         # Line optimizer is diabled
+        #         lst_bounds = [feature.bounds]
+        #     else:
+        #         if (feature.is_dual()):
+        #             line_coords = feature.coords_dual
+        #         else:
+        #             line_coords = list(feature.coords)
+        #
+        #         max_coords = self._line_opt_value - 1
+        #         # Split the list of coordinates into a list of list of coordinates where each list of coordinates contains a
+        #         # maximum of max_coords. It also copy the last coordinate of one group as the first coordinate of the next group
+        #         split_coords = [line_coords[i:i+max_coords+1] for i in range(0, len(line_coords), max_coords)]
+        #         # If the last group contains only 1 coordinate (x,y) we delete it
+        #         if (len(split_coords[-1]) == 1):
+        #             del split_coords[-1]
+        #
+        #         # Calculates for each list of coordinates its bounding box in the form (xmin,ymin,xmax,ymax)
+        #         lst_min_max   =  [ map((lambda lst: (min(lst),max(lst)) ),zip(*coords)) for coords in split_coords]
+        #         lst_bounds    =  [ (min_max[0][0],min_max[1][0], min_max[0][1], min_max[1][1]) for min_max in lst_min_max ]
+        #
+        #if len(lst_bounds) == 1:
             #Presently there is a little bug in RTree when the xmin and xmax or ymin and ymax are the same value
             #The problem is resolved when we add a very small delta between the 2 values
             #This bug is supposed to be solved in the next release. We're running now on 0.6
-            lst_bounds[0] = self._adjust_bounding_box (lst_bounds[0])
+        #    lst_bounds[0] = self._adjust_bounding_box (lst_bounds[0])
             
-        return lst_bounds
+        return bounds
 
-    def _set_if_statement(self, filter, remove_keys):
-        """Set the if statement needed to extract features from the container
-        
-        *Parameters*:
-            - filter: This parameter define the if statement to be used in order to filter
-                    the features based on the value of some properties. If *None* no filter are applied.
-                    Example of a filters to filter on feature type: "if feature.feature_type == 'LINE'"
-                    The filters must be a valid python expression
-            - remove_keys: List of keys to be removes from the selection
-            
-        *Returns*:
-            - String containing the if statement
-    
-        """
-        
-        if remove_keys is not None and len(remove_keys) != 0:
-            str_remove_keys = "".join([str(key)+"," for key in remove_keys])
-            str_remove_keys = "feature._sci_id not in [%s]" %(str_remove_keys)
-        else:
-            str_remove_keys = ""
-            
-        str_filter = filter
-        if (str_filter is not None):
-            str_filter = str_filter.rstrip()
-            str_filter = str_filter.lstrip()
-            str_filter = "(" + str_filter + ")"
-        else:
-            str_filter = ""
-
-        str_if = ""
-        if (str_filter != ""):
-            str_if = str_filter
-            
-        if (str_remove_keys != ""):
-            if (str_filter != ""):
-                str_if = "%s and %s" %(str_filter, str_remove_keys)
-            else:
-                str_if = str_remove_keys
-                
-        return str_if
+    # def _set_if_statement(self, filter, remove_keys):
+    #     """Set the if statement needed to extract features from the container
+    #
+    #     *Parameters*:
+    #         - filter: This parameter define the if statement to be used in order to filter
+    #                 the features based on the value of some properties. If *None* no filter are applied.
+    #                 Example of a filters to filter on feature type: "if feature.feature_type == 'LINE'"
+    #                 The filters must be a valid python expression
+    #         - remove_keys: List of keys to be removes from the selection
+    #
+    #     *Returns*:
+    #         - String containing the if statement
+    #
+    #     """
+    #
+    #     if remove_keys is not None and len(remove_keys) != 0:
+    #         str_remove_keys = "".join([str(key)+"," for key in remove_keys])
+    #         str_remove_keys = "feature._sci_id not in [%s]" %(str_remove_keys)
+    #     else:
+    #         str_remove_keys = ""
+    #
+    #     str_filter = filter
+    #     if (str_filter is not None):
+    #         str_filter = str_filter.rstrip()
+    #         str_filter = str_filter.lstrip()
+    #         str_filter = "(" + str_filter + ")"
+    #     else:
+    #         str_filter = ""
+    #
+    #     str_if = ""
+    #     if (str_filter != ""):
+    #         str_if = str_filter
+    #
+    #     if (str_remove_keys != ""):
+    #         if (str_filter != ""):
+    #             str_if = "%s and %s" %(str_filter, str_remove_keys)
+    #         else:
+    #             str_if = str_remove_keys
+    #
+    #     return str_if
     
     def add_feature(self, feature):
         """Adds a feature in the container and update the spatial index with the feature's bound
@@ -2141,9 +2132,7 @@ class SpatialContainer(object):
         """
         
         # Check if the type is valid
-        if (isinstance(feature, Point) or
-            isinstance(feature, LineString) or
-            isinstance(feature, Polygon)):
+        if feature._gbt_geom_type == "Point" or feature._gbt_geom_type == "LineString":
             pass
         else:
             raise GenException ('Unsupported feature type...')
@@ -2152,7 +2141,7 @@ class SpatialContainer(object):
         if hasattr(feature, "_gbt_sc_id"):
             raise GenException ('Feature is already in a spatial container')
         
-#        lst_bounds = self._extract_bounding_box(feature)
+        bounds = self._extract_bounding_box(feature)
 
         # Container unique internal counter
         SpatialContainer._gbt_sc_id += 1
@@ -2162,8 +2151,10 @@ class SpatialContainer(object):
         
         # Add the feature in the feature container 
         self._features[feature._gbt_sc_id] = feature
-#        # Add the bounding box in the bbox_container
-#        self._bbox_features[self._sci_id] = lst_bounds
+
+        # Add the bounding box in the bbox_container
+        self._bbox_features[feature._gbt_sc_id] = bounds
+        self._r_tree.add(feature._gbt_sc_id, bounds)
         
  #       # Add the each boundfing box in the RTree
  #       for bounds in lst_bounds:
@@ -2204,10 +2195,10 @@ class SpatialContainer(object):
         ret_value = 0
         
         # Check if the feature has a container_key
-        if hasattr(feature, "_sci_id"):
+        if hasattr(feature, "_gbt_sci_id"):
             
-            if (feature._sci_id in self._features and 
-                feature._sci_id in self._bbox_features):
+            if (feature._gbt_sci_id in self._features and
+                feature._gbt_sci_id in self._bbox_features):
 
                 try:
                     # Retreive the bounding boxes of this feature
@@ -2216,15 +2207,13 @@ class SpatialContainer(object):
                     del self._features[feature._sci_id]
                     del self._bbox_features[feature._sci_id]
                     # Delete the different bounds in RTree
-                    for bbox in lst_bbox:
-                        self._r_tree.delete(feature._sci_id, bbox)
-                    ret_value = 1
+                    self._r_tree.delete(feature._sci_id, bbox)
                     #Delete the property _sci_id
                     del feature._sci_id
                 except:
                     raise InternalError ("Internal corruption, problem with the container and/or the RTree")
             else:
-                raise InternalError ("Internal corruption, key %s has disappear..." %feature._sci_id)
+                raise InternalError ("Internal corruption, key {} has disappear...".format(feature._sci_id))
                 
         return ret_value
 
@@ -2267,32 +2256,31 @@ class SpatialContainer(object):
         
         """
                     
-        old_lst_bbox = self._bbox_features[feature._sci_id]
-        new_lst_bbox = self._extract_bounding_box(feature)
+        old_bbox = self._bbox_features[feature._sci_id]
+        new_bbox = self._extract_bounding_box(feature)
         
-        if (self._is_bbox_the_same(feature, old_lst_bbox, new_lst_bbox)):
+        if (self._is_bbox_the_same(feature, old_bbox, new_bbox)):
             # Nothing special to do
             pass
         else:
             # The bounding box has changed
             # Delete The old bounding box in Rtree
-            for bbox in old_lst_bbox:
-                self._r_tree.delete(feature._sci_id, bbox
+            self._r_tree.delete(feature._gbt_sci_id, old_bbox
                                    )
             #Add the new bounding boxes in Rtree
-            for bbox in new_lst_bbox:
-                self._r_tree.add(feature._sci_id, bbox)
+            self._r_tree.add(feature.__gbt_sci_id, new_bbox)
             
             #Save the bounding boxes
-            self._bbox_features[feature._sci_id] = new_lst_bbox
+            self._bbox_features[feature._sci_id] = new_bbox
 
-    def get_keys_by_bounds(self, bounds, remove_keys=None):
+        return
+
+    def get_keys_by_bounds(self, bounds, keys_to_remove=None):
         """Extract keys in the container based on the value of a bounding box
 
         *Parameters*:
             - bounds: Bounding box defined as a list: xmin, ymin, xmax, ymax
-            - remove_keys: If remove_keys id not *None*, the list of keys are removed from
-                           the list of features returned
+            - keys_to_remove: List of keys to remove  removed from the list of key features returned
 
         *Returns*:
             - List of keys contained in the bounding box
@@ -2302,17 +2290,12 @@ class SpatialContainer(object):
         # Extract the keys from the RTree
         keys = list(self._r_tree.intersection(bounds))
         
-        if (self._line_opt_value != 0):
-            # The line optimizing is set we may have duplicate values in the keys we have to remove them
-            keys = list(set(keys))  # The set function removes the duplicate
-        
-        # Remove the keys which are in the remove keys list
-        if (remove_keys is not None and len(remove_keys) != 0):
-            keys = [key for key in keys if key not in remove_keys]
+        # Remove the keys which are in the keys to remove list
+        keys = list(set(keys)- set(keys_to_remove))
 
         return keys
     
-    def get_features(self, bounds=None, filter=True, remove_keys=None):
+    def get_features(self, bounds=None, filter=True, remove_features=[]):
         """Extract the features from the spatial container.
         
         According to the parameters the extraction can manage the extraction based on a bounding box using 
@@ -2331,37 +2314,21 @@ class SpatialContainer(object):
             - List of features extracted from spatial container
 
         """
-        
-        features = (feature for feature in self._features.values() if filter)
+
+        # Extract the features by bounds if requested
+        if (bounds != None):
+            # Extract features by bounds
+            keys = self.get_keys_by_bounds(bounds, remove_features)
+            features = (self._features[key] for key in keys if key in self._features)
+        else:
+            features = (feature for feature in self._features.values() if feature not in remove_features)
+
+        # Filter the result if requested
+        if filter:
+            features = [feature for feature in features if filter]
 
         return features
 
-        # if (bounds != None):
-        #     # Extract features by bounds
-        #     keys = self.get_keys_by_bounds(bounds, remove_keys)
-        #     features = [self._features[key] for key in keys if key in self._features]
-        #     str_if = self._set_if_statement(filter, None)
-        #     if (str_if != ""):
-        #         # Finalize the if statement
-        #         str_if = "if (%s) " %str_if
-        #         str_exec = "features = [feature for feature in features %s]" %(str_if)
-        #     else:
-        #         # There is no other proceessing to do on the list features
-        #         str_exec = "pass"
-        # else:
-        #     str_if = self._set_if_statement(filter, remove_keys)
-        #     if (str_if !=  ""):
-        #         # Finalize the if statement
-        #         str_if = "if (%s) " %str_if
-        #     str_exec = "features = [feature for feature in self._features.values() %s]" %(str_if)
-        #
-        # #Dynamic execution of the list comprehension
-        # try:
-        #     exec (str_exec)
-        # except:
-        #     raise InternalError ("Cannot execute dynamic code: %s" %(str_exec) )
-        #
-        # return features
 
 class ChordalAxisTransformer(object):
     """This class is creating  a skeleton and identify bottleneck based on the Chordal Axis Transform CAT

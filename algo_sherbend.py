@@ -176,8 +176,8 @@ class SpatialConstraints(object):
 
         return crosses
 
-    def validateIntersection(self, sp_container, replacement_line, line):
-        """Check that the new sub line does not intersect against another line
+    def validateIntersection(self, sp_container, line, bend):
+        """Check that the replacement line does not intersect against another line
 
         Keyword definition
            sp_container -- SpatialContainer containing all the features
@@ -188,10 +188,15 @@ class SpatialConstraints(object):
             Boolean indicating if the line pass(True) or failed(False) the validation
         """
 
-        lst_lines = sp_container.get_features(filter= lambda feature: feature._gbt_geom_type == 'LineString'
-                                                                      and not feature._id == line._gbt_sc_id)
+        lst_lines = sp_container.get_features(bounds=bend.replacement_line.bounds,
+                                              remove_features=[line._gbt_sc_id],
+                                              filter=lambda feature: feature._gbt_geom_type == 'LineString')
 
-        gen_crosses = filter(replacement_line.intersects, lst_lines)  # Creates a generator
+        lst_line = list(lst_lines)
+        if len(lst_line) !=0:
+            print ("Le nombre de lignes est:", len(lst_line))
+
+        gen_crosses = filter(bend.replacement_line.intersects, lst_lines)  # Creates a generator
         intersection = False
         for element in gen_crosses:
             intersection = True
@@ -295,40 +300,47 @@ class Bend(object):
         xoff, yoff = lst_coords[bend.i][0], lst_coords[bend.i][1]
         line_translate = affinity.affine_transform(sub_line, [1, 0, 0, 1, -xoff, -yoff])
 
-        # Calculate the angle between the base of the bend and the x axis
-        line_translate_coord = list(line_translate.coords)
-        p0_x = line_translate_coord[bend_j][0]
-        p0_y = line_translate_coord[bend_j][1]
-        p1_x = abs(p0_x) + 1.  # In case x == 0
-        p1_y = 0.
+        # Extract the angle between the base of the bend (bendi, bendj) and the x axis
+        lst_coord = list(line_translate.coords)
+        p0 = (lst_coord[bend_j][0], lst_coord[bend_j][1])
+        p1 = (lst_coord[bend_i][0], lst_coord[bend_i][1])
+        p2 = (abs(p0[0])+1., 0)
+        angle = GenUtil.angle_vecor(p0, p1, p2)
+#        p0_x = line1_coord[bend_j][0]
+#        p0_y = line1_coord[bend_j][1]
+#        p1_x = abs(p0_x) + 1.  # In case x == 0
+#        p1_y = 0.
 
-        dot = p0_x * p1_x + p0_y * p1_y
-        len_a = (p0_x ** 2 + p0_y ** 2) ** .5
-        len_b = (p1_x ** 2 + p1_y ** 2) ** .5
+#        dot = p0_x * p1_x + p0_y * p1_y
+#        len_a = (p0_x ** 2 + p0_y ** 2) ** .5
+#        len_b = (p1_x ** 2 + p1_y ** 2) ** .5
 
         angle = math.acos(dot / (len_a * len_b))
         angle = (angle * 180 / math.pi)
-        print(angle)
 
-        if p0_y >= 0.:
-            angle = -angle
+        if p0[1] >= 0.:
+            angle = -angle  # Clockwise rotation
+#        if p0_y >= 0.:
+#            angle = -angle
+
+        # Rotate the bend so it's on the x axis
         a = math.cos(angle)
         b = -math.sin(angle)
         d = math.sin(angle)
         e = math.cos(angle)
+        line_rotate = affinity.rotate(line_translate, angle, origin=(0, 0))
+        lst_coords = list(line_rotate.coords)
 
-        line4 = affinity.rotate(line2, angle, origin=(0, 0))
 
-        x, y = zip(*list(line4.coords))
-        plt.plot(x, y)
-
-        lst_coords = list(line4.coords)
-        line_i = LineString(lst_coords[0:3])
-        line_j = LineString(lst_coords[-2:])
+#        line_i = LineString(lst_coords[0:3])
+#        line_j = LineString(lst_coords[-2:])
+        # Calculate the angle between the base of the bend of segment before and after the bend
         theta_i = lib_geobato.GenUtil.compute_angle(lst_coords[0], lst_coords[1], lst_coords[bend_j])
         theta_j = lib_geobato.GenUtil.compute_angle(lst_coords[bend_j], lst_coords[-2], lst_coords[-1])
 
-        (minx, miny, maxx, maxy) = line4.bounds
+        # Determine if the 
+        bend_line = LineString(lst_coord[bend_i:bend_j+1])
+        (minx, miny, maxx, maxy) = bend_line.bounds
         y_dynamic = (abs(miny) + abs(maxy)) * 10.
         x_middle = (lst_coords[bend_i][0] + lst_coords[bend_j][0]) / 2.
         line_y_positive = LineString(((x_middle, 0), (x_middle, y_dynamic)))
@@ -435,7 +447,7 @@ class AlgoSherbend(object):
         # Load all the features in the spatial container
         for feature in features:
             if feature.geom_type == 'Polygon':
-                feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
+####                feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
                 ext_feature = LineString(feature.exterior.coords)
@@ -455,12 +467,14 @@ class AlgoSherbend(object):
                 ext_feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 ext_feature._gbt_original_type = 'Polygon-Exterior'
 
-                self.s_container.add_feature(ext_feature)
-                self.s_container.add_features(int_features)
+                # Add the exterior and the interior independently
+                self.s_container.add_feature(ext_feature)  # Add the exterior
+                self.s_container.add_features(int_features)  # Add the interior
             else:  # Geometry is Point or LinseString
                 feature._gbt_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
                 feature._gbt_original_type = feature._gbt_geom_type
-                self.s_container.add_feature(feature)
+
+                self.s_container.add_feature(feature)  # Add the feature
 
         # Empty the feature list
         features.clear()
@@ -832,7 +846,7 @@ class AlgoSherbend(object):
             in_conflict = self.spatial_constraints.validateSimplicity(line, start_line, bend.replacement_line, end_line)
 
         if self.command.intersection and not in_conflict:
-            conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
+            in_conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
 
         if not in_conflict:
             # No conflict replace the bend by its replacement line

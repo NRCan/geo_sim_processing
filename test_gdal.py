@@ -1,11 +1,29 @@
 from shapely.geometry import Point, LineString, Polygon
 from time import time
 import lib_geobato
-import timeit
+import time
 import math
 import matplotlib.pyplot as plt
 
 from shapely import affinity
+
+coords = [(0,0),(1,1),(1,2),(2,5),(3,3,),(5,7)]
+line = LineString(coords)
+start = time.time()
+for x in range(10000):
+    coord = line.coords[0]
+    coord = line.coords[1]
+print (time.time()-start)
+
+start = time.time()
+for x in range(10000):
+    line_coords = list(line.coords)
+    coord = line_coords[3]
+    coord = line_coords[4]
+print (time.time()-start)
+
+
+0/0
 
 bend_i = 1
 bend_j = 4

@@ -58,14 +58,15 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', simplify_first_last=False, diameter=25., simplicity=True,
-                   adjacency=True, crossing=True, intersection=False, add_vertex=True, multi_bend=False, verbose=True)
+command = Command (in_file='', out_file='', simplify_first_last=False, diameter=50., simplicity=True,
+                   adjacency=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-command.in_file = r'data\hydro_pol.shp'
-command.out_file = r'data\canvec_out.gpkg'
+#command.in_file = r'data\hydro_pol.shp'
+command.in_file = r'data\simple_file.gpkg'
+command.out_file = r'data\simple_file_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
@@ -99,9 +100,15 @@ print("Name of input file: {}".format(command.in_file))
 print ("Number of layers read: {}".format(len(geo_content.schemas)))
 print ("Number of features read: {}".format(len(geo_content.features)))
 
+import time
+start = time. time()
 # Execute the Sherbend algorithm on the feature read
 sherbend = AlgoSherbend(command, geo_content)
 results = sherbend.process()
+end = time. time()
+print("Le temp est:{}: ".format(end - start))
+
+
 
 # Extract the name of each layer
 layer_names = set()
