@@ -58,15 +58,15 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', simplify_first_last=False, diameter=50., simplicity=True,
+command = Command (in_file='', out_file='', simplify_first_last=True, diameter=1.5, simplicity=True,
                    adjacency=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
 #command.in_file = r'data\hydro_pol.shp'
-command.in_file = r'data\simple_file.gpkg'
-command.out_file = r'data\simple_file_out.gpkg'
+command.in_file = r'data\closed_line.gpkg'
+command.out_file = r'data\closed_line_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)

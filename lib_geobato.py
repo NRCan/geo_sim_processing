@@ -511,7 +511,7 @@ class GenUtil:
                     elif (orientation < 0.0 and last_orientation < 0.0):
                         i_last_angle = i
                     else:
-                        # A new bend is detected and loaded
+                        # A new bend is detected and created
                         bends.append((last_bend_last_angle, i))
                         last_bend_last_angle = i_last_angle
                         i_last_angle = i

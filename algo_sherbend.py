@@ -147,10 +147,12 @@ class SpatialConstraints(object):
     _simplicity = []
     _intersection = []
 
-    def validateSimplicity(self, line, start_line, middle_line, end_line):
+    def validateSimplicity(self, bend, line, start_line, middle_line, end_line):
         """Check if the middle line is crossing the start_line or the end_line
 
         Keyword definition
+           bend -- Bend to simplify
+           line -- Line
            start_line -- LineString to check
            middle_line -- LineString to check
            end_line -- LineString to check
@@ -161,20 +163,29 @@ class SpatialConstraints(object):
 
         # Create a very short line so that the line does not touch the start and end line (increase performance)
         smaller_middle_line = affinity.scale(middle_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
-        crosses = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
+        in_conflict = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
 
-        if not crosses:
+        if not in_conflict:
             if line._gbt_original_type == 'Polygon-Exterior':
                 # Manage the interiors of a polygon
                 lst_holes = line._gbt_interiors
 
+                # Check that the new middle line does not cross any interior holes of the polygon
                 gen_crosses = list(filter(middle_line.intersects, lst_holes))  # Creates a generator
-                crosses = False
+                in_conflict = False
                 for element in gen_crosses:
-                    crosses = True
+                    in_conflict = True
                     break
 
-        return crosses
+                # Check that the bend to simplify does not contain any interior holes of the polygon
+                if not in_conflict:
+                    gen_inside = list(filter(bend.polygon.contains, lst_holes))
+                    in_conflict = False
+                    for element in gen_inside:
+                        in_conflict = True
+                        break
+
+        return in_conflict
 
     def validateIntersection(self, sp_container, line, bend):
         """Check that the replacement line does not intersect against another line
@@ -338,7 +349,7 @@ class Bend(object):
         theta_i = lib_geobato.GenUtil.compute_angle(lst_coords[0], lst_coords[1], lst_coords[bend_j])
         theta_j = lib_geobato.GenUtil.compute_angle(lst_coords[bend_j], lst_coords[-2], lst_coords[-1])
 
-        # Determine if the 
+        # Determine if the
         bend_line = LineString(lst_coord[bend_i:bend_j+1])
         (minx, miny, maxx, maxy) = bend_line.bounds
         y_dynamic = (abs(miny) + abs(maxy)) * 10.
@@ -742,7 +753,8 @@ class AlgoSherbend(object):
         
         Return value: None  
         """
-                # Calculate the inflexion in the line
+
+        # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(lst_coord, line._gbt_is_closed)
 
         # Create the bend
@@ -843,7 +855,7 @@ class AlgoSherbend(object):
             start_line = LineString(lst_coord[:bend.i+1])
             end_line = LineString(lst_coord[bend.j:])
 
-            in_conflict = self.spatial_constraints.validateSimplicity(line, start_line, bend.replacement_line, end_line)
+            in_conflict = self.spatial_constraints.validateSimplicity(bend, line, start_line, bend.replacement_line, end_line)
 
         if self.command.intersection and not in_conflict:
             in_conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
