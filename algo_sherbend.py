@@ -757,9 +757,27 @@ class AlgoSherbend(object):
         # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(lst_coord, line._gbt_is_closed)
 
-        # Create the bend
+        # Create the bends
         for (i,j) in lst_ij:
             line._gbt_bends.append(Bend(i, j, lst_coord[i:j+1]))
+
+        if line._gbt_original_type == "Polygon":
+            # Rotate the first last vertice in a place where the bend does not need to be simplify
+            # This process is simpler than to have to simplify a  bend formed by a first/last vertice
+            i,j = None,None
+            min_adj_area = -1
+            for bend in line.bends:
+                if line._gbt_min_adj_area > min_adj_area:
+                    if bend.j-bend.i >= 4:
+                        # Optimal bend found
+                        i,j = bend.i,bend.j
+                        break
+                    else:
+                        min_adj_area = line._gbt_min_adj_area
+                        i, j = bend.i, bend.j
+            if i is not None:
+                # Rotate the line at the center of the [i,]
+                
 
         # Manage the bend for the first/last bend and for closed line
         self._adjust_bend_special_cases(line)
