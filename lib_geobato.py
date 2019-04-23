@@ -472,7 +472,7 @@ class GenUtil:
 
 
     @staticmethod
-    def locate_bends(lst_coords, is_closed):
+    def locate_bends(lst_coords):
         """Calculates the position of each individual bends in a line
 
         The position of the bends are calculated according to the definition of the bencds
@@ -480,7 +480,6 @@ class GenUtil:
 
         Keyword definition
             lst_coords -- list of (x,y) tuple forming
-            is_closed -- Flag indicating if the line is closed or open
 
         Return value: Bend
         """

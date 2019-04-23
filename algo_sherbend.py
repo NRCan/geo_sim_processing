@@ -741,7 +741,22 @@ class AlgoSherbend(object):
     #             bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
 
 
-    def detect_bend_location(self, lst_coord, line):
+    def create_bends(self, lst_coord, line):
+        """Create the bends in a line"""
+
+        lst_coord = list(line.coords)
+
+        # Determine the inflexion in the line
+        lst_ij = GenUtil.locate_bends(lst_coord)
+
+        # Create the bends
+        for (i, j) in lst_ij:
+            line._gbt_bends.append(Bend(i, j, lst_coord[i:j + 1]))
+
+        return
+
+
+    def detect_bend_location(self, line):
         """Calculates the position of each individual bends in the line
         
         The position of the bends are calculated according to the definition of the bencds 
@@ -754,30 +769,34 @@ class AlgoSherbend(object):
         Return value: None  
         """
 
-        # Determine the inflexion in the line
-        lst_ij = GenUtil.locate_bends(lst_coord, line._gbt_is_closed)
+        # Create the bends in a line
+        self.create_bends(line)
 
-        # Create the bends
-        for (i,j) in lst_ij:
-            line._gbt_bends.append(Bend(i, j, lst_coord[i:j+1]))
-
-        if line._gbt_original_type == "Polygon":
+        if line._gbt_original_type == "Polygon-Exterior" or line._gbt_original_type == "Polygon-Interior":
             # Rotate the first last vertice in a place where the bend does not need to be simplify
-            # This process is simpler than to have to simplify a  bend formed by a first/last vertice
-            i,j = None,None
-            min_adj_area = -1
-            for bend in line.bends:
-                if line._gbt_min_adj_area > min_adj_area:
-                    if bend.j-bend.i >= 4:
-                        # Optimal bend found
-                        i,j = bend.i,bend.j
-                        break
-                    else:
+            # This process is simpler than to have to simplify a bend formed by a first/last vertice
+            i_j = None
+            min_adj_area = 0.
+            for bend in line._gbt_bends:
+                if bend.adj_area > line._gbt_min_adj_area and bend.j-bend.i >= 4:
+                    # Optimal bend found
+                    i_j = (bend.i,bend.j)
+                    break
+                else:
+                    if bend.adj_area > min_adj_area:
+                        # Acceptable bend
                         min_adj_area = line._gbt_min_adj_area
-                        i, j = bend.i, bend.j
-            if i is not None:
-                # Rotate the line at the center of the [i,]
-                
+                        i_j = (bend.i, bend.j)
+            if i_j is not None:
+                # Rotate the line at the center of the i_j
+                i = i_j[0]
+                j = i_j[1]
+                mid_i_j = int((i+j)/2)
+                line.coords = line.coords[mid_i_j:] + line.coords[0:mid_i_j+1]
+
+                # Create the bends on the rotated line
+                self.create_bends(line)
+
 
         # Manage the bend for the first/last bend and for closed line
         self._adjust_bend_special_cases(line)
@@ -819,7 +838,7 @@ class AlgoSherbend(object):
             lst_coord = list(line.coords)
             
             # For the line in hand detect where are the bends and classify the type of bends
-            self.detect_bend_location(lst_coord, line)
+            self.detect_bend_location(line)
             self.classify_bends(line)
             
             last_bend = (len(line._gbt_bends))-1
