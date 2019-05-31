@@ -741,7 +741,7 @@ class AlgoSherbend(object):
     #             bend.replacement_line = (line.coords[bend.i],line.coords[bend.j] )
 
 
-    def create_bends(self, lst_coord, line):
+    def create_bends(self, line):
         """Create the bends in a line"""
 
         lst_coord = list(line.coords)
