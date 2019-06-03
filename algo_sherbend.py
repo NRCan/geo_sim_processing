@@ -749,6 +749,9 @@ class AlgoSherbend(object):
         # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(lst_coord)
 
+        # Create bend attribute list or reset in the case  there are already some bends
+        line._gbt_bends = []
+
         # Create the bends
         for (i, j) in lst_ij:
             line._gbt_bends.append(Bend(i, j, lst_coord[i:j + 1]))
@@ -778,15 +781,18 @@ class AlgoSherbend(object):
             i_j = None
             min_adj_area = 0.
             for bend in line._gbt_bends:
-                if bend.adj_area > line._gbt_min_adj_area and bend.j-bend.i >= 4:
-                    # Optimal bend found
-                    i_j = (bend.i,bend.j)
-                    break
-                else:
-                    if bend.adj_area > min_adj_area:
-                        # Acceptable bend
-                        min_adj_area = line._gbt_min_adj_area
-                        i_j = (bend.i, bend.j)
+                if bend.adj_area > line._gbt_min_adj_area:
+                    if bend.j-bend.i >= 4:
+                        # A bend formed by 4 vertices (or more) is the ideal cases because if we split this bend
+                        # in the middle it forms 2 smaller bends that are removed as we do not process the first and
+                        # last bend of a closed line
+                        i_j = (bend.i,bend.j)
+                        break
+                    else:
+                        if bend.adj_area > min_adj_area:
+                            # Acceptable bend found and favor the biggest bend
+                            min_adj_area = line._gbt_min_adj_area
+                            i_j = (bend.i, bend.j)
             if i_j is not None:
                 # Rotate the line at the center of the i_j
                 i = i_j[0]
@@ -794,7 +800,7 @@ class AlgoSherbend(object):
                 mid_i_j = int((i+j)/2)
                 line.coords = line.coords[mid_i_j:] + line.coords[0:mid_i_j+1]
 
-                # Create the bends on the rotated line
+                # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
                 self.create_bends(line)
 
 
