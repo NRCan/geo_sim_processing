@@ -759,60 +759,64 @@ class AlgoSherbend(object):
         return
 
 
-    def detect_bend_location(self, line):
-        """Calculates the position of each individual bends in the line
-        
-        The position of the bends are calculated according to the definition of the bencds 
-        in the orginal paper Wang 1998.
+    def rotate_coordinates(self, line):
+        """Rotate the first and last vertice of a closed line on the place where the biggest bend because on a closed
+        line bend located on the first and last bend are not simplified
+
+        It is easier to move (rotate) the first/last vertice than to try to simplifiy the bend located
+        of the first last vertice.  So we try to move the first/last vertice on a bend that do not need
+        simplification
         
         Keyword definition
-          lst_coord -- List of coord of the line (for performance)
           line -- LineString object to calculate bends
         
         Return value: None  
         """
 
-        # Create the bends in a line
-        self.create_bends(line)
-
-        if line._gbt_original_type == "Polygon-Exterior" or line._gbt_original_type == "Polygon-Interior":
-            # Rotate the first last vertice in a place where the bend does not need to be simplify
-            # This process is simpler than to have to simplify a bend formed by a first/last vertice
-            i_j = None
-            min_adj_area = 0.
+        if len(line._gbt_bends) >= 2:
+            # Only process a line if there are two or more bends
+            min_adj_area = -1.
             for bend in line._gbt_bends:
-                if bend.adj_area > line._gbt_min_adj_area:
-                    if bend.j-bend.i >= 4:
-                        # A bend formed by 4 vertices (or more) is the ideal cases because if we split this bend
-                        # in the middle it forms 2 smaller bends that are removed as we do not process the first and
-                        # last bend of a closed line
-                        i_j = (bend.i,bend.j)
-                        break
-                    else:
-                        if bend.adj_area > min_adj_area:
-                            # Acceptable bend found and favor the biggest bend
-                            min_adj_area = line._gbt_min_adj_area
-                            i_j = (bend.i, bend.j)
-            if i_j is not None:
-                # Rotate the line at the center of the i_j
-                i = i_j[0]
-                j = i_j[1]
+                if bend.adj_area > line._gbt_min_adj_area and bend.j-bend.i >= 4:
+                    # A bend formed by 4 vertices (or more) is the ideal cases because if we split this bend
+                    # in the middle it forms 2 smaller bends that are removed as we do not process the first and
+                    # last bend of a closed line
+                    i_j = (bend.i,bend.j)
+                    break
+                if bend.adj_area > min_adj_area:
+                    # Acceptable bend found and favor the biggest bend
+                    min_adj_area = bend.adj_area
+                    i_j = (bend.i, bend.j)
+
+            # Rotate the line at the center of the i_j
+            i = i_j[0]
+            j = i_j[1]
+            if j-i == 2:
+                mid_i_j = i+1
+                del_first = False
+                del_last  = False
+            elif j-1 == 3:
+                mid_i_j = i + 1
+                del_first = True
+                del_last = False
+            else:
                 mid_i_j = int((i+j)/2)
-                line.coords = line.coords[mid_i_j:] + line.coords[0:mid_i_j+1]
+                del_first = True
+                del_last = True
+            line.coords = line.coords[mid_i_j:] + line.coords[0:mid_i_j+1]
 
-                # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
-                self.create_bends(line)
+            # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
+            self.create_bends(line)
 
+            # Delete the first bend if required
+            if len(line._gbt_bends) >= 1 and del_first:
+                del line._gbt_bends[0]
 
-        # Manage the bend for the first/last bend and for closed line
-        self._adjust_bend_special_cases(line)
+            # Delete the last bend if required
+            if len(line._gbt_bends) >= 1 and del_last:
+                del line._gbt_bends[-1]
 
-        # If there is one potential bend to simplify the line is not at its simplest form
-        line._gbt_is_simplest = True
-        if line._gbt_bends:
-            min_adj_area =  min(bend.adj_area for bend in line._gbt_bends)
-            if min_adj_area <= line._gbt_min_adj_area:
-                line._gbt_is_simplest = False
+        return
 
 
     def manage_lines_simplification (self):
@@ -842,9 +846,14 @@ class AlgoSherbend(object):
             # are written in the variable lst_coord.  At the end of the processing the coordinates of lst_coord are rewritten in the
             # Shapely structure.  This work is done only for performance issue   
             lst_coord = list(line.coords)
-            
-            # For the line in hand detect where are the bends and classify the type of bends
-            self.detect_bend_location(line)
+
+            # Create the bends in the line
+            self.create_bends(line)
+
+            if self.command.rotate_coord and line._gbt_is_closed:
+                self.rotate_coordinates(line)
+
+            # Classify each bend in the line
             self.classify_bends(line)
             
             last_bend = (len(line._gbt_bends))-1
@@ -895,8 +904,8 @@ class AlgoSherbend(object):
         in_conflict = False
 
         if self.command.simplicity and not in_conflict:
-            start_line = LineString(lst_coord[:bend.i+1])
-            end_line = LineString(lst_coord[bend.j:])
+            start_line = GenUtil.create_LineString(lst_coord[:bend.i+1])
+            end_line = GenUtil.create_LineString(lst_coord[bend.j:])
 
             in_conflict = self.spatial_constraints.validateSimplicity(bend, line, start_line, bend.replacement_line, end_line)
 
@@ -1005,39 +1014,39 @@ class AlgoSherbend(object):
 #    
 #        return i  
                 
-    def _adjust_bend_special_cases (self, line):
-        """Deal with bend sepcial cases.
-        
-        If we don't simplify the first last bend than remove the first/last bend of the list
-        If the line is closed and has only one bend than it is at its simplest form
-        
-        Parameters
-            line: line object to process
-            
-        Return value
-            None
-
-        """
-    
-        # Option to keep or delete the first and last bend on the line    
-        if self.command.simplify_first_last:
-            pass
-        else:
-            # Delete the first and last bend
-            if (len(line._gbt_bends) >= 2):
-                del line._gbt_bends[0]
-                del line._gbt_bends[-1]
-            elif (len(line._gbt_bends) == 1):
-                del line._gbt_bends[0]
-            else:
-                pass
-            
-        # Special case of a closed line with only one bend this line is at its simpliest form
-        if (len(line._gbt_bends) == 1 and line._gbt_is_closed):
-            line._gbt_bends = []
-            line._gbt_simplest = True
-            
-        return
+    # def _adjust_bend_special_cases (self, line):
+    #     """Deal with bend sepcial cases.
+    #
+    #     If we don't simplify the first last bend than remove the first/last bend of the list
+    #     If the line is closed and has only one bend than it is at its simplest form
+    #
+    #     Parameters
+    #         line: line object to process
+    #
+    #     Return value
+    #         None
+    #
+    #     """
+    #
+    #     # Option to keep or delete the first and last bend on the line
+    #     if self.command.simplify_first_last:
+    #         pass
+    #     else:
+    #         # Delete the first and last bend
+    #         if (len(line._gbt_bends) >= 2):
+    #             del line._gbt_bends[0]
+    #             del line._gbt_bends[-1]
+    #         elif (len(line._gbt_bends) == 1):
+    #             del line._gbt_bends[0]
+    #         else:
+    #             pass
+    #
+    #     # Special case of a closed line with only one bend this line is at its simpliest form
+    #     if (len(line._gbt_bends) == 1 and line._gbt_is_closed):
+    #         line._gbt_bends = []
+    #         line._gbt_simplest = True
+    #
+    #     return
 
 
 #    def _create_replacement_line(self, bend, lst_coords):

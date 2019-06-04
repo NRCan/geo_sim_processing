@@ -3,9 +3,11 @@ from time import time
 import lib_geobato
 import time
 import math
-import matplotlib.pyplot as plt
 
 from shapely import affinity
+
+a = LineString()
+0/0
 
 coords = [(0,0),(1,1),(1,2),(2,5),(3,3,),(5,7)]
 line = LineString(coords)

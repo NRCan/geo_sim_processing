@@ -152,6 +152,24 @@ class GenUtil:
         return iter_feature
 
     @staticmethod
+    def create_LineString (lst_coords):
+        """This method create a LineString from a list of coordinates
+
+        If the number of coordinates is 1 or 0 it will create an Empty Geometry
+
+        *Parameters*:
+            - List of coordinate
+
+        *Returns*
+            - LineString object or Empty Geometry if no coordinates
+        """
+
+        if lst_coords is None or len(lst_coords) <= 1:
+            lst_coords = []
+
+        return LineString(lst_coords)
+
+    @staticmethod
     def add_err_position (algorithm, id, line_error, err_type):
         """This method add an error in the error position list
         
