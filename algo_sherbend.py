@@ -793,17 +793,19 @@ class AlgoSherbend(object):
             j = i_j[1]
             if j-i == 2:
                 mid_i_j = i+1
-                del_first = False
-                del_last  = False
-            elif j-1 == 3:
+                del_first = True
+                del_last  = True
+            elif j-i == 3:
                 mid_i_j = i + 1
                 del_first = True
-                del_last = False
+                del_last = True
             else:
                 mid_i_j = int((i+j)/2)
                 del_first = True
                 del_last = True
-            line.coords = line.coords[mid_i_j:] + line.coords[0:mid_i_j+1]
+            line.coords = line.coords[mid_i_j:] + line.coords[1:mid_i_j+1]
+            print (line.coords[mid_i_j:])
+            print (line.coords[1:mid_i_j+1])
 
             # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
             self.create_bends(line)
@@ -842,10 +844,10 @@ class AlgoSherbend(object):
         
         for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
                         
-            # Copy the coordinates of the current line.  During the processing if the current line all the vertice edition
-            # are written in the variable lst_coord.  At the end of the processing the coordinates of lst_coord are rewritten in the
-            # Shapely structure.  This work is done only for performance issue   
-            lst_coord = list(line.coords)
+#            # Copy the coordinates of the current line.  During the processing if the current line all the vertice edition
+#            # are written in the variable lst_coord.  At the end of the processing the coordinates of lst_coord are rewritten in the
+#            # Shapely structure.  This work is done only for performance issue
+#            lst_coord = list(line.coords)
 
             # Create the bends in the line
             self.create_bends(line)
@@ -869,9 +871,9 @@ class AlgoSherbend(object):
                 else:
                     nbr_bends = 0
                 if (nbr_bends ==1):
-                    bend_status = self._manage_bend_constraints(line, bend, lst_coord)
+                    bend_status = self._manage_bend_constraints(line, bend)
                     if (bend_status == _SIMPLIFIED):
-                        lst_coord = lst_coord[0:bend.i] + list(bend.replacement_line.coords) + lst_coord[bend.j:]
+                        lst_coord = line.coords[0:bend.i] + list(bend.replacement_line.coords) + line.coords[bend.j:]
                         line_simplified = line_simplified or True
 
                 i_bend -= 1
@@ -886,14 +888,13 @@ class AlgoSherbend(object):
         
         return line_simplified
 
-    def _manage_bend_constraints(self, line, bend, lst_coord):
+    def _manage_bend_constraints(self, line, bend):
         """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
         
         Parameters
             bend: Bend object to simplify
             line: line object to simplify
-            lst_coord: In order to increase performance we are not rewriting the coordinates in
-                       the Sahpely structure we keep them in that list
+
             
         Return value
             Flag indicating the status of the constraint verification
@@ -902,6 +903,7 @@ class AlgoSherbend(object):
         
         """
         in_conflict = False
+        lst_coord = list(line.coords)
 
         if self.command.simplicity and not in_conflict:
             start_line = GenUtil.create_LineString(lst_coord[:bend.i+1])
