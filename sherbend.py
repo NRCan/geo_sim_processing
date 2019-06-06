@@ -4,10 +4,11 @@
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend
+from lib_geobato import PointSc, LineStringSc
 
 import fiona
 
-from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry import Polygon
 
 
 @dataclass
@@ -65,8 +66,8 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=
 
 
 #command.in_file = r'data\hydro_pol.shp'
-command.in_file = r'data\closed_line.gpkg'
-command.out_file = r'data\closed_line_out.gpkg'
+command.in_file = r'data\simple_file.gpkg'
+command.out_file = r'data\simple_file_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
@@ -80,9 +81,9 @@ for layer_name in layer_names:
         for in_feature in src:
             geom = in_feature['geometry']
             if geom['type'] == 'Point':
-                feature = Point(geom['coordinates'])
+                feature = PointSc(geom['coordinates'])
             elif geom['type'] == 'LineString':
-                feature = LineString(geom['coordinates'])
+                feature = LineStringSc(geom['coordinates'])
             elif geom['type'] == 'Polygon':
                 exterior = geom['coordinates'][0]
                 interiors = geom['coordinates'][1:]

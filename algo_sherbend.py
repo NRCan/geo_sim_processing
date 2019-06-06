@@ -26,7 +26,7 @@ import math
 from shapely.geometry import Point, LineString, Polygon
 from shapely import affinity
 
-from lib_geobato import GenUtil, SpatialContainer, Polygon
+from lib_geobato import GenUtil, SpatialContainer, PointSc, LineStringSc, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -223,7 +223,7 @@ class Bend(object):
     Attributes: None
     """
 
-    def __init__(self, i, j, lst_coord):
+    def __init__(self, i, j, bend_coords):
         """
         Initialize Bend object
 
@@ -233,7 +233,7 @@ class Bend(object):
         self.i = i  # Index of the start of the bend coordinate
         self.j = j  #  Index of the end of the bend coordinate
         self.type = _UNKNOWN  # Type of bend by default:UNKNOWN
-        self.lst_coord = lst_coord  # List of the coordinate forming the bend
+        self.bend_coords = bend_coords  # List of the coordinate forming the bend
 
 
     @property
@@ -241,7 +241,7 @@ class Bend(object):
         try:
             return self._polygon
         except AttributeError:
-            self._polygon = Polygon(self.lst_coord)
+            self._polygon = Polygon(self.bend_coords)
             return self._polygon
 
 
@@ -260,7 +260,7 @@ class Bend(object):
         try:
             return self._base
         except AttributeError:
-            self._base = GenUtil.distance(self.lst_coord[0], self.lst_coord[-1])
+            self._base = GenUtil.distance(self.bend_coords[0], self.bend_coords[-1])
             if self._base <= GenUtil.ZERO: self._base = GenUtil.ZERO # Avois a case of division by zero
             return self._base
 
@@ -296,14 +296,14 @@ class Bend(object):
         try:
             return self._replacement_line
         except AttributeError:
-            self._replacement_line = LineString((self.lst_coord[0], self.lst_coord[-1]))
+            self._replacement_line = LineStringSc((self.bend_coords[0], self.bend_coords[-1]))
             return self._replacement_line
 
     def create_replacement_line (lst_coords, bend, diameter):
         """Calculate the replacement line for a bend"""
 
         # Extract the sub line containing the bend with one extra vertice on each side
-        sub_line = LineString(lst_coords[bend.i-1:bend.j+1])
+        sub_line = LineStringSc(lst_coords[bend.i-1:bend.j+1])
         bend_i = 1
         bend_j = len(bend.j)-1
 
@@ -744,17 +744,15 @@ class AlgoSherbend(object):
     def create_bends(self, line):
         """Create the bends in a line"""
 
-        lst_coord = list(line.coords)
-
         # Determine the inflexion in the line
-        lst_ij = GenUtil.locate_bends(lst_coord)
+        lst_ij = GenUtil.locate_bends(line.coords)
 
         # Create bend attribute list or reset in the case  there are already some bends
         line._gbt_bends = []
 
         # Create the bends
         for (i, j) in lst_ij:
-            line._gbt_bends.append(Bend(i, j, lst_coord[i:j + 1]))
+            line._gbt_bends.append(Bend(i, j, line.coords[i:j + 1]))
 
         return
 
@@ -844,11 +842,6 @@ class AlgoSherbend(object):
         
         for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
                         
-#            # Copy the coordinates of the current line.  During the processing if the current line all the vertice edition
-#            # are written in the variable lst_coord.  At the end of the processing the coordinates of lst_coord are rewritten in the
-#            # Shapely structure.  This work is done only for performance issue
-#            lst_coord = list(line.coords)
-
             # Create the bends in the line
             self.create_bends(line)
 
@@ -873,7 +866,7 @@ class AlgoSherbend(object):
                 if (nbr_bends ==1):
                     bend_status = self._manage_bend_constraints(line, bend)
                     if (bend_status == _SIMPLIFIED):
-                        lst_coord = line.coords[0:bend.i] + list(bend.replacement_line.coords) + line.coords[bend.j:]
+                        new_coords = line.coords[0:bend.i] + bend.replacement_line.coords + line.coords[bend.j:]
                         line_simplified = line_simplified or True
 
                 i_bend -= 1
@@ -883,7 +876,7 @@ class AlgoSherbend(object):
             
             # Update the Shapely structure using the coordinates in the temporary structure
             if (line_simplified):
-                line.coords = lst_coord
+                line.coords = new_coords
 #            line.update_coords(in_hand_line_coords, self.s_container)
         
         return line_simplified
@@ -903,11 +896,10 @@ class AlgoSherbend(object):
         
         """
         in_conflict = False
-        lst_coord = list(line.coords)
 
         if self.command.simplicity and not in_conflict:
-            start_line = GenUtil.create_LineString(lst_coord[:bend.i+1])
-            end_line = GenUtil.create_LineString(lst_coord[bend.j:])
+            start_line = GenUtil.create_LineString(line.coords[:bend.i+1])
+            end_line = GenUtil.create_LineString(line.coords[bend.j:])
 
             in_conflict = self.spatial_constraints.validateSimplicity(bend, line, start_line, bend.replacement_line, end_line)
 

@@ -1118,6 +1118,53 @@ class GenUtil:
             
         return MA_LineString(lst_coords)
     
+
+class LineStringSc(LineString):
+
+    def __init__(self, coords, fast_access=True):
+        super().__init__(coords)
+        self.fast_access = fast_access
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+    @property
+    def coords(self):
+        if self.fast_access:
+            return self.__lst_coords
+        else:
+            return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        print ("Need to update the spatial container...")
+        LineString.coords.__set__(self, coords)
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+
+class PointSc(Point):
+
+    def __init__(self, coords, fast_access=True):
+        super().__init__(coords)
+        self.fast_access = fast_access
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+    @property
+    def coords(self):
+        if self.fast_access:
+            return self.__lst_coords
+        else:
+            return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        print ("Need to update the spatial container...")
+        Poin.coords.__set__(self, coords)
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+
 class Holder(object):
     """Generic class creator
     
