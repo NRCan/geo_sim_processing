@@ -841,7 +841,7 @@ class AlgoSherbend(object):
         line_simplified = False
         
         for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
-                        
+
             # Create the bends in the line
             self.create_bends(line)
 
@@ -860,23 +860,19 @@ class AlgoSherbend(object):
 #                nbr_bends = self._number_of_bends_to_reduce(line._gbt_bends[i_bend].type)
                 bend = line._gbt_bends[i_bend]
                 if bend.type == _ONE_BEND:
-                    nbr_bends = 1
-                else:
-                    nbr_bends = 0
-                if (nbr_bends ==1):
                     bend_status = self._manage_bend_constraints(line, bend)
                     if (bend_status == _SIMPLIFIED):
-                        new_coords = line.coords[0:bend.i] + bend.replacement_line.coords + line.coords[bend.j:]
-                        line_simplified = line_simplified or True
+                        line.coords = line.coords[0:bend.i] + bend.replacement_line.coords + line.coords[bend.j:]
+                        line_simplified = True
 
                 i_bend -= 1
                 
             # Reset the bends to save some space...
             line._gbt_bends = []
             
-            # Update the Shapely structure using the coordinates in the temporary structure
-            if (line_simplified):
-                line.coords = new_coords
+#            # Update the Shapely structure using the coordinates in the temporary structure
+#            if (line_simplified):
+#                line.coords = new_coords
 #            line.update_coords(in_hand_line_coords, self.s_container)
         
         return line_simplified
@@ -1512,13 +1508,13 @@ class AlgoSherbend(object):
 
                 iter_nbr += 1
                     
-        features = []
+        out_features = []
         for feature in self.s_container.get_features():
             if feature._gbt_geom_type == 'Point':
-                features.append(feature)
+                out_features.append(feature)
             elif feature._gbt_geom_type == 'LineString':
                 if feature._gbt_original_type == 'LineString':
-                    features.append(feature)
+                    out_features.append(feature)
                 else:
                     if feature._gbt_original_type == 'Polygon-Exterior':
                         # The LineString was an exterior Polygon so reconstruct the originalPolygon
@@ -1526,8 +1522,8 @@ class AlgoSherbend(object):
                         polygon = Polygon(feature.coords, interiors)
                         polygon._gbt_layer_name = feature._gbt_layer_name
                         polygon._gbt_properties = feature._gbt_properties
-                        features.append(polygon)
+                        out_features.append(polygon)
                     else:
                         pass  # Nothing to do with the holes here
 
-        return features
+        return out_features
