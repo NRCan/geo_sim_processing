@@ -33,7 +33,7 @@ class Command:
     diameter: float
     rotate_coord: bool
     simplicity: bool
-    adjacency: bool
+    sidedness: bool
     crossing: bool
     intersection: bool
     add_vertex: bool
@@ -60,14 +60,14 @@ class GeoContent:
 
 
 command = Command (in_file='', out_file='', diameter=1.5, rotate_coord=True, simplicity=True,
-                   adjacency=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
+                   sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
 #command.in_file = r'data\hydro_pol.shp'
-command.in_file = r'data\simple_file.gpkg'
-command.out_file = r'data\simple_file_out1.gpkg'
+command.in_file = r'data\simple_file3.gpkg'
+command.out_file = r'data\simple_file_out3.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
