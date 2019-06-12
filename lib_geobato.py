@@ -490,6 +490,25 @@ class GenUtil:
 
 
     @staticmethod
+    def locate_bends1(lst_coords):
+
+        if GenUtil.is_line_closed(lst_coords):
+            line_is_cloed = True
+        else:
+            line_is_closed = False
+        bends = []
+
+        last_orientation = GenUtil.direction(lst_coords[0], lst_coords[1], lst_coords[2])
+
+        if len(lst_coords) <= 2:
+            # Line with only 2 coordinates cannot have bends
+        else:
+            
+
+
+
+
+    @staticmethod
     def locate_bends(lst_coords):
         """Calculates the position of each individual bends in a line
 
