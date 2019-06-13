@@ -492,18 +492,47 @@ class GenUtil:
     @staticmethod
     def locate_bends1(lst_coords):
 
-        if GenUtil.is_line_closed(lst_coords):
-            line_is_cloed = True
-        else:
-            line_is_closed = False
         bends = []
 
-        last_orientation = GenUtil.direction(lst_coords[0], lst_coords[1], lst_coords[2])
-
         if len(lst_coords) <= 2:
-            # Line with only 2 coordinates cannot have bends
+            # There is no bend in a line with two coordinates
+            bend_direction = 0.0
         else:
-            
+            # check if the line is a straight line
+            for i in range(1, len(lst_coords)-1):
+                bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                if bend_direction != 0.0:
+                    break
+
+        if bend_direction != 0.0:
+
+            first_vertice = 1
+#            if GenUtil.is_line_closed(lst_coords):
+#                line_is_cloed = True
+#            else:
+#                line_is_closed = False
+
+            last_bend_direction = GenUtil.direction(lst_coords[0], lst_coords[1], lst_coords[2])
+
+            for i in range(1, len(lst_coords)-1):
+                bend_direction = GenUtil.direction(lst_coords[i-1], lst_coords[i], lst_coords[i+1])
+                if bend_direction == 0.0:
+                    # Nothing to do it's a straight line
+                    pass
+                elif last_bend_direction*bend_direction > 0.0:
+                    # Nothing to do the bend is in the same orientation as the last bend
+                    pass
+                else:
+                    # Change of bend direction; a bend is detected and created
+                    bends.append((first_vertice-1, i))
+                    first_vertice = i
+
+                last_bend_direction = bend_direction
+
+            # Manage the last bend of the line
+            bends.append((first_vertice, len(lst_coords)-1))
+
+        return bends
 
 
 

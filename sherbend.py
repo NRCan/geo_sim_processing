@@ -11,6 +11,14 @@ import fiona
 from shapely.geometry import Polygon
 
 
+from lib_geobato import GenUtil
+a = GenUtil.locate_bends1([(0,0),(1,1)])
+b = GenUtil.locate_bends1([(0,0),(1,1),(2,2)])
+c = GenUtil.locate_bends1([(0,0),(1,1),(2,0)])
+d = GenUtil.locate_bends1([(0,0),(1,1),(2,1),(3,0)])
+e = GenUtil.locate_bends1([(0,0),(1,1),(2,0),(3,0),(4,1),(5,0)])
+
+
 @dataclass
 class Command:
     """Contains the parameters of the command.
