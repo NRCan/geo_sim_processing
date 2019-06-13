@@ -506,7 +506,7 @@ class GenUtil:
 
         if bend_direction != 0.0:
 
-            first_vertice = 1
+            before_inflexion = 0  # Position of the index beofre the inflexion
 #            if GenUtil.is_line_closed(lst_coords):
 #                line_is_cloed = True
 #            else:
@@ -524,13 +524,12 @@ class GenUtil:
                     pass
                 else:
                     # Change of bend direction; a bend is detected and created
-                    bends.append((first_vertice-1, i))
-                    first_vertice = i
-
-                last_bend_direction = bend_direction
+                    bends.append((before_inflexion, i))
+                    before_inflexion = i-1
+                    last_bend_direction = bend_direction
 
             # Manage the last bend of the line
-            bends.append((first_vertice, len(lst_coords)-1))
+            bends.append((before_inflexion, len(lst_coords)-1))
 
         return bends
 
