@@ -488,21 +488,102 @@ class GenUtil:
 
         return (GenUtil.angle_vector(p1, p2, p3, type))
 
+        @staticmethod
+        def locate_bends1(lst_coords):
+
+            bends = []
+
+            if len(lst_coords) <= 2:
+                # There is no bend in a line with two coordinates
+                bend_direction = 0.0
+            else:
+                # check if the line is a straight line
+                for i in range(1, len(lst_coords) - 1):
+                    bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                    if bend_direction != 0.0:
+                        break
+
+            if bend_direction != 0.0:
+
+                before_inflexion = 0  # Position of the index beofre the inflexion
+                #            if GenUtil.is_line_closed(lst_coords):
+                #                line_is_cloed = True
+                #            else:
+                #                line_is_closed = False
+
+                last_bend_direction = GenUtil.direction(lst_coords[0], lst_coords[1], lst_coords[2])
+
+                for i in range(1, len(lst_coords) - 1):
+                    bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                    if bend_direction == 0.0:
+                        # Nothing to do it's a straight line
+                        pass
+                    elif last_bend_direction * bend_direction > 0.0:
+                        # Nothing to do the bend is in the same orientation as the last bend
+                        pass
+                    else:
+                        # Change of bend direction; a bend is detected and created
+                        bends.append((before_inflexion, i))
+                        before_inflexion = i - 1
+                        last_bend_direction = bend_direction
+
+                # Manage the last bend of the line
+                bends.append((before_inflexion, len(lst_coords) - 1))
+
+            return bends
+
 
     @staticmethod
-    def locate_bends1(lst_coords):
+    def locate_bends_closed_line(lst_coords):
 
         bends = []
+        lst_coords_tmp = list(lst_coords)
+        del lst_coords[-1]  # Delete the last coordinates because it's the same as the first one
 
-        if len(lst_coords) <= 2:
-            # There is no bend in a line with two coordinates
-            bend_direction = 0.0
+        if len(lst_coords) <= 3:
+            # There is no bend in a closed line with 3 coordinates or less
+            last_vertice = -1
         else:
-            # check if the line is a straight line
-            for i in range(1, len(lst_coords)-1):
-                bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
-                if bend_direction != 0.0:
+            # Locate the position of the first change in inflexion in the line
+            last_vertce = -1
+            lst_tmp = list(lst_coords)
+            del lst_coords[-1]  # Delete the last coordinates because it's the same as the first one
+            nbr_tmp = len(lst_tmp)
+            last_bend_direction = GenUtil.direction(lst_tmp[-1%nbr_tmp], lst_tmp[0], lst_tmp[1])
+            for i in range(1, len(nbr_tmp):
+                bend_direction = GenUtil.direction(lst_tmp[i-1%nbr_tmp], lst_tmp[i], lst_tmp[i+1%nbr_tmp])
+                if bend_direction == 0.0:
+                    # It's a straight line pass to the next vertice
+                elif last_bend_direction*bend_direction >= 0.0
+                    # The bend is in the same direction pass to the next vertice
+                else:
+                    # The is a change in bend direction
+                    last_vertice = i-1
                     break
+
+            if last_vertice == -1:
+                # There is no bend in this closed line
+                pass
+            else:
+                j = start_vertice
+                last_bend_direction = GenUtil.direction(lst_tmp[j-1%nbr_tmp], lst_tmp[j%nbr_tmp], lst_tmp[j+1%nbr_tmp])
+                for i in range(nbr_tmp):
+                    j = i+ last_vertice
+                    bend_direction = GenUtil.direction(lst_tmp[j-1 % nbr_tmp], lst_tmp[j % nbr_tmp],
+                                                       lst_tmp[j+1 % nbr_tmp])
+                    if last_bend_direction == 0.0:
+                        # It's a staight line ; pass
+                        pass
+                    elif last_bend_direction*bend_direction >= 0:
+                        # The bend is in the same directio; pass
+                        pass
+                    else:
+                        # Change of bend direction; a bend is detected and created
+                        bends.append((before_inflexion, i))
+                        before_inflexion = i - 1
+                        last_bend_direction = bend_direction
+
+
 
         if bend_direction != 0.0:
 
