@@ -21,6 +21,13 @@ f = GenUtil.locate_bends1([(0,0),(1,1),(2,0),(3,0),(4,0), (5,1),(6,0)])
 g = GenUtil.locate_bends1([(0,0),(1,1),(2,0),(3,0),(4,0), (5,1),(6,0)])
 h = GenUtil.locate_bends1([(0,0),(1,1),(2,1),(3,1),(3,0),(4,0),(5,0),(6,1),(6.5,.5),(7,0)])
 
+i = GenUtil.locate_bends_closed_line([(0,0),(1,1),(2,0),(0,0)])
+j = GenUtil.locate_bends_closed_line([(0,0),(0,1),(0.5,.9),(1,1), (1,0),(0,0)])
+k = GenUtil.locate_bends_closed_line([(0,1),(0.5,.9),(1,1),(1,0), (0,0),(0,1)])
+l = GenUtil.locate_bends_closed_line([(0.5,.9),(1,1),(1,0), (0,0),(0,1),(.5,.9)])
+m = GenUtil.locate_bends_closed_line([(1,1),(1,0), (0,0),(0,1),(.5,.9),(1,1)])
+n = GenUtil.locate_bends_closed_line([(1,0), (0,0),(0,1),(.5,.9),(1,1),(1,0)])
+
 
 @dataclass
 class Command:
