@@ -24,6 +24,7 @@
 import math
 
 from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry.polygon import orient
 from shapely import affinity
 
 from lib_geobato import GenUtil, SpatialContainer, PointSc, LineStringSc, Polygon
@@ -443,7 +444,10 @@ class AlgoSherbend(object):
 #            self.params.big_bend = False
 
     def load_features(self, features):
-        """Load the points, line strings and polygons in the spatial container
+        """Load the points, line strings and polygons in the spatial container.
+
+        The Polygons are deconstructued into a list LineString with clockwise orientation and extra added information
+        needed for the reconstruction of the original Polygon
 
         Keyword definition
             features: List of shapely features
@@ -457,26 +461,28 @@ class AlgoSherbend(object):
 
         # Load all the features in the spatial container
         for feature in features:
-            if feature.geom_type == 'Polygon':
+            if feature.geom_type == GenUtil.POLYGON:
 ####                feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
-                ext_feature = LineString(feature.exterior.coords)
+                tmp_pol = orient(Polygon(feature.exterior.coords), GenUtil.CLOCKWISE) # Orient vertices clockwiswe
+                ext_feature = LineString(tmp_pol.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
                 # Extract the interiors as LineString
                 for interior in interiors:
-                    interior = LineString(interior.coords)  # Transform from LinearRing to LineString
-                    interior._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
-                    interior._gbt_original_type = 'Polygon-Interiors'
+                    tmp_pol = orient(Polygon(interior.coords), GenUtil.CLOCKWISE)  # Orient vertices clockwiswe
+                    interior = LineString(tmp_pol.exterior.coords)  # Transform to LineString
+                    interior._gbt_geom_type = GenUtil.LINE_STRING  # For performance to avoid the C caller overhead
+                    interior._gbt_original_type = GenUtil.POLYGON_INTERIOR
                     int_features.append(interior)
 
                 # Add attributes needed for reconstruction
                 ext_feature._gbt_interiors = int_features
                 ext_feature._gbt_layer_name = feature._gbt_layer_name
                 ext_feature._gbt_properties = feature._gbt_properties
-                ext_feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
-                ext_feature._gbt_original_type = 'Polygon-Exterior'
+                ext_feature._gbt_geom_type = GenUtil.LINE_STRING  # For performance to avoid the C caller overhead
+                ext_feature._gbt_original_type = GenUtil.POLYGON_EXTERIOR
 
                 # Add the exterior and the interior independently
                 self.s_container.add_feature(ext_feature)  # Add the exterior
@@ -502,7 +508,7 @@ class AlgoSherbend(object):
         Return value: None
 
         """
-        for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type=="LineString"):
+        for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type==GenUtil.LINE_STRING):
             
             line._gbt_is_simplest = False
             line._gbt_bends = []

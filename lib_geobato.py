@@ -25,10 +25,15 @@ class GenUtil:
     """This class defines a series of generic utility static method"""
 
     # Define some constants...
-    POINT = 1
-    LINE_STRING = 2
-    POLYGON = 3
+    POINT = 'Point'
+    LINE_STRING = 'LineString'
+    POLYGON = 'Polygon'
+    POLYGON_EXTERIOR = 'PolygonExterior'
+    POLYGON_INTERIOR = 'PolygonInterior'
 
+
+    ANTI_CLOCKWISE = 1
+    CLOCKWISE = -1
     CROSSING_LINE = 'Crossing line'
     SIDEDNESS = 'Sidedness'
     SIMPLE_LINE = 'Simple line'
