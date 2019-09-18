@@ -238,7 +238,7 @@ class Bend(object):
 
 
     @property
-    def polygon(self):  # Polygon formed by the bend
+    def polygon(self):  # Polygon formed by the bendbbbbbbb
         try:
             return self._polygon
         except AttributeError:
@@ -749,6 +749,11 @@ class AlgoSherbend(object):
 
     def create_bends(self, line):
         """Create the bends in a line"""
+
+        if line._gbt_is_closed:
+            # For closed line the position of the line vertice in order to facilitate
+            # the detection of the bend
+            line.coords = GenUtil.
 
         # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(line.coords)

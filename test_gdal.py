@@ -1,4 +1,5 @@
 from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry.polygon import orient
 from time import time
 import lib_geobato
 import time
@@ -6,11 +7,11 @@ import math
 
 from shapely import affinity
 
-a = LineString()
-0/0
+coords = [(0,0),(1,0), (1,1), (0,1)]
+pol = Polygon(coords)
+pol1 = orient(pol, -1.0)
+pol2 = orient(pol, 1.0)
 
-coords = [(0,0),(1,1),(1,2),(2,5),(3,3,),(5,7)]
-line = LineString(coords)
 start = time.time()
 for x in range(10000):
     coord = line.coords[0]
