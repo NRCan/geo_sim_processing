@@ -466,13 +466,13 @@ class AlgoSherbend(object):
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
                 tmp_pol = orient(Polygon(feature.exterior.coords), GenUtil.CLOCKWISE) # Orient vertices clockwiswe
-                ext_feature = LineString(tmp_pol.exterior.coords)
+                ext_feature = LineStringSc(tmp_pol.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
                 # Extract the interiors as LineString
                 for interior in interiors:
                     tmp_pol = orient(Polygon(interior.coords), GenUtil.CLOCKWISE)  # Orient vertices clockwiswe
-                    interior = LineString(tmp_pol.exterior.coords)  # Transform to LineString
+                    interior = LineStringSc(tmp_pol.exterior.coords)  # Transform to LineString
                     interior._gbt_geom_type = GenUtil.LINE_STRING  # For performance to avoid the C caller overhead
                     interior._gbt_original_type = GenUtil.POLYGON_INTERIOR
                     int_features.append(interior)
@@ -488,6 +488,7 @@ class AlgoSherbend(object):
                 self.s_container.add_feature(ext_feature)  # Add the exterior
                 self.s_container.add_features(int_features)  # Add the interior
             else:  # Geometry is Point or LinseString
+                feature = LineStringSc(feature.coords)
                 feature._gbt_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
                 feature._gbt_original_type = feature._gbt_geom_type
 
@@ -749,11 +750,6 @@ class AlgoSherbend(object):
 
     def create_bends(self, line):
         """Create the bends in a line"""
-
-        if line._gbt_is_closed:
-            # For closed line the position of the line vertice in order to facilitate
-            # the detection of the bend
-            line.coords = GenUtil.
 
         # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(line.coords)

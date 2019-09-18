@@ -1230,6 +1230,8 @@ class GenUtil:
 
 class LineStringSc(LineString):
 
+    __slots__ = ('_gbt_is_simplest', '_gbt_bends')
+
     def __init__(self, coords, fast_access=True):
         super().__init__(coords)
         self.fast_access = fast_access
