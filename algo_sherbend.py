@@ -27,7 +27,7 @@ from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.polygon import orient
 from shapely import affinity
 
-from lib_geobato import GenUtil, SpatialContainer, PointSc, LineStringSc, Polygon
+from lib_geobato import GenUtil, SpatialContainer, PointSb, LineStringSb, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -167,7 +167,7 @@ class SpatialConstraints(object):
         in_conflict = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
 
         if not in_conflict:
-            if line._gbt_original_type == 'Polygon-Exterior':
+            if line.sb_original_type == 'Polygon-Exterior':
                 # Manage the interiors of a polygon
                 lst_holes = line._gbt_interiors
 
@@ -201,7 +201,7 @@ class SpatialConstraints(object):
         """
 
         lst_lines = sp_container.get_features(bounds=bend.replacement_line.bounds,
-                                              remove_features=[line._gbt_sc_id],
+                                              remove_features=[line._sb_sc_id],
                                               filter=lambda feature: feature._gbt_geom_type == 'LineString')
 
         lst_line = list(lst_lines)
@@ -297,14 +297,14 @@ class Bend(object):
         try:
             return self._replacement_line
         except AttributeError:
-            self._replacement_line = LineStringSc((self.bend_coords[0], self.bend_coords[-1]))
+            self._replacement_line = LineStringSb((self.bend_coords[0], self.bend_coords[-1]))
             return self._replacement_line
 
     def create_replacement_line (lst_coords, bend, diameter):
         """Calculate the replacement line for a bend"""
 
         # Extract the sub line containing the bend with one extra vertice on each side
-        sub_line = LineStringSc(lst_coords[bend.i-1:bend.j+1])
+        sub_line = LineStringSb(lst_coords[bend.i-1:bend.j+1])
         bend_i = 1
         bend_j = len(bend.j)-1
 
@@ -431,6 +431,9 @@ class AlgoSherbend(object):
         
         self.command = command
         self.geo_content = geo_content
+        ray = command.diameter / 2.0
+        self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+
 
 #        # Set the parameters according to the params.bend_mode parameter
 #        if self.params.bend_mode == MULTI_BENDS:
@@ -466,31 +469,29 @@ class AlgoSherbend(object):
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
                 tmp_pol = orient(Polygon(feature.exterior.coords), GenUtil.CLOCKWISE) # Orient vertices clockwiswe
-                ext_feature = LineStringSc(tmp_pol.exterior.coords)
+                ext_feature = LineStringSb(tmp_pol.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
                 # Extract the interiors as LineString
                 for interior in interiors:
                     tmp_pol = orient(Polygon(interior.coords), GenUtil.CLOCKWISE)  # Orient vertices clockwiswe
-                    interior = LineStringSc(tmp_pol.exterior.coords)  # Transform to LineString
-                    interior._gbt_geom_type = GenUtil.LINE_STRING  # For performance to avoid the C caller overhead
+                    interior = LineStringSb(tmp_pol.exterior.coords)  # Transform to LineString
                     interior._gbt_original_type = GenUtil.POLYGON_INTERIOR
                     int_features.append(interior)
 
                 # Add attributes needed for reconstruction
-                ext_feature._gbt_interiors = int_features
-                ext_feature._gbt_layer_name = feature._gbt_layer_name
-                ext_feature._gbt_properties = feature._gbt_properties
-                ext_feature._gbt_geom_type = GenUtil.LINE_STRING  # For performance to avoid the C caller overhead
-                ext_feature._gbt_original_type = GenUtil.POLYGON_EXTERIOR
+                ext_feature.sb_interiors = int_features
+                ext_feature.sb_layer_name = feature.sb_layer_name
+                ext_feature.sb_properties = feature.sb_properties
+                ext_feature.sb_original_type = GenUtil.POLYGON_EXTERIOR
 
                 # Add the exterior and the interior independently
                 self.s_container.add_feature(ext_feature)  # Add the exterior
                 self.s_container.add_features(int_features)  # Add the interior
             else:  # Geometry is Point or LinseString
                 feature = LineStringSc(feature.coords)
-                feature._gbt_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
-                feature._gbt_original_type = feature._gbt_geom_type
+                feature.sb_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
+                feature.sb_original_type = feature._gbt_geom_type
 
                 self.s_container.add_feature(feature)  # Add the feature
 
@@ -511,8 +512,7 @@ class AlgoSherbend(object):
         """
         for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type==GenUtil.LINE_STRING):
             
-            line._gbt_is_simplest = False
-            line._gbt_bends = []
+
             # Set the minimal adjusted area
             ray = diameter/2.0
             line._gbt_min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
@@ -1517,18 +1517,18 @@ class AlgoSherbend(object):
                     
         out_features = []
         for feature in self.s_container.get_features():
-            if feature._gbt_geom_type == 'Point':
+            if feature.sb_geom_type == GenUtil.POINT:
                 out_features.append(feature)
-            elif feature._gbt_geom_type == 'LineString':
-                if feature._gbt_original_type == 'LineString':
+            elif feature.sb_geom_type == GenUtil.LINE_STRING:
+                if feature.sb_original_type == GenUtil.LINE_STRING:
                     out_features.append(feature)
                 else:
-                    if feature._gbt_original_type == 'Polygon-Exterior':
+                    if feature.sb_original_type == GenUtil.POLYGON_EXTERIOR:
                         # The LineString was an exterior Polygon so reconstruct the originalPolygon
-                        interiors = [list(interior.coords) for interior in feature._gbt_interiors]
+                        interiors = [list(interior.coords) for interior in feature.sb_interiors]
                         polygon = Polygon(feature.coords, interiors)
-                        polygon._gbt_layer_name = feature._gbt_layer_name
-                        polygon._gbt_properties = feature._gbt_properties
+                        polygon.sb_layer_name = feature.sb_layer_name
+                        polygon.sb_properties = feature.sb_properties
                         out_features.append(polygon)
                     else:
                         pass  # Nothing to do with the holes here

@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend
-from lib_geobato import PointSc, LineStringSc
+from lib_geobato import PointSb, LineStringSb
 
 import fiona
 
@@ -99,17 +99,17 @@ for layer_name in layer_names:
         for in_feature in src:
             geom = in_feature['geometry']
             if geom['type'] == 'Point':
-                feature = PointSc(geom['coordinates'])
+                feature = PointSb(geom['coordinates'])
             elif geom['type'] == 'LineString':
-                feature = LineStringSc(geom['coordinates'])
+                feature = LineStringSb(geom['coordinates'])
             elif geom['type'] == 'Polygon':
                 exterior = geom['coordinates'][0]
                 interiors = geom['coordinates'][1:]
                 feature = Polygon(exterior, interiors)
             else:
                 print ("The following geometry type is unsupported: {}".format(geom['type']))
-            feature._gbt_layer_name = layer_name  # Layer name is the key for the schema
-            feature._gbt_properties = in_feature['properties']
+            feature.sb_layer_name = layer_name  # Layer name is the key for the schema
+            feature.sb_properties = in_feature['properties']
             geo_content.features.append(feature)
     src.close()
 
@@ -132,7 +132,7 @@ print("Le temp est:{}: ".format(end - start))
 # Extract the name of each layer
 layer_names = set()
 for feature in results:
-    layer_names.add(feature._gbt_layer_name)
+    layer_names.add(feature.sb_layer_name)
 
 # Loop over each layer and write the content of the file
 for layer_name in layer_names:
@@ -141,7 +141,7 @@ for layer_name in layer_names:
                     layer=layer_name,
                     crs=geo_content.crs,
                     schema=geo_content.schemas[layer_name]) as dest:
-        for feature in (feature for feature in results if feature._gbt_layer_name==layer_name):
+        for feature in (feature for feature in results if feature.sb_layer_name==layer_name):
             # Transform the Shapely features for fiona writing
             if feature.geom_type == 'Point' or feature.geom_type == 'LineString':
                 coordinates = list(feature.coords)
@@ -153,7 +153,7 @@ for layer_name in layer_names:
 
             out_feature = {'geometry': {'type': feature.geom_type,
                                         'coordinates': coordinates},
-                            'properties': feature._gbt_properties}
+                            'properties': feature.sb_properties}
             dest.write(out_feature)
 
         dest.close()

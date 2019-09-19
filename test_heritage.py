@@ -23,6 +23,11 @@ class LineStringSc(LineString):
             self.__lst_coords = list(super().coords)
 
 
+aa = B()
+aa.a = 45
+aa.c = 3
+
+
 xy1 = [(10,10),(20,20)]
 xy2 = [(11,11),(21,21)]
 line_B = Line(xy1)

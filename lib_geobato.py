@@ -1228,15 +1228,33 @@ class GenUtil:
         return MA_LineString(lst_coords)
     
 
-class LineStringSc(LineString):
+class LineStringSb(LineString):
 
-    __slots__ = ('_gbt_is_simplest', '_gbt_bends')
+    """LineString specialization for the SherBend algorithm"""
 
     def __init__(self, coords, fast_access=True):
         super().__init__(coords)
         self.fast_access = fast_access
         if self.fast_access:
             self.__lst_coords = list(super().coords)
+
+        # Declaration of the instance variable
+        self.sb_geom_type = self.geom_type # variable defined to avoid slower C calls with geom_type
+        self.sb_is_simplest = False # The line is not at its simplest form
+        self.sb_bends = [] # Holder for the bend of the line
+
+
+    @property
+    # Is the line string closed
+    def sb_is_closed(self):
+        try:
+            return self._sb_is_closed
+        except AttributeError:
+            if GenUtil.distance(self.coords[0], self.coords[-1]) <= GenUtil.ZERO:
+                self._sb_is_closed = True
+            else:
+                self._sb_is_closed = False
+            return self._sb_is_closed
 
     @property
     def coords(self):
@@ -1252,8 +1270,22 @@ class LineStringSc(LineString):
         if self.fast_access:
             self.__lst_coords = list(super().coords)
 
+    def remove_colinear_vertex(self):
+        """This method remove the colinear verxtex in the line string. Also handles closed line"""
 
-class PointSc(Point):
+        # Detect the position of the colinear vertex
+        vertex_to_del = [i for i, angle in (enumerate(self.vertex_to_del)) if angle == 0.]
+        if len(vertex_to_del) >= 1:
+            # Delete the colinear vertex
+            lst_coords = list(self.coords)
+            for i in reverse(vertex_to_del):
+                del(lst_coords[i])
+            self.coords = lst_coords
+
+
+
+
+class PointSb(Point):
 
     def __init__(self, coords, fast_access=True):
         super().__init__(coords)
@@ -2085,7 +2117,7 @@ class SpatialContainer(object):
     """
 
     # Class variable that contains the Spatial Container Internal ID
-    _gbt_sc_id = 0
+    _sb_sc_id = 0
     
     def __init__(self, line_opt_value=0):
         """Create an object of type SpatialContainer
@@ -2307,7 +2339,7 @@ class SpatialContainer(object):
         """
         
         # Check if the type is valid
-        if feature._gbt_geom_type == "Point" or feature._gbt_geom_type == "LineString":
+        if feature.sb_geom_type == "Point" or feature.sb_geom_type == "LineString":
             pass
         else:
             raise GenException ('Unsupported feature type...')
@@ -2319,17 +2351,17 @@ class SpatialContainer(object):
         bounds = self._extract_bounding_box(feature)
 
         # Container unique internal counter
-        SpatialContainer._gbt_sc_id += 1
+        SpatialContainer._sb_sc_id += 1
         
         # Add the spatial id to the feature
-        feature._gbt_sc_id = SpatialContainer._gbt_sc_id
+        feature._sb_sc_id = SpatialContainer._sb_sc_id
         
         # Add the feature in the feature container 
-        self._features[feature._gbt_sc_id] = feature
+        self._features[feature._sb_sc_id] = feature
 
         # Add the bounding box in the bbox_container
-        self._bbox_features[feature._gbt_sc_id] = bounds
-        self._r_tree.add(feature._gbt_sc_id, bounds)
+        self._bbox_features[feature._sb_sc_id] = bounds
+        self._r_tree.add(feature._sb_sc_id, bounds)
         
  #       # Add the each boundfing box in the RTree
  #       for bounds in lst_bounds:
