@@ -1350,19 +1350,23 @@ class LineStringSb(LineString):
             max_length = 0
             start = 0
             max_start = 0
-            while (i < len(self.vertex_orientation)-1):
+            max = len(self.vertex_orientation)
+            while (i < max):
                 end = len(self.vertex_orientation)
-                if self.vertex_orientation[i] == GenUtil.CLOCKWISE and self.vertex_orientation[i+1] == GenUtil.CLOCKWISE:
-                    # Located on a clockwise bend
+                if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+                   self.vertex_orientation[(i+1)%max] == GenUtil.ANTI_CLOCKWISE:
+                    # Located on a anti clockwise bend
                     length +=1
                 else:
-                    if self.vertex_orientation[i] == GenUtil.CLOCKWISE and self.vertex_orientation[i+1] == GenUtil.ANTI_CLOCKWISE:
-                        # Located at the transition with an anti clockwise bend
+                    if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+                       self.vertex_orientation[i+1] == GenUtil.CLOCKWISE:
+                        # Located at the transition with an clockwise bend
                         if length > max_length:
                             max_length = length
                             max_start = start
-                    elif self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and self.vertex_orientation[i+1] == GenUtil.CLOCKWISE:
-                        # Located at the transition with a clockwise bend
+                    elif self.vertex_orientation[i] == GenUtil.CLOCKWISE and  \
+                         self.vertex_orientation[i+1] == GenUtil.ANTI_CLOCKWISE:
+                        # Located at the transition with an anti  clockwise bend
                         start = i+1
                         length = 1
                 i += 1
