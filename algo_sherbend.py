@@ -501,29 +501,29 @@ class AlgoSherbend(object):
         return
 
 
-    def add_line_attributes (self, diameter):
-        """This routine sets different attributes of the lines
-
-        Keyword definition
-           diameter -- diameter of the bend to simplify
-            
-        Return value: None
-
-        """
-        for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type==GenUtil.LINE_STRING):
-            
-
-            # Set the minimal adjusted area
-            ray = diameter/2.0
-            line._gbt_min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
-            
-            # Check if the line is a closed line by comparing  first and vertice
-            if GenUtil.distance(line.coords[0], line.coords[-1]) <= GenUtil.ZERO:
-                line._gbt_is_closed = True
-            else:
-                line._gbt_is_closed = False
-                
-        return
+#    def add_line_attributes (self, diameter):
+#        """This routine sets different attributes of the lines
+#
+#        Keyword definition
+#           diameter -- diameter of the bend to simplify
+#
+#         Return value: None
+#
+#         """
+#         for line in self.s_container.get_features(filter= lambda feature : feature._gbt_geom_type==GenUtil.LINE_STRING):
+#
+#
+#             # Set the minimal adjusted area
+#             ray = diameter/2.0
+#             line._gbt_min_adj_area = _AREA_CMP_INDEX * math.pi * ray**2.0
+#
+#             # Check if the line is a closed line by comparing  first and vertice
+#             if GenUtil.distance(line.coords[0], line.coords[-1]) <= GenUtil.ZERO:
+#                 line._gbt_is_closed = True
+#             else:
+#                 line._gbt_is_closed = False
+#
+#         return
 
 #    def classify_bends (self, line):
 #        """Classify the beds
@@ -751,6 +751,8 @@ class AlgoSherbend(object):
     def create_bends(self, line):
         """Create the bends in a line"""
 
+        line.remove_colinear_vertex()
+
         # Determine the inflexion in the line
         lst_ij = GenUtil.locate_bends(line.coords)
 
@@ -847,7 +849,7 @@ class AlgoSherbend(object):
         
         line_simplified = False
         
-        for line in self.s_container.get_features(filter= lambda feature: feature.geo_type == 'LineString' and not feature._gbt_is_simplest):
+        for line in self.s_container.get_features(filter= lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
 
             # Create the bends in the line
             self.create_bends(line)
@@ -1489,7 +1491,7 @@ class AlgoSherbend(object):
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
      
-        self.add_line_attributes(self.command.diameter)
+#        self.add_line_attributes(self.command.diameter)
         
 #        if (self.command.multi_bend):
 #            nbr_step = 2
