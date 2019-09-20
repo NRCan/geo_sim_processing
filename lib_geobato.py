@@ -1270,6 +1270,8 @@ class LineStringSb(LineString):
             return self.__lst_coords
         else:
             return super().coords
+        # Delete variable that are now outdated. so they will be computed next time it will be accessed
+        del self._vertex_orientation
 
 
     @coords.setter
@@ -1303,9 +1305,24 @@ class LineStringSb(LineString):
             self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
             return self._vertex_orientation
 
+    @property
+    def vertex_orientation(self):
+        try:
+            return self._vertex_orientation
+        except AttributeError:
+            self._vertex_orientation = []
+            for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
+                orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
+                self._vertex_orientation.append(orient)
+            if self.is_closed:
+                orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+            else:
+                orient = None
+            self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+            return self._vertex_orientation
+
     def remove_colinear_vertex(self):
         """This method remove the colinear verxtex in the line string. Also handles closed line"""
-
         if len(self.coords) <= 2:
             # Nothing to do with a line with 2 points
             pass
@@ -1357,8 +1374,6 @@ class LineStringSb(LineString):
             else:
                 lst_coord = self.coord[start:] + self.coord[0:start-1]
                 self.coords = lst_coord # Update the LineString coordinate
-
-
 
 
 class PointSb(Point):
