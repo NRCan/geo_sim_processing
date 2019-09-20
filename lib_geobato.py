@@ -504,7 +504,7 @@ class GenUtil:
         else:
             # check if the line is a straight line
             for i in range(1, len(lst_coords) - 1):
-                bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                bend_direction = GenUtil.orientation(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
                 if bend_direction != 0.0:
                     break
 
@@ -516,10 +516,10 @@ class GenUtil:
             #            else:
             #                line_is_closed = False
 
-            last_bend_direction = GenUtil.direction(lst_coords[0], lst_coords[1], lst_coords[2])
+            last_bend_direction = GenUtil.orientation(lst_coords[0], lst_coords[1], lst_coords[2])
 
             for i in range(1, len(lst_coords) - 1):
-                bend_direction = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                bend_direction = GenUtil.orientation(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
                 if bend_direction == 0.0:
                     # Nothing to do it's a straight line
                     pass
@@ -552,9 +552,9 @@ class GenUtil:
             lst_tmp = list(lst_coords)
             del lst_tmp[-1]  # Delete the last coordinates because it's the same as the first one
             nbr_tmp = len(lst_tmp)
-            last_bend_direction = GenUtil.direction(lst_tmp[-1%nbr_tmp], lst_tmp[0], lst_tmp[1])
+            last_bend_direction = GenUtil.orientation(lst_tmp[-1%nbr_tmp], lst_tmp[0], lst_tmp[1])
             for i in range(1, nbr_tmp):
-                bend_direction = GenUtil.direction(lst_tmp[(i-1)%nbr_tmp], lst_tmp[i], lst_tmp[(i+1)%nbr_tmp])
+                bend_direction = GenUtil.orientation(lst_tmp[(i-1)%nbr_tmp], lst_tmp[i], lst_tmp[(i+1)%nbr_tmp])
                 if bend_direction == 0.0:
                     # It's a straight line pass to the next vertice
                     pass
@@ -573,10 +573,10 @@ class GenUtil:
                 before_inflexion = start_vertice
                 start_vertice += 1
                 j = start_vertice
-                last_bend_direction = GenUtil.direction(lst_tmp[(j-1)%nbr_tmp], lst_tmp[(j)%nbr_tmp], lst_tmp[(j+1)%nbr_tmp] )
+                last_bend_direction = GenUtil.orientation(lst_tmp[(j-1)%nbr_tmp], lst_tmp[(j)%nbr_tmp], lst_tmp[(j+1)%nbr_tmp] )
                 for i in range(nbr_tmp):
                     j = i+start_vertice
-                    bend_direction = GenUtil.direction(lst_tmp[(j-1)%nbr_tmp], lst_tmp[(j)%nbr_tmp],
+                    bend_direction = GenUtil.orientation(lst_tmp[(j-1)%nbr_tmp], lst_tmp[(j)%nbr_tmp],
                                                        lst_tmp[(j+1)%nbr_tmp])
                     if last_bend_direction == 0.0:
                         # It's a staight line ; pass
@@ -594,8 +594,6 @@ class GenUtil:
                 bends.append((before_inflexion, start_vertice-1))
 
         return bends
-
-
 
 
     @staticmethod
@@ -620,7 +618,7 @@ class GenUtil:
             orientation = 0.0
             # We loop until it is not a straight line
             while (orientation == 0.0 and i < nbr_coords - 1):
-                orientation = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                orientation = GenUtil.orientation(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
                 i += 1
 
             if (orientation != 0.0):
@@ -629,7 +627,7 @@ class GenUtil:
                 last_orientation = orientation
                 # Detect all the bends of the line
                 while (i < nbr_coords - 1):
-                    orientation = GenUtil.direction(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
+                    orientation = GenUtil.orientation(lst_coords[i - 1], lst_coords[i], lst_coords[i + 1])
                     if (orientation > 0.0 and last_orientation > 0.0):
                         i_last_angle = i
                     elif (orientation == 0.0):
@@ -657,21 +655,30 @@ class GenUtil:
         return bends
 
     @staticmethod
-    def direction(p0, p1, p2):
-        """ Calculate the type angle (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
+    def orientation(p0, p1, p2):
+        """ Calculate the orientation (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
 
         Parameters:
             p0, p1, p2: Three (x,y) coordinates tuple
 
         Return value
             float the direction of the line an
-                0: Straight line
-                <0: Counter clockwise angle
-                >0: Clockwise angle
+                0 : Straight line
+                -1: Counter clockwise angle
+                1 : Clockwise angle
 
         """
 
-        return ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
+        orient =  ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
+
+        if orient > 0.:
+            orient = 1
+        elif orient< 0.:
+            orient = -1
+        else:
+            orient = 0
+
+        return orient
 
     @staticmethod
     def compute_angles(coords_list):
@@ -1262,6 +1269,8 @@ class LineStringSb(LineString):
             return self.__lst_coords
         else:
             return super().coords
+        # Delete variable that are now outdated. so they will be computed next time it will be accessed
+        del self._vertex_orientation
 
     @coords.setter
     def coords(self, coords):
@@ -1270,15 +1279,31 @@ class LineStringSb(LineString):
         if self.fast_access:
             self.__lst_coords = list(super().coords)
 
+    @property
+    def vertex_orientation(self):
+        try:
+            return self._vertex_orientation
+        except AttributeError:
+            self._vertex_orientation = []
+            for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
+                orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
+                self._vertex_orientation.append(orient)
+            if self.is_closed:
+                orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+            else:
+                orient = None
+            self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+            return self._vertex_orientation
+
     def remove_colinear_vertex(self):
         """This method remove the colinear verxtex in the line string. Also handles closed line"""
 
         # Detect the position of the colinear vertex
-        vertex_to_del = [i for i, angle in (enumerate(self.vertex_to_del)) if angle == 0.]
+        vertex_to_del = [i for i, orient in (enumerate(self.vertex_orientation)) if orient == 0]
         if len(vertex_to_del) >= 1:
             # Delete the colinear vertex
             lst_coords = list(self.coords)
-            for i in reverse(vertex_to_del):
+            for i in reversed(vertex_to_del):
                 del(lst_coords[i])
             self.coords = lst_coords
 
