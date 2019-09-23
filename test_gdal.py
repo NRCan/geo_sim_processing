@@ -7,7 +7,7 @@ import math
 
 from shapely import affinity
 
-coords = [(0,0),(1,0), (1,1), (0,1)]
+coords = [(0,0),(1,0), (1,1), (0.0000001, 0.0000001)]
 pol = Polygon(coords)
 pol1 = orient(pol, -1.0)
 pol2 = orient(pol, 1.0)

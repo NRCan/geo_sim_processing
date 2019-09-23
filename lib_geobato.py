@@ -1297,29 +1297,30 @@ class LineStringSb(LineString):
                 orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
                 self._vertex_orientation.append(orient)
             if self.is_closed:
-                # Case of a closed line or polygon
+                # Case of a closed line or polygon; we do not copy the first and lat even if they are the same
                 orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+                self._vertex_orientation = [orient] + self._vertex_orientation
             else:
-                # Case of an open line
+                # Case of an open line; the first and last are None
                 orient = None
-            self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+                self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
             return self._vertex_orientation
 
-    @property
-    def vertex_orientation(self):
-        try:
-            return self._vertex_orientation
-        except AttributeError:
-            self._vertex_orientation = []
-            for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
-                orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
-                self._vertex_orientation.append(orient)
-            if self.is_closed:
-                orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
-            else:
-                orient = None
-            self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
-            return self._vertex_orientation
+    # @property
+    # def vertex_orientation(self):
+    #     try:
+    #         return self._vertex_orientation
+    #     except AttributeError:
+    #         self._vertex_orientation = []
+    #         for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
+    #             orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
+    #             self._vertex_orientation.append(orient)
+    #         if self.is_closed:
+    #             orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+    #         else:
+    #             orient = None
+    #         self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+    #         return self._vertex_orientation
 
     def remove_colinear_vertex(self):
         """This method remove the colinear verxtex in the line string. Also handles closed line"""
@@ -1341,42 +1342,28 @@ class LineStringSb(LineString):
 
 
     def rotate_start_bend(self):
-        """Rotate the line string so the start of the line is also the start of the biggest bend"""
+        """Rotate the line string so the start of the line is also the start of the biggest bend.
+
+        To be done on closed line only"""
 
         if self.sb_is_closed:
             # Only for closed line
             i = 0
-            length = 1
-            max_length = 0
-            start = 0
-            max_start = 0
+            rotate = None
             max = len(self.vertex_orientation)
-            while (i < max):
-                end = len(self.vertex_orientation)
-                if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
-                   self.vertex_orientation[(i+1)%max] == GenUtil.ANTI_CLOCKWISE:
-                    # Located on a anti clockwise bend
-                    length +=1
-                else:
-                    if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
-                       self.vertex_orientation[i+1] == GenUtil.CLOCKWISE:
-                        # Located at the transition with an clockwise bend
-                        if length > max_length:
-                            max_length = length
-                            max_start = start
-                    elif self.vertex_orientation[i] == GenUtil.CLOCKWISE and  \
-                         self.vertex_orientation[i+1] == GenUtil.ANTI_CLOCKWISE:
-                        # Located at the transition with an anti  clockwise bend
-                        start = i+1
-                        length = 1
-                i += 1
+            for i in range(max):
+                j = (i+1)%max
+                if self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
+                   self.vertex_orientation[j] == GenUtil.ANTI_CLOCKWISE:
+                    rotate = j
+                    break
 
             # Rotate the frist last vertex to the position of the biggest bend
-            if max_start == 0:
+            if rotate is None:
                 # All the bend are clockwise.  Nothing to do
                 pass
             else:
-                lst_coord = self.coord[start:] + self.coord[0:start-1]
+                lst_coord = self.coords[rotate:] + self.coords[1:rotate+1]
                 self.coords = lst_coord # Update the LineString coordinate
 
 

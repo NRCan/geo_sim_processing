@@ -53,6 +53,26 @@ a = LineStringSb(((0,0), (0,3), (1,3), (1,4), (2,4), (2,3), (3,3), (3,0), (0,0))
 a.remove_colinear_vertex()
 a.rotate_start_bend()
 
+a = LineStringSb(((0,0), (0,2), (1,1), (2,2), (2,0), (0,0)))
+a.remove_colinear_vertex()
+a.rotate_start_bend()
+
+a = LineStringSb((((0,2), (1,1), (2,2), (2,0), (0,0), (0,2))))
+a.remove_colinear_vertex()
+a.rotate_start_bend()
+
+a = LineStringSb((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
+a.remove_colinear_vertex()
+a.rotate_start_bend()
+
+a = LineStringSb((((2,2), (2,0), (0,0), (0,2), (1,1), (2,2))))
+a.remove_colinear_vertex()
+a.rotate_start_bend()
+
+a = LineStringSb((((2,0), (0,0), (0,2), (1,1), (2,2), (2,0))))
+a.remove_colinear_vertex()
+a.rotate_start_bend()
+
 
 
 
