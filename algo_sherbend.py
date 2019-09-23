@@ -27,7 +27,7 @@ from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.polygon import orient
 from shapely import affinity
 
-from lib_geobato import GenUtil, SpatialContainer, PointSb, LineStringSb, Polygon
+from lib_geobato import GenUtil, SpatialContainer, Polygon
                                
 # Public key word contants
 MULTI_BENDS = "MULTI_BEND"
@@ -139,6 +139,314 @@ _IN_CONFLICT = 'InConflict'
 #         str_out.append( "Number of iteration: " + str(self.get_nbr_iteration()) )
 #
 #         return str_out
+
+
+class LineStringSb(LineString):
+
+    """LineString specialization for the SherBend algorithm"""
+
+    def __init__(self, coords, fast_access=True):
+        super().__init__(coords)
+        self.fast_access = fast_access
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+        # Declaration of the instance variable
+        self.sb_geom_type = self.geom_type # variable defined to avoid slower C calls with geom_type
+        self.sb_is_simplest = False # The line is not at its simplest form
+        self.sb_bends = [] # Holder for the bend of the line
+
+
+    @property
+    # Is the line string closed
+    def sb_is_closed(self):
+        try:
+            return self._sb_is_closed
+        except AttributeError:
+            # A closed line need at least 4 vertex to be valid
+            if len(self.coords) >=4 and  GenUtil.distance(self.coords[0], self.coords[-1]) <= GenUtil.ZERO:
+                self._sb_is_closed = True
+            else:
+                self._sb_is_closed = False
+            return self._sb_is_closed
+
+    @property
+    def coords(self):
+        if self.fast_access:
+            return self.__lst_coords
+        else:
+            return super().coords
+        # Delete variable that are now outdated. so they will be computed next time it will be accessed
+        del self._vertex_orientation
+
+
+    @coords.setter
+    def coords(self, coords):
+        print ("Need to update the spatial container...")
+        LineString.coords.__set__(self, coords)
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+        # Delete variable that are now outdated. so they will be computed next time it will be accessed
+        del self._vertex_orientation
+
+    @property
+    def vertex_orientation(self):
+        """List containing the orientation at each vertex of the line.
+        -1: anti clockwise, +1 Clockwise; 0 Straight line
+        For closed line the first and last vertice bear the same value
+        For open line the first and last value are None"""
+        try:
+            return self._vertex_orientation
+        except AttributeError:
+            self._vertex_orientation = []
+            for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
+                orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
+                self._vertex_orientation.append(orient)
+            if self.is_closed:
+                # Case of a closed line or polygon; we do not copy the first and lat even if they are the same
+                orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+                self._vertex_orientation = [orient] + self._vertex_orientation
+            else:
+                # Case of an open line; the first and last are None
+                orient = None
+                self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+            return self._vertex_orientation
+
+    # @property
+    # def vertex_orientation(self):
+    #     try:
+    #         return self._vertex_orientation
+    #     except AttributeError:
+    #         self._vertex_orientation = []
+    #         for i in range(1, len(self.coords) - 1):  # '1' and 'cnt-1' to 'forget' first and last vertice
+    #             orient = GenUtil.orientation(self.coords[i-1], self.coords[i], self.coords[i+1])
+    #             self._vertex_orientation.append(orient)
+    #         if self.is_closed:
+    #             orient = GenUtil.orientation(self.coords[-2], self.coords[0], self.coords[1])
+    #         else:
+    #             orient = None
+    #         self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
+    #         return self._vertex_orientation
+
+    def _remove_colinear_vertex(self):
+        """This method remove the colinear verxtex in the line string. Also handles closed line"""
+        if len(self.coords) <= 2:
+            # Nothing to do with a line with 2 points
+            pass
+        else:
+            # Detect the position of the colinear vertex
+            vertex_to_del = [i for i, orient in (enumerate(self.vertex_orientation)) if orient == 0]
+            if len(vertex_to_del) >= 1:
+                # Delete the colinear vertex
+                lst_coords = list(self.coords)
+                for i in reversed(vertex_to_del):
+                    del(lst_coords[i])
+                if vertex_to_del[0] == 0:
+                    # When delete the first vertex than we need to recopy the "new first" to the last vertice
+                    lst_coords = lst_coords + [lst_coords[0]]
+                self.coords = lst_coords
+
+
+    def _rotate_start_bend(self):
+        """Rotate a closed line string so the start of the line is also the start of a clockwise bend
+
+        To be done on closed line only"""
+
+        i = 0
+        rotate = None
+        max = len(self.vertex_orientation)
+        for i in range(-1,max-1):
+            j = (i+1)%max
+            if self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
+               self.vertex_orientation[j] == GenUtil.ANTI_CLOCKWISE:
+                rotate = j
+                break
+
+        # Rotate the frist last vertex to the position of the biggest bend
+        if rotate is None:
+            # All the bend are clockwise.  Nothing to do
+            pass
+        elif rotate == 0:
+            # The line string does not to be rotated
+            pass
+        else:
+            lst_coord = self.coords[rotate:] + self.coords[1:rotate+1]
+            self.coords = lst_coord # Update the LineString coordinate
+
+    def _extract_coords(self, i,j):
+        """Extract the coordinate between index [i,j]
+
+        If j is lower than i act like a circular array and avoid duplication of first/last vertice"""
+
+        if i <= j:
+            lst_coords = self.coords[i:j+1]
+        else:
+            lst_coords = self.coords[i:] + self.coords[1:j]
+
+        return lst_coords
+
+
+    def _create_bends_closed_line(self):
+        """Create the bends on a closed line.
+
+        A closed line is considered a circular array"""
+
+        # Rotate the first/last vertice to fot on a start of a bend
+        self._rotate_start_bend()
+
+        inflexions = []
+        max = len(self.vertex_orientation)
+        if self.sb_is_closed:
+            for i in range(-1, max - 1):
+                j = (i + 1) % max
+                if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+                        self.vertex_orientation[j] == GenUtil.CLOCKWISE:
+                    inflexions.append((i, j))
+
+            # To each inflexion in the line two bends are present unless there is only
+            # one inflexion in that case there is only bond not two
+            for (i, j) in inflexions:
+                # Finfd the first bend
+                start = i
+                end = (j + 1) % max
+                while self.vertex_orientation[end] != GenUtil.ANTI_CLOCKWISE:
+                    end = (end + 1) % max
+                self.sb_bends.append(Bend(start, end, self._extract_coords(start, end)))
+                # Find the second bend
+                if len(inflexions) >= 2:
+                    start = (end - 1) % max
+                    end = (end + 1) % max
+                    while self.vertex_orientation[end] != GenUtil.CLOCKWISE:
+                        end += 1
+                    self.sb_bends.append(Bend(start, end, self._extract_coords(start, end)))
+
+    def _create_bends_opened_line(self):
+        """Create the bends on a opened line."""
+
+        inflexions = []
+        max = len(self.vertex_orientation)
+        if self.sb_is_closed:
+            last_orientation = self.vertex_orientation[1]
+            for i in range(2, max - 1):
+                j = i + 1
+                if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+                        self.vertex_orientation[j] == GenUtil.CLOCKWISE:
+                    inflexions.append((i, j))
+
+            # To each inflexion in the line two bends are present unless there is only
+            # one inflexion in that case there is only bond not two
+            for (i, j) in inflexions:
+                # Finfd the first bend
+                start = i
+                end = (j + 1) % max
+                while self.vertex_orientation[end] != GenUtil.ANTI_CLOCKWISE:
+                    end = (end + 1) % max
+                self.sb_bends.append(Bend(start, end, self._extract_coords(start, end)))
+                # Find the second bend
+                if len(inflexions) >= 2:
+                    start = (end - 1) % max
+                    end = (end + 1) % max
+                    while self.vertex_orientation[end] != GenUtil.CLOCKWISE:
+                        end += 1
+                    self.sb_bends.append(Bend(start, end, self._extract_coords(start, end)))
+
+    def create_bends2(self):
+        """" Localise the inflexion in the line string."""
+
+        # Remove the colinear vertice in order to facilitate bend detection (moreover colinaer vertice are useless)
+        self._remove_colinear_vertex()
+
+        # Roate the closed line to be at the beginning of a bend (facilitate the bend detection)
+        if self.is_closed:
+            self._create_bends_closed_line()
+        else:
+            self._create_bends_open_line()
+
+
+
+        inflexions = []
+        max = len(self.vertex_orientation)
+        if self.sb_is_closed:
+            for i in range(-1, max-1):
+                j = (i + 1) % max
+                if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+                   self.vertex_orientation[j] == GenUtil.CLOCKWISE:
+                    inflexions.append((i,j))
+
+            # To each inflexion in the line two bends are present unless there is only
+            # one inflexion in that case there is only bond not two
+            for (i,j) in inflexions:
+                #Finfd the first bend
+                start = i
+                end = (j+1)%max
+                while self.vertex_orientation[end] != GenUtil.ANTI_CLOCKWISE:
+                    end = (end+1)%max
+                self.sb_bends.append(Bend(start, end, self._extract_coords(start,end)))
+                # Find the second bend
+                if len(inflexions) >=2:
+                    start = (end-1)%max
+                    end = (end+1)%max
+                    while self.vertex_orientation[end] != GenUtil.CLOCKWISE:
+                        end += 1
+                    self.sb_bends.append(Bend(start,end, self._extract_coords(start, end)))
+
+
+    def _change_inflexion (i,j):
+        """Check if there is inflexion between the vertice specidfied.
+
+        There is inflexion when a change of orientation occurs from clock wise to anti clocwise or vice cersa"""
+
+        if (self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+            self.vertex_orientation[i + 1] == GenUtil.CLOCKWISE) or \
+           (self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
+            self.vertex_orientation[i + 1] == GenUtil.ANTI_CLOCKWISE):
+            inflexion = True
+        else:
+            inflexion = False
+
+        return inflexion
+
+    def create_bends(self):
+
+        inflexions = []
+        max = len(self.vertex_orientation)
+        if self.is_closed:
+            # The vertex_oriention list is considered a circular list
+            for i in range(-1, max-1):
+                j = (i + 1) % max
+                if self._change_inflexion(i,j):
+                    inflexions.append((i,j))
+        else:
+            # The vertex_oriention list is not considered a circular list
+            for i in range(1, max - 1):
+                if self._change_inflexion(i,i+1):
+                    inflexions.append((i, i+1))
+
+        #From the inflexion build the bends
+
+
+
+class PointSb(Point):
+
+    def __init__(self, coords, fast_access=True):
+        super().__init__(coords)
+        self.fast_access = fast_access
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
+
+    @property
+    def coords(self):
+        if self.fast_access:
+            return self.__lst_coords
+        else:
+            return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        print ("Need to update the spatial container...")
+        Poin.coords.__set__(self, coords)
+        if self.fast_access:
+            self.__lst_coords = list(super().coords)
 
 
 class SpatialConstraints(object):
