@@ -12,8 +12,23 @@ from shapely.geometry import Polygon
 
 from lib_geobato import GenUtil
 
+a = LineStringSb(((0,0), (2,2)))
+a.create_bends()
 
+a = LineStringSb(((0,0), (1,1), (2,2)))
+a.create_bends()
 
+a = LineStringSb(((0,0), (1,1), (2,0)))
+a.simplify(5)
+
+a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
+a.create_bends()
+
+a = LineStringSb(((0,0), (1,1), (2,0), (3,1)))
+a.create_bends()
+
+a = LineStringSb(((0,0), (1,1), (2,0), (3,1), (4,0)))
+a.create_bends()
 
 a = LineStringSb(((0,0), (1,1), (2,0), (0,0)))
 a.create_bends()
