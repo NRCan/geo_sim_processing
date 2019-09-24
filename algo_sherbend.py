@@ -255,11 +255,11 @@ class LineStringSb(LineString):
         i = 0
         rotate = None
         max = len(self.vertex_orientation)
-        for i in range(-1,max-1):
+        for i in range(max):
             j = (i+1)%max
-            if self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
-               self.vertex_orientation[j] == GenUtil.ANTI_CLOCKWISE:
-                rotate = j
+            if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
+               self.vertex_orientation[j] == GenUtil.CLOCKWISE:
+                rotate = i
                 break
 
         # Rotate the frist last vertex to the position of the biggest bend
@@ -358,6 +358,7 @@ class LineStringSb(LineString):
 
         # Roate the closed line to be at the beginning of a bend (facilitate the bend detection)
         if self.is_closed:
+            self._rotate_start_bend()
             self._create_bends_closed_line()
         else:
             self._create_bends_open_line()
@@ -391,15 +392,16 @@ class LineStringSb(LineString):
                     self.sb_bends.append(Bend(start,end, self._extract_coords(start, end)))
 
 
-    def _change_inflexion (i,j):
+    def _change_inflexion(self, i,j):
         """Check if there is inflexion between the vertice specidfied.
 
         There is inflexion when a change of orientation occurs from clock wise to anti clocwise or vice cersa"""
 
+        max = len(self.vertex_orientation)
         if (self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
-            self.vertex_orientation[i + 1] == GenUtil.CLOCKWISE) or \
+            self.vertex_orientation[(i+1)%max] == GenUtil.CLOCKWISE) or \
            (self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
-            self.vertex_orientation[i + 1] == GenUtil.ANTI_CLOCKWISE):
+            self.vertex_orientation[(i+1)%max] == GenUtil.ANTI_CLOCKWISE):
             inflexion = True
         else:
             inflexion = False
@@ -411,16 +413,47 @@ class LineStringSb(LineString):
         inflexions = []
         max = len(self.vertex_orientation)
         if self.is_closed:
+            # Rotate the line to position at the start of a bend
+            self._rotate_start_bend()
             # The vertex_oriention list is considered a circular list
-            for i in range(-1, max-1):
+            for i in range(max):
                 j = (i + 1) % max
                 if self._change_inflexion(i,j):
                     inflexions.append((i,j))
+            # Create the bend from the inflexion point
+            if (inflexions):
+                if len(inflexions) >= 3:
+                    # If there is more than 23 inflexions we add another circular inflexion
+                    i = inflexions[-1][0]
+                    j = inflexions[0][1]
+                    inflexions.append((i, j))
+                # Tranform the inflexion into bends
+                for k in range(len(inflexions)-1):
+                    i = inflexions[k][0]
+                    j = inflexions[k+1][1]
+                    self.sb_bends.append(Bend(i,j, self._extract_coords(i,j)))
+
         else:
             # The vertex_oriention list is not considered a circular list
+            if max == 3:
+                # Special case there is only one bend to simplify
+                j = len(self.coords)
+                self.sb_bends.append(Bend(0, j, self._extract_coords(0, j)))
+            elif max >=4:
+                for i in range(1,max-1):
+                    if self._change_inflexion(i, i+1):
+                        inflexions.append((i, i+1))
+                # Add inflexion for the first and last bend
+                inflexions.append((0, None))
+                inflexions.append((None, max))
+
+
+
+
             for i in range(1, max - 1):
                 if self._change_inflexion(i,i+1):
                     inflexions.append((i, i+1))
+            # Adding bend for the first and the last bend
 
         #From the inflexion build the bends
 

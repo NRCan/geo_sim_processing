@@ -664,8 +664,8 @@ class GenUtil:
         Return value
             float the direction of the line an
                 0 : Straight line
-                -1: Counter clockwise angle
-                1 : Clockwise angle
+                1: Counter clockwise angle
+                -1 : Clockwise angle
 
         """
 
