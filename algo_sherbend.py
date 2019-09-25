@@ -60,6 +60,7 @@ _BIG_BEND_MAX_ADJ_AREA_RATIO = 0.6      # Minimal adjusted area ratio used to de
 
 #Internal key word constants
 _BIG = "Big"
+_BURNED = "Burned"
 _SMALL = "Small"
 _ONE_BEND = 'OneBend'
 _TWO_BENDS = 'TwoBends'
@@ -67,7 +68,7 @@ _THREE_BENDS = 'ThreeBends'
 _FOUR_BENDS = 'FourBends'
 _FIVE_BENDS = 'FiveBends'
 _SIMPLIFIED = 'Simplified'
-_UNKNOWN = 'Unknown'
+_UNTOUCHED = 'Untouched'
 _IN_CONFLICT = 'InConflict'
 
 # class SherbendStatistics(GenStatistics):
@@ -348,7 +349,7 @@ class LineStringSb(LineString):
 
         lst_bends = []
         for i,bend in enumerate(self.sb_bends):
-            if bend.adj_area <= self.min_adj_area:
+            if bend.adj_area <= self.sb_min_adj_area:
                 # Only select the bend below the minimum adjusted area
                 lst_bends.append((i, bend.adj_area))
 
@@ -369,35 +370,52 @@ class LineStringSb(LineString):
 
         max_bends = len(self.sb_bends)
         sorted_bends = self._sort_bends(diameter)
-        for bend in sorted_bends:
-            bend_i = bend[0]
-            status_current = self.sb_bends[bend_i].status
+        for sorted_bend in sorted_bends:
+            ind = sorted_bend[0]
+            status_current = self.sb_bends[ind].status
             if self.sb_is_closed:
                 if (max_bends >=2):
-                    status_before = self.sb_bends[(bend_i-1)%max_bends].status
-                    status_after = self.sb_bends[(bend_i+1)% max_bends].status
+                    ind_before = (ind-1)%max_bends
+                    ind_after = (ind+1)% max_bends
+                    status_before = self.sb_bends[ind_before].status
+                    status_after = self.sb_bends[ind_after].status
                 else:
-                    status_before = _UNKNOWN
-                    status_after = _UNKNOWN
+                    ind_before = None
+                    ind_after = None
+                    status_before = _UNTOUCHED
+                    status_after = _UNTOUCHED
             else:
-                if bend_i == 0:
+                if ind == 0:
                     # There is no preceding bend
-                    status_before = _UNKNOWN
+                    ind_before = None
+                    status_before = _UNTOUCHED
                 else:
-                    status_before = self.sb_bends[bend_i-1].status
-                if bend_i == max_bends-1:
+                    ind_before = ind-1
+                    status_before = self.sb_bends[ind_before].status
+                if ind == max_bends-1:
                      # there is no after bend
-                     status_after = _UNKNOWN
+                     ind_after = None
+                     status_after = _UNTOUCHED
                 else:
-                     status_after = self.sb_bends[bend_i+1].status
+                     ind_after = ind+1
+                     status_after = self.sb_bends[ind_after].status
 
-            if status_before == _UNKNOWN and \
-               status_current == _UNKNOWN and \
-               status_after == _UNKNOWN:
-                pass
+            if status_before == _UNTOUCHED and \
+               status_current == _UNTOUCHED and \
+               status_after == _UNTOUCHED:
+                # Validate the spatial constraints
+                i = self.sb_bends[ind].i
+                j = self.sb_bends[ind].j
+                if i < j:
+                    self.coords = self.coords[0:i+1] + self.coords[j:]
+                else:
+                    # Manage circular list
+                    self.coords = self.coords[j:i+1]
+                if ind_before is not None: self.sb_bends[ind_before].status = _BURNED
+                if ind_after is not None: self.sb_bends[ind_after].status = _BURNED
 
-###                if self.sb_bends[bend_i].reduce():
-###                    self.sb_bends[bend_i].status = _SIMPLIFIED
+
+
 
 
 class PointSb(Point):
@@ -515,7 +533,7 @@ class Bend(object):
 
         self.i = i  # Index of the start of the bend coordinate
         self.j = j  #  Index of the end of the bend coordinate
-        self.status = _UNKNOWN  # Type of bend by default:UNKNOWN
+        self.status = _UNTOUCHED  # Type of bend by default: UNTOUCHED
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
 
 
