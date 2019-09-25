@@ -348,7 +348,9 @@ class LineStringSb(LineString):
 
         lst_bends = []
         for i,bend in enumerate(self.sb_bends):
-            lst_bends.append(i, bend.adj_area)
+            if bend.adj_area <= self.min_adj_area:
+                # Only select the bend below the minimum adjusted area
+                lst_bends.append((i, bend.adj_area))
 
         # Sort based of the adj_area from smalles to biggest
         lst_bends.sort(key=lambda tup: tup[1])  # sorts in place
@@ -359,34 +361,43 @@ class LineStringSb(LineString):
     def simplify(self, diameter):
         """Simplify the line by reducing each bend"""
 
+        ray = diameter / 2.0
+        self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+
         #Create the bend in the line
         self.create_bends()
 
         max_bends = len(self.sb_bends)
         sorted_bends = self._sort_bends(diameter)
-        for bend_i in sorted_bends:
-            status_current = self.bends[bend_i].status
+        for bend in sorted_bends:
+            bend_i = bend[0]
+            status_current = self.sb_bends[bend_i].status
             if self.sb_is_closed:
-                status_before = self.bends[(bend_i-1)%max_bends].status
-                status_after = self.bends[(bend_i+1)% max_bends].status
+                if (max_bends >=2):
+                    status_before = self.sb_bends[(bend_i-1)%max_bends].status
+                    status_after = self.sb_bends[(bend_i+1)% max_bends].status
+                else:
+                    status_before = _UNKNOWN
+                    status_after = _UNKNOWN
             else:
                 if bend_i == 0:
                     # There is no preceding bend
-                    satus_before = GenUtil.UNKNOWN
+                    status_before = _UNKNOWN
                 else:
-                    status_before = self.bends[bend_i-1].status
+                    status_before = self.sb_bends[bend_i-1].status
                 if bend_i == max_bends-1:
                      # there is no after bend
-                     status_after = GenUtil.UNKNOWN
+                     status_after = _UNKNOWN
                 else:
-                     status_after = self.bends[bend_i+1].status
+                     status_after = self.sb_bends[bend_i+1].status
 
-            if status_before == GenUtil.UNKNOWN and \
-               status_current == GenUtil.UNKNOWN and \
-               status_after == GenUtil.UNKNOWN:
+            if status_before == _UNKNOWN and \
+               status_current == _UNKNOWN and \
+               status_after == _UNKNOWN:
+                pass
 
-                if self.sb_bends[bend_i].reduce():
-                    self.sb_bends[bend_i].status = GenUtil.Simplify
+###                if self.sb_bends[bend_i].reduce():
+###                    self.sb_bends[bend_i].status = _SIMPLIFIED
 
 
 class PointSb(Point):
@@ -407,7 +418,7 @@ class PointSb(Point):
     @coords.setter
     def coords(self, coords):
         print ("Need to update the spatial container...")
-        Poin.coords.__set__(self, coords)
+        Point.coords.__set__(self, coords)
         if self.fast_access:
             self.__lst_coords = list(super().coords)
 
@@ -504,7 +515,7 @@ class Bend(object):
 
         self.i = i  # Index of the start of the bend coordinate
         self.j = j  #  Index of the end of the bend coordinate
-        self.type = _UNKNOWN  # Type of bend by default:UNKNOWN
+        self.status = _UNKNOWN  # Type of bend by default:UNKNOWN
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
 
 
