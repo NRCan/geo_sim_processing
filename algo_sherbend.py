@@ -395,26 +395,26 @@ class LineStringSb(LineString):
         for sorted_bend in sorted_bends:
             ind = sorted_bend[0]
             if self.sb_bends[ind].status == _NOT_SIMPLIFIED:
-                if self.sb_is_closed:
-                    if (max_bends >=2):
-                        ind_before = (ind-1)%max_bends
-                        ind_after = (ind+1)% max_bends
-                    else:
-                        ind_before = None
-                        ind_after = None
-                else:
-                    if ind == 0:
-                        # There is no preceding bend
-                        ind_before = None
-                    else:
-                        ind_before = ind-1
-                        status_before = self.sb_bends[ind_before].status
-                    if ind == max_bends-1:
-                         # there is no after bend
-                         ind_after = None
-                    else:
-                         ind_after = ind+1
-                         status_after = self.sb_bends[ind_after].status
+                # if self.sb_is_closed:
+                #     if (max_bends >=2):
+                #         ind_before = (ind-1)%max_bends
+                #         ind_after = (ind+1)% max_bends
+                #     else:
+                #         ind_before = None
+                #         ind_after = None
+                # else:
+                #     if ind == 0:
+                #         # There is no preceding bend
+                #         ind_before = None
+                #     else:
+                #         ind_before = ind-1
+                #         status_before = self.sb_bends[ind_before].status
+                #     if ind == max_bends-1:
+                #          # there is no after bend
+                #          ind_after = None
+                #     else:
+                #          ind_after = ind+1
+                #          status_after = self.sb_bends[ind_after].status
 
                 # Validate the spatial constraints
                 i = self.sb_bends[ind].i
@@ -424,10 +424,24 @@ class LineStringSb(LineString):
                 else:
                     # Manage circular list
                     self.coords = self.coords[j:i+1]
-                self.sb_bends[ind].status = _SIMPLIFIED
+
                 # Bend before and after must no be simplified in this pass maybe a next pass
-                if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
-                if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+                if self.sb_is_closed:
+                    ind_before = (ind - 1) % max_bends # Manage circular list
+                    ind_after = (ind+1)% max_bends # Manage circular list
+                else:
+                    ind_before = ind - 1
+                    ind_after = ind + 1
+                try:
+                    self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
+                except IndexError:
+                    pass
+                try:
+                    self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+                except IndexError:
+                    pass
+                self.sb_bends[ind].status = _SIMPLIFIED
+
 
 
                 self._offset_bend_ij(i, j)
