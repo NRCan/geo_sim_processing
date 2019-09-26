@@ -21,6 +21,9 @@ a.create_bends()
 a = LineStringSb(((0,0), (1,1), (2,0), (3,2), (4,0), (5,3), (6,0), (7,.1), (8,0)))
 a.simplify(5)
 
+# Closed star
+a = LineStringSb(((0,0), (3,0), (3,2.5), (3,3), (3,), (5,3), (6,0), (7,.1), (8,0)))
+a.simplify(5)
 
 
 a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
