@@ -68,7 +68,8 @@ _THREE_BENDS = 'ThreeBends'
 _FOUR_BENDS = 'FourBends'
 _FIVE_BENDS = 'FiveBends'
 _SIMPLIFIED = 'Simplified'
-_UNTOUCHED = 'Untouched'
+_NOT_SIMPLIFIED = 'NotSimplified'
+_UNSIMPLIFIABLE = 'Unsimplifiable'
 _IN_CONFLICT = 'InConflict'
 
 # class SherbendStatistics(GenStatistics):
@@ -188,7 +189,10 @@ class LineStringSb(LineString):
         if self.fast_access:
             self.__lst_coords = list(super().coords)
         # Delete variable that are now outdated. so they will be computed next time it will be accessed
-        del self._vertex_orientation
+        try:
+            del self._vertex_orientation
+        except AttributeError:
+            pass
 
     @property
     def vertex_orientation(self):
@@ -337,7 +341,7 @@ class LineStringSb(LineString):
                     if self._change_inflexion(i, i+1):
                         inflexions.append((i, i+1))
                 # Add inflexion to add the first and last bend
-                inflexions = [(0, None)] + inflexions + [(None, max)]
+                inflexions = [(0, None)] + inflexions + [(None, max-1)]
                 # Transform inflexion into bends
                 self._add_bends(inflexions)
 
@@ -358,6 +362,24 @@ class LineStringSb(LineString):
 
         return lst_bends
 
+    def _offset_bend_ij(self,i, j):
+        """"Offset the value of the different bend i,j because some of the vertice of the line were removed"""
+
+        if i < j:
+            offset = j-i-1
+        else:
+            offset = j
+        for bend in self.sb_bends:
+            if bend.status == _NOT_SIMPLIFIED:
+                if (bend.i < bend.j):
+                    if bend.i >= j:
+                        bend.i -= offset
+                        bend.j -= offset
+                else:
+                    if bend.i >= j:
+                        bend.i -= offset
+
+
 
     def simplify(self, diameter):
         """Simplify the line by reducing each bend"""
@@ -372,37 +394,28 @@ class LineStringSb(LineString):
         sorted_bends = self._sort_bends(diameter)
         for sorted_bend in sorted_bends:
             ind = sorted_bend[0]
-            status_current = self.sb_bends[ind].status
-            if self.sb_is_closed:
-                if (max_bends >=2):
-                    ind_before = (ind-1)%max_bends
-                    ind_after = (ind+1)% max_bends
-                    status_before = self.sb_bends[ind_before].status
-                    status_after = self.sb_bends[ind_after].status
+            if self.sb_bends[ind].status == _NOT_SIMPLIFIED:
+                if self.sb_is_closed:
+                    if (max_bends >=2):
+                        ind_before = (ind-1)%max_bends
+                        ind_after = (ind+1)% max_bends
+                    else:
+                        ind_before = None
+                        ind_after = None
                 else:
-                    ind_before = None
-                    ind_after = None
-                    status_before = _UNTOUCHED
-                    status_after = _UNTOUCHED
-            else:
-                if ind == 0:
-                    # There is no preceding bend
-                    ind_before = None
-                    status_before = _UNTOUCHED
-                else:
-                    ind_before = ind-1
-                    status_before = self.sb_bends[ind_before].status
-                if ind == max_bends-1:
-                     # there is no after bend
-                     ind_after = None
-                     status_after = _UNTOUCHED
-                else:
-                     ind_after = ind+1
-                     status_after = self.sb_bends[ind_after].status
+                    if ind == 0:
+                        # There is no preceding bend
+                        ind_before = None
+                    else:
+                        ind_before = ind-1
+                        status_before = self.sb_bends[ind_before].status
+                    if ind == max_bends-1:
+                         # there is no after bend
+                         ind_after = None
+                    else:
+                         ind_after = ind+1
+                         status_after = self.sb_bends[ind_after].status
 
-            if status_before == _UNTOUCHED and \
-               status_current == _UNTOUCHED and \
-               status_after == _UNTOUCHED:
                 # Validate the spatial constraints
                 i = self.sb_bends[ind].i
                 j = self.sb_bends[ind].j
@@ -411,8 +424,13 @@ class LineStringSb(LineString):
                 else:
                     # Manage circular list
                     self.coords = self.coords[j:i+1]
-                if ind_before is not None: self.sb_bends[ind_before].status = _BURNED
-                if ind_after is not None: self.sb_bends[ind_after].status = _BURNED
+                self.sb_bends[ind].status = _SIMPLIFIED
+                # Bend before and after must no be simplified in this pass maybe a next pass
+                if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
+                if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+
+
+                self._offset_bend_ij(i, j)
 
 
 
@@ -533,7 +551,7 @@ class Bend(object):
 
         self.i = i  # Index of the start of the bend coordinate
         self.j = j  #  Index of the end of the bend coordinate
-        self.status = _UNTOUCHED  # Type of bend by default: UNTOUCHED
+        self.status = _NOT_SIMPLIFIED  # Type of bend by default: UNTOUCHED
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
 
 
