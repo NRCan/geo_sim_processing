@@ -12,6 +12,18 @@ from shapely.geometry import Polygon
 
 from lib_geobato import GenUtil
 
+
+a = LineStringSb (( (1647625.889999593, 195454.0860011009),\
+(1647630.371999593, 195435.4470011005),\
+(1647640.775999592, 195439.1370011028),\
+(1647649.498999593, 195447.547001102),\
+(1647644.202999593, 195459.5080011021),\
+(1647638.619999593, 195469.246001103),\
+(1647618.486999592, 195492.9860011013),\
+(1647623.151999593, 195464.8150011022),\
+(1647625.889999593, 195454.0860011009)))
+a.simplify(1.5)
+
 a = LineStringSb(((0,0), (2,2)))
 a.simplify(5)
 
@@ -121,9 +133,9 @@ command = Command (in_file='', out_file='', diameter=1.5, rotate_coord=True, sim
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-#command.in_file = r'data\hydro_pol.shp'
-command.in_file = r'data\simple_file3.gpkg'
-command.out_file = r'data\simple_file_out3.gpkg'
+command.in_file = r'data\hydro_pol.shp'
+#command.in_file = r'data\simple_file3.gpkg'
+command.out_file = r'data\hydro_pol_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
