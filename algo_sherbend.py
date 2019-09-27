@@ -23,7 +23,7 @@
 
 import math
 
-from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry import Point, LineString
 from shapely.geometry.polygon import orient
 from shapely import affinity
 
@@ -271,7 +271,7 @@ class LineStringSb(LineString):
         if i <= j:
             lst_coords = self.coords[i:j+1]
         else:
-            lst_coords = self.coords[i:] + self.coords[1:j]
+            lst_coords = self.coords[i:] + self.coords[0:j+1]
 
         return lst_coords
 
@@ -386,35 +386,32 @@ class LineStringSb(LineString):
 
         ray = diameter / 2.0
         self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+        nbr_bend_simplified = 0
 
         #Create the bend in the line
         self.create_bends()
 
         max_bends = len(self.sb_bends)
         sorted_bends = self._sort_bends(diameter)
+        if len(sorted_bends) == 0:
+            # No more bend to simplify.  Line is at its simplest form
+            self.sb_is_simplest = True
+
+        # Loop over each bend to simplify them
         for sorted_bend in sorted_bends:
             ind = sorted_bend[0]
             if self.sb_bends[ind].status == _NOT_SIMPLIFIED:
-                # if self.sb_is_closed:
-                #     if (max_bends >=2):
-                #         ind_before = (ind-1)%max_bends
-                #         ind_after = (ind+1)% max_bends
-                #     else:
-                #         ind_before = None
-                #         ind_after = None
-                # else:
-                #     if ind == 0:
-                #         # There is no preceding bend
-                #         ind_before = None
-                #     else:
-                #         ind_before = ind-1
-                #         status_before = self.sb_bends[ind_before].status
-                #     if ind == max_bends-1:
-                #          # there is no after bend
-                #          ind_after = None
-                #     else:
-                #          ind_after = ind+1
-                #          status_after = self.sb_bends[ind_after].status
+                ind_before = None
+                ind_after = None
+                if self.sb_is_closed:
+                    if (max_bends >=2):
+                        ind_before = (ind-1)%max_bends
+                        ind_after = (ind+1)% max_bends
+                else:
+                   if ind > 0:
+                        ind_before = ind-1
+                   if ind < max_bends-1:
+                        ind_after = ind+1
 
                 # Validate the spatial constraints
                 i = self.sb_bends[ind].i
@@ -423,31 +420,18 @@ class LineStringSb(LineString):
                     self.coords = self.coords[0:i+1] + self.coords[j:]
                 else:
                     # Manage circular list
-                    self.coords = self.coords[j:i+1]
+                    self.coords = self.coords[j:i+1] + self.coords[j:j+1]
 
                 # Bend before and after must no be simplified in this pass maybe a next pass
-                if self.sb_is_closed:
-                    ind_before = (ind - 1) % max_bends # Manage circular list
-                    ind_after = (ind+1)% max_bends # Manage circular list
-                else:
-                    ind_before = ind - 1
-                    ind_after = ind + 1
-                try:
-                    self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
-                except IndexError:
-                    pass
-                try:
-                    self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
-                except IndexError:
-                    pass
+                if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
+                if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+
                 self.sb_bends[ind].status = _SIMPLIFIED
-
-
+                nbr_bend_simplified += 1
 
                 self._offset_bend_ij(i, j)
 
-
-
+        return nbr_bend_simplified
 
 
 class PointSb(Point):
@@ -1183,39 +1167,8 @@ class AlgoSherbend(object):
         
         for line in self.s_container.get_features(filter= lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
 
-            # Create the bends in the line
-            line.create_bends()
+            line_simplified = line.simplify(self.command.diameter) or line_simplified
 
-#            if self.command.rotate_coord and line._gbt_is_closed:
-#                self.rotate_coordinates(line)
-
-            # Classify each bend in the line
-            self.classify_bends(line)
-            
-            last_bend = (len(line._gbt_bends))-1
-            
-            # Scan backwards all the bends of the lines from the last one to the first one
-            i_bend = last_bend
-            while (i_bend >= 0):
-
-#                nbr_bends = self._number_of_bends_to_reduce(line._gbt_bends[i_bend].type)
-                bend = line._gbt_bends[i_bend]
-                if bend.type == _ONE_BEND:
-                    bend_status = self._manage_bend_constraints(line, bend)
-                    if (bend_status == _SIMPLIFIED):
-                        line.coords = line.coords[0:bend.i] + bend.replacement_line.coords + line.coords[bend.j:]
-                        line_simplified = True
-
-                i_bend -= 1
-                
-            # Reset the bends to save some space...
-            line._gbt_bends = []
-            
-#            # Update the Shapely structure using the coordinates in the temporary structure
-#            if (line_simplified):
-#                line.coords = new_coords
-#            line.update_coords(in_hand_line_coords, self.s_container)
-        
         return line_simplified
 
     def _manage_bend_constraints(self, line, bend):
