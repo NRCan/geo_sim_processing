@@ -37,8 +37,6 @@ a = Polygon (( (1647625.889999593, 195454.0860011009),\
 (1647618.486999592, 195492.9860011013),\
 (1647623.151999593, 195464.8150011022),\
 (1647625.889999593, 195454.0860011009)))
-a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
-a = LineStringSb(a.exterior.coords)
 a.simplify(1.5)
 
 a = LineStringSb(((0,0), (2,2)))
@@ -66,34 +64,34 @@ a.simplify(5)
 
 
 a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb(((0,0), (1,1), (2,0), (3,1)))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb(((0,0), (1,1), (2,0), (3,1), (4,0)))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb(((0,0), (1,1), (2,0), (0,0)))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb(((0,0), (0,2), (1,1), (2,2), (2,0), (0,0)))
 a.simplify(5)
 
 a = LineStringSb((((0,2), (1,1), (2,2), (2,0), (0,0), (0,2))))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb((((2,2), (2,0), (0,0), (0,2), (1,1), (2,2))))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb((((2,0), (0,0), (0,2), (1,1), (2,2), (2,0))))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb((( (0,0),(0,3),(1,2),(3,3),(3,0),(1,1),(0,0)) ))
-a.create_bends()
+a.simplify(5)
 
 
 @dataclass
@@ -150,11 +148,11 @@ command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simp
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-command.in_file = r'data\test_pol1.gpkg'
-command.out_file = r'data\test_pol1_out.gpkg'
+#command.in_file = r'data\test_pol1.gpkg'
+#command.out_file = r'data\test_pol1_out.gpkg'
 
-command.in_file = r'data\test\hydro_pol.shp'
-command.out_file = r'data\test\hydro_pol_out.gpkg'
+command.in_file = r'data\hydro_pol.shp'
+command.out_file = r'data\test\hydro_pol_out.shp'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)

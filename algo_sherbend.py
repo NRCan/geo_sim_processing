@@ -26,7 +26,6 @@ import math
 from shapely.geometry import Point, LineString, LinearRing
 from shapely.geometry.polygon import orient
 from shapely import affinity
-import matplotlib.pyplot as plt
 
 from lib_geobato import GenUtil, SpatialContainer, Polygon
                                
@@ -154,12 +153,6 @@ class LineStringSb(LineString):
         if self.fast_access:
             self.__lst_coords = list(super().coords)
 
-        # For closed line make sure the line is oriented anti clockwise
-        if self.sb_is_closed:
-            tmp = Polygon((self.coords))
-            tmp = orient(Polygon(tmp.exterior.coords), GenUtil.ANTI_CLOCKWISE)  # Orient line clockwiswe
-            self.coords = tmp.exterior.coords # Reset coordinates
-
         # Declaration of the instance variable
         self.sb_geom_type = self.geom_type # variable defined to avoid slower C calls with geom_type
         self.sb_is_simplest = False # The line is not at its simplest form
@@ -198,9 +191,6 @@ class LineStringSb(LineString):
         except AttributeError:
             pass
 
-        if self.is_closed:
-            ring = LinearRing(coords)
-            print ("is_ccw: " + str(ring.is_ccw))
 
     @property
     def vertex_orientation(self):
@@ -309,7 +299,7 @@ class LineStringSb(LineString):
             self.sb_bends.append(Bend(i, j, self._extract_coords(i, j)))
 
 
-    def create_bends(self):
+    def _create_bends(self):
         """Create the bends in the line"""
 
         #Delete any actual bend information
@@ -388,6 +378,17 @@ class LineStringSb(LineString):
                         bend.i -= offset
 
 
+    def _make_line_ccw(self):
+        """Make sure the line is counter clockwise.
+
+        Note: Only apply to closed line"""
+
+        if self.sb_is_closed:
+            tmp_ring = LinearRing(self.coords)
+            if not tmp_ring.is_ccw:
+                #The linear ring is clockwise. Reverse the coordinates to make it ccw
+                self.coords = list(reversed(self.coords))
+
 
     def simplify(self, diameter):
         """Simplify the line by reducing each bend"""
@@ -396,14 +397,22 @@ class LineStringSb(LineString):
         self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         nbr_bend_simplified = 0
 
+        # Make sure the line is counter clockwise
+        #
+        self._make_line_ccw()
+
         #Create the bend in the line
-        self.create_bends()
+        self._create_bends()
 
         max_bends = len(self.sb_bends)
         sorted_bends = self._sort_bends(diameter)
         if len(sorted_bends) == 0:
             # No more bend to simplify.  Line is at its simplest form
             self.sb_is_simplest = True
+        elif len(sorted_bends)>= 2:
+            # Make the biggest bend (last one) unsimplifiable
+            ind_last = sorted_bends[-1][0]
+            self.sb_bends[ind_last].status = _UNSIMPLIFIABLE
 
         # Loop over each bend to simplify them
         for sorted_bend in sorted_bends:
@@ -425,20 +434,14 @@ class LineStringSb(LineString):
                 i = self.sb_bends[ind].i
                 j = self.sb_bends[ind].j
 
-                print(list(self.coords))
                 if i < j:
                     lst_coords = self.coords[0:i+1] + self.coords[j:]
                 else:
                     # Manage circular list
                     lst_coords = self.coords[j:i+1] + self.coords[j:j+1]
-                print (lst_coords)
 
-                if len(lst_coords) >=4:
-                    self.coords = lst_coords
-                    pol1 = Polygon(lst_coords)
-                    x, y = pol1.exterior.xy
-                    plt.plot(x, y)
-
+                # Update the coordinates
+                self.coords = lst_coords
 
                 # Bend before and after must no be simplified in this pass maybe a next pass
                 if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
@@ -1186,12 +1189,14 @@ class AlgoSherbend(object):
         total_nbr_bend_simplified = 0
         # Iterate until all the line are simplified or there are no more line have to be simplified
         while (True):
-            print('Start of iteration # {}'.format(iter_nbr))
+            iter_nbr_bend_simplified = 0
+            print('Iteration # {}'.format(iter_nbr))
             for line in self.s_container.get_features(filter=lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
                 nbr_bend_simplified = line.simplify(self.command.diameter)
+                iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified
-            print('Number of bend simplified {}'.format(nbr_bend_simplified))
-            print('End of iteration # {}'.format(10))
+            print('Number of bend simplified {}'.format(iter_nbr_bend_simplified))
+            print('----------')
             iter_nbr += 1
             if nbr_bend_simplified == 0:
                 break
