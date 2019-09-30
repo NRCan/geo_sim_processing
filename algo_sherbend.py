@@ -23,9 +23,10 @@
 
 import math
 
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, LinearRing
 from shapely.geometry.polygon import orient
 from shapely import affinity
+import matplotlib.pyplot as plt
 
 from lib_geobato import GenUtil, SpatialContainer, Polygon
                                
@@ -153,6 +154,12 @@ class LineStringSb(LineString):
         if self.fast_access:
             self.__lst_coords = list(super().coords)
 
+        # For closed line make sure the line is oriented anti clockwise
+        if self.sb_is_closed:
+            tmp = Polygon((self.coords))
+            tmp = orient(Polygon(tmp.exterior.coords), GenUtil.ANTI_CLOCKWISE)  # Orient line clockwiswe
+            self.coords = tmp.exterior.coords # Reset coordinates
+
         # Declaration of the instance variable
         self.sb_geom_type = self.geom_type # variable defined to avoid slower C calls with geom_type
         self.sb_is_simplest = False # The line is not at its simplest form
@@ -178,13 +185,10 @@ class LineStringSb(LineString):
             return self.__lst_coords
         else:
             return super().coords
-        # Delete variable that are now outdated. so they will be computed next time it will be accessed
-        del self._vertex_orientation
 
 
     @coords.setter
     def coords(self, coords):
-        print ("Need to update the spatial container...")
         LineString.coords.__set__(self, coords)
         if self.fast_access:
             self.__lst_coords = list(super().coords)
@@ -193,6 +197,10 @@ class LineStringSb(LineString):
             del self._vertex_orientation
         except AttributeError:
             pass
+
+        if self.is_closed:
+            ring = LinearRing(coords)
+            print ("is_ccw: " + str(ring.is_ccw))
 
     @property
     def vertex_orientation(self):
@@ -247,8 +255,8 @@ class LineStringSb(LineString):
         max = len(self.vertex_orientation)
         for i in range(max):
             j = (i+1)%max
-            if self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
-               self.vertex_orientation[j] == GenUtil.CLOCKWISE:
+            if self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
+               self.vertex_orientation[j] == GenUtil.ANTI_CLOCKWISE:
                 rotate = i
                 break
 
@@ -416,11 +424,21 @@ class LineStringSb(LineString):
                 # Validate the spatial constraints
                 i = self.sb_bends[ind].i
                 j = self.sb_bends[ind].j
+
+                print(list(self.coords))
                 if i < j:
-                    self.coords = self.coords[0:i+1] + self.coords[j:]
+                    lst_coords = self.coords[0:i+1] + self.coords[j:]
                 else:
                     # Manage circular list
-                    self.coords = self.coords[j:i+1] + self.coords[j:j+1]
+                    lst_coords = self.coords[j:i+1] + self.coords[j:j+1]
+                print (lst_coords)
+
+                if len(lst_coords) >=4:
+                    self.coords = lst_coords
+                    pol1 = Polygon(lst_coords)
+                    x, y = pol1.exterior.xy
+                    plt.plot(x, y)
+
 
                 # Bend before and after must no be simplified in this pass maybe a next pass
                 if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
@@ -551,6 +569,8 @@ class Bend(object):
         self.j = j  #  Index of the end of the bend coordinate
         self.status = _NOT_SIMPLIFIED  # Type of bend by default: UNTOUCHED
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
+        if len(bend_coords) <= 1:
+            k = 0
 
 
     @property
@@ -749,6 +769,9 @@ class AlgoSherbend(object):
         self.geo_content = geo_content
         ray = command.diameter / 2.0
         self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+        self.nbr_bend_simplified = 0
+
+
 
 
 #        # Set the parameters according to the params.bend_mode parameter
@@ -781,18 +804,15 @@ class AlgoSherbend(object):
         # Load all the features in the spatial container
         for feature in features:
             if feature.geom_type == GenUtil.POLYGON:
-####                feature._gbt_geom_type = 'LineString'  # For performance to avoid the C caller overhead
                 # Deconstruct the Polygon into a list of LineString with supplementary information
                 # needed to reconstruct the original Polygon
-                tmp_pol = orient(Polygon(feature.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
-                ext_feature = LineStringSb(tmp_pol.exterior.coords)
+                ext_feature = LineStringSb(feature.exterior.coords)
                 interiors = feature.interiors
                 int_features = []
                 # Extract the interiors as LineString
                 for interior in interiors:
-                    tmp_pol = orient(Polygon(interior.coords), GenUtil.CLOCKWISE)  # Orient vertices clockwiswe
-                    interior = LineStringSb(tmp_pol.exterior.coords)  # Transform to LineString
-                    interior._gbt_original_type = GenUtil.POLYGON_INTERIOR
+                    interior = LineStringSb(interior.coords)  # Transform to LineString
+                    interior.sb_original_type = GenUtil.POLYGON_INTERIOR
                     int_features.append(interior)
 
                 # Add attributes needed for reconstruction
@@ -803,11 +823,11 @@ class AlgoSherbend(object):
 
                 # Add the exterior and the interior independently
                 self.s_container.add_feature(ext_feature)  # Add the exterior
-                self.s_container.add_features(int_features)  # Add the interior
+                self.s_container.add_features(int_features)  # Add the interiorS
             else:  # Geometry is Point or LinseString
-                feature = LineStringSc(feature.coords)
+                feature = LineStringSb(feature.coords)
                 feature.sb_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
-                feature.sb_original_type = feature._gbt_geom_type
+                feature.sb_original_type = feature.sb_geom_type
 
                 self.s_container.add_feature(feature)  # Add the feature
 
@@ -1159,17 +1179,26 @@ class AlgoSherbend(object):
         Parameters: None
             
         Return value
-                True: At least one line to process was simplified
-                False: No line was simplified
+                int: Total number of bend simplified
         """
-        
-        line_simplified = False
-        
-        for line in self.s_container.get_features(filter= lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
 
-            line_simplified = line.simplify(self.command.diameter) or line_simplified
+        iter_nbr = 0
+        total_nbr_bend_simplified = 0
+        # Iterate until all the line are simplified or there are no more line have to be simplified
+        while (True):
+            print('Start of iteration # {}'.format(iter_nbr))
+            for line in self.s_container.get_features(filter=lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
+                nbr_bend_simplified = line.simplify(self.command.diameter)
+                total_nbr_bend_simplified += nbr_bend_simplified
+            print('Number of bend simplified {}'.format(nbr_bend_simplified))
+            print('End of iteration # {}'.format(10))
+            iter_nbr += 1
+            if nbr_bend_simplified == 0:
+                break
 
-        return line_simplified
+        print('Total number of bend simplified {}'.format(total_nbr_bend_simplified))
+
+        return total_nbr_bend_simplified
 
     def _manage_bend_constraints(self, line, bend):
         """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
@@ -1775,32 +1804,18 @@ class AlgoSherbend(object):
 
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
-     
-#        self.add_line_attributes(self.command.diameter)
-        
-#        if (self.command.multi_bend):
-#            nbr_step = 2
-#        else:
-        nbr_step = 1
-        iter_nbr = 0
-        for step in range(nbr_step):
-            # The last step is always done with multi_bend to False.  We always process the last iterations of multi_bend to False
-            # in order to process alternative bends correctly. An alternative bend is involved when a bend is in conflict and it tries
-            # to simplify the bend just before or after the bend in conflict
-            if (step == 1):
-                self.command.multi_bend = False
-            
-            # Loop until no more lines are simplifiable
-            line_simplified = True
-            # Iterate until all the line are simplified or there are no more line have to be simplified
-            while (line_simplified):
-                print ('Start of iteration # {}'.format(iter_nbr ))
-                line_simplified=False
-                line_simplified = self.manage_lines_simplification()
-                print('Number of bend simplified {}'.format(10))
-                print('End of iteration # {}'.format(10))
 
-                iter_nbr += 1
+        # Loop until no more lines are simplifiable
+#        line_simplified = True
+#        iter_nbr = 0
+
+        # Iterate until all the line are simplified or there are no more line have to be simplified
+#        while (line_simplified):
+#            print ('Start of iteration # {}'.format(iter_nbr ))
+        self.manage_lines_simplification()
+#            print('Number of bend simplified {}'.format(10))
+#            print('End of iteration # {}'.format(10))
+#            iter_nbr += 1
                     
         out_features = []
         for feature in self.s_container.get_features():

@@ -4,6 +4,8 @@
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend, LineStringSb, PointSb
+from shapely.geometry.polygon import orient
+from shapely.geometry import LinearRing
 
 import fiona
 
@@ -12,8 +14,21 @@ from shapely.geometry import Polygon
 
 from lib_geobato import GenUtil
 
+a = LinearRing(((0,0),(1,1),(2,0)))
+b = a.is_ccw
+a = LinearRing(((2,0),(1,1),(0,0)))
+b = a.is_ccw
+print (GenUtil.orientation((0,0),(1,1),(2,0)))
 
-a = LineStringSb (( (1647625.889999593, 195454.0860011009),\
+a = Polygon((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
+a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
+a = LineStringSb(a.exterior.coords)
+a.simplify(15)
+
+a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
+a.simplify(5)
+
+a = Polygon (( (1647625.889999593, 195454.0860011009),\
 (1647630.371999593, 195435.4470011005),\
 (1647640.775999592, 195439.1370011028),\
 (1647649.498999593, 195447.547001102),\
@@ -22,6 +37,8 @@ a = LineStringSb (( (1647625.889999593, 195454.0860011009),\
 (1647618.486999592, 195492.9860011013),\
 (1647623.151999593, 195464.8150011022),\
 (1647625.889999593, 195454.0860011009)))
+a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
+a = LineStringSb(a.exterior.coords)
 a.simplify(1.5)
 
 a = LineStringSb(((0,0), (2,2)))
@@ -61,7 +78,7 @@ a = LineStringSb(((0,0), (1,1), (2,0), (0,0)))
 a.create_bends()
 
 a = LineStringSb(((0,0), (0,2), (1,1), (2,2), (2,0), (0,0)))
-a.create_bends()
+a.simplify(5)
 
 a = LineStringSb((((0,2), (1,1), (2,2), (2,0), (0,0), (0,2))))
 a.create_bends()
@@ -127,15 +144,17 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', diameter=1.5, rotate_coord=True, simplicity=True,
+command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simplicity=True,
                    sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-command.in_file = r'data\hydro_pol.shp'
-#command.in_file = r'data\simple_file3.gpkg'
-command.out_file = r'data\hydro_pol_out.gpkg'
+command.in_file = r'data\test_pol1.gpkg'
+command.out_file = r'data\test_pol1_out.gpkg'
+
+command.in_file = r'data\test\hydro_pol.shp'
+command.out_file = r'data\test\hydro_pol_out.gpkg'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
@@ -158,9 +177,11 @@ for layer_name in layer_names:
                 feature = Polygon(exterior, interiors)
             else:
                 print ("The following geometry type is unsupported: {}".format(geom['type']))
-            feature.sb_layer_name = layer_name  # Layer name is the key for the schema
-            feature.sb_properties = in_feature['properties']
-            geo_content.features.append(feature)
+                feature = None
+            if feature is not None:
+                feature.sb_layer_name = layer_name  # Layer name is the key for the schema
+                feature.sb_properties = in_feature['properties']
+                geo_content.features.append(feature)
     src.close()
 
 
