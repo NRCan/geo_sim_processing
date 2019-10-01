@@ -390,7 +390,7 @@ class LineStringSb(LineString):
                 self.coords = list(reversed(self.coords))
 
 
-    def simplify(self, diameter):
+    def simplify(self, diameter, s_constraints=None):
         """Simplify the line by reducing each bend"""
 
         ray = diameter / 2.0
@@ -440,17 +440,23 @@ class LineStringSb(LineString):
                     # Manage circular list
                     lst_coords = self.coords[j:i+1] + self.coords[j:j+1]
 
-                # Update the coordinates
-                self.coords = lst_coords
+                if s_constraints is not None:
+                    in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                else:
+                    in_conflict = False
 
-                # Bend before and after must no be simplified in this pass maybe a next pass
-                if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
-                if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+                if not in_conflict:
+                    # Update the coordinates
+                    self.coords = lst_coords
 
-                self.sb_bends[ind].status = _SIMPLIFIED
-                nbr_bend_simplified += 1
+                    # Bend before and after must no be simplified in this pass maybe a next pass
+                    if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
+                    if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
 
-                self._offset_bend_ij(i, j)
+                    self.sb_bends[ind].status = _SIMPLIFIED
+                    nbr_bend_simplified += 1
+
+                    self._offset_bend_ij(i, j)
 
         return nbr_bend_simplified
 
@@ -482,48 +488,90 @@ class SpatialConstraints(object):
     """
     """
 
-    _simplicity = []
-    _intersection = []
+    def __init__(self, simplicity=True, crossing=True, sidedness=True, s_container=None):
+        """Constructor for the SpatialConstraint class"""
 
-    def validateSimplicity(self, bend, line, start_line, middle_line, end_line):
-        """Check if the middle line is crossing the start_line or the end_line
+        self.simplicity = simplicity
+        self.crossing = crossing
+        self.sidedness = sidedness
+        self.s_container = s_container
+        self.nbr_err_simplicity = 0
+        self.nbr_err_crossing = 0
+        self.nbr_err_sidedness = 0
 
-        Keyword definition
-           bend -- Bend to simplify
-           line -- Line
-           start_line -- LineString to check
-           middle_line -- LineString to check
-           end_line -- LineString to check
+    def check_constraints(self, line, bend):
+        """Validate the spatial constraint"""
 
-        Return
-            Boolean indicating if the line pass(True) or failed(False) the validation
-        """
-
-        # Create a very short line so that the line does not touch the start and end line (increase performance)
-        smaller_middle_line = affinity.scale(middle_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
-        in_conflict = smaller_middle_line.crosses(start_line) or smaller_middle_line.crosses(end_line)
+        in_conflict = False
 
         if not in_conflict:
-            if line.sb_original_type == 'Polygon-Exterior':
-                # Manage the interiors of a polygon
-                lst_holes = line._gbt_interiors
+            in_conflict = self._check_simplicity(line, bend.i, bend.j, bend.replacement_line)
 
-                # Check that the new middle line does not cross any interior holes of the polygon
-                gen_crosses = list(filter(middle_line.intersects, lst_holes))  # Creates a generator
-                in_conflict = False
-                for element in gen_crosses:
-                    in_conflict = True
-                    break
+        if not in_conflict:
+            in_conflict = self._check_intersection(line, bend.replacement_line)
 
-                # Check that the bend to simplify does not contain any interior holes of the polygon
-                if not in_conflict:
-                    gen_inside = list(filter(bend.polygon.contains, lst_holes))
-                    in_conflict = False
-                    for element in gen_inside:
-                        in_conflict = True
-                        break
+        if not in_conflict:
+            in_conflict = self._check_sidedness(line, bend.polygon)
 
         return in_conflict
+
+
+    def _check_simplicity(self, line, i, j, new_sub_line):
+        """Check if the new sub line creates a self intersection in the line
+
+        Parameter:
+            line -- LineString to verify for self intersection
+            i -- Start index of the new sub line in the line
+            j -- End index of the new sub line in the line
+            new_sub_line -- Replacement line string
+
+        Return
+            Boolean True if the line is simple or False otherwise
+
+        """
+
+        # Create a very short line so that the line does not -touch the start and end line (increase performance)
+        smaller_sub_line = affinity.scale(new_sub_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
+
+        # Creates two lines before and after the new_sub_line
+        start_line = GenUtil.create_LineString(line.coords[:i + 1])
+        end_line = GenUtil.create_LineString(line.coords[j:])
+
+        in_conflict = smaller_sub_line.crosses(start_line) or smaller_sub_line.crosses(end_line)
+
+        return in_conflict
+
+
+    def _check_crossing(self, line, new_sub_line):
+
+        if line.sb_original_type == 'Polygon-Exterior':
+            # Manage the interiors of a polygon
+            lst_holes = line._sb_interiors
+
+            # Check that the new middle line does not cross any interior holes of the polygon
+            gen_crosses = list(filter(new_sub_line.intersects, lst_holes))  # Creates a generator
+            in_conflict = False
+            for element in gen_crosses:
+                in_conflict = True
+                break
+
+        return in_conflict
+
+    def _check_sidedness(self, line, pol):
+
+        if line.sb_original_type == 'Polygon-Exterior':
+            # Manage the interiors of a polygon
+            lst_holes = line._sb_interiors
+
+            # Check that the bend to simplify does not contain any interior holes of the polygon
+            gen_inside = list(filter(pol.contains, lst_holes))
+            in_conflict = False
+            for element in gen_inside:
+                in_conflict = True
+                break
+
+        return in_conflict
+
 
     def validateIntersection(self, sp_container, line, bend):
         """Check that the replacement line does not intersect against another line
@@ -1167,7 +1215,7 @@ class AlgoSherbend(object):
         return
 
 
-    def manage_lines_simplification (self):
+    def _manage_lines_simplification (self, s_constraints):
         """Main routine to simplify the lines
         
         For each line to simplify 
@@ -1192,7 +1240,7 @@ class AlgoSherbend(object):
             iter_nbr_bend_simplified = 0
             print('Iteration # {}'.format(iter_nbr))
             for line in self.s_container.get_features(filter=lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
-                nbr_bend_simplified = line.simplify(self.command.diameter)
+                nbr_bend_simplified = line.simplify(self.command.diameter, s_constraints)
                 iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified
             print('Number of bend simplified {}'.format(iter_nbr_bend_simplified))
@@ -1804,24 +1852,14 @@ class AlgoSherbend(object):
         """
 
 
-
-        self.spatial_constraints = SpatialConstraints()
-
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
 
-        # Loop until no more lines are simplifiable
-#        line_simplified = True
-#        iter_nbr = 0
 
-        # Iterate until all the line are simplified or there are no more line have to be simplified
-#        while (line_simplified):
-#            print ('Start of iteration # {}'.format(iter_nbr ))
-        self.manage_lines_simplification()
-#            print('Number of bend simplified {}'.format(10))
-#            print('End of iteration # {}'.format(10))
-#            iter_nbr += 1
-                    
+        s_constraints = SpatialConstraints(self.s_container)
+
+        self._manage_lines_simplification(s_constraints)
+
         out_features = []
         for feature in self.s_container.get_features():
             if feature.sb_geom_type == GenUtil.POINT:
