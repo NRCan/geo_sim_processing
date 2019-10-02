@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend, LineStringSb, PointSb
 from shapely.geometry.polygon import orient
-from shapely.geometry import LinearRing
+from shapely.geometry import LinearRing, LineString
 
 import fiona
 
@@ -151,8 +151,8 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=
 #command.in_file = r'data\test_pol1.gpkg'
 #command.out_file = r'data\test_pol1_out.gpkg'
 
-command.in_file = r'data\hydro_pol.shp'
-command.out_file = r'data\test\hydro_pol_out.shp'
+command.in_file = r'data\test\hydro_pol_ori.shp'
+command.out_file = r'data\test\hydro_pol_ori_out99.shp'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)

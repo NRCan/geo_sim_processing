@@ -2432,7 +2432,7 @@ class SpatialContainer(object):
 
         return keys
     
-    def get_features(self, bounds=None, filter=True, remove_features=[]):
+    def get_features(self, bounds=None, filter=None, remove_features=[]):
         """Extract the features from the spatial container.
         
         According to the parameters the extraction can manage the extraction based on a bounding box using 

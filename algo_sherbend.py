@@ -264,6 +264,9 @@ class LineStringSb(LineString):
     def _extract_coords(self, i,j):
         """Extract the coordinate between index [i,j]
 
+        Return
+            List of x,y coordinates
+
         If j is lower than i act like a circular array and avoid duplication of first/last vertice"""
 
         if i <= j:
@@ -272,6 +275,21 @@ class LineStringSb(LineString):
             lst_coords = self.coords[i:] + self.coords[0:j+1]
 
         return lst_coords
+
+    def extract_sub_line_string(self, i, j):
+        """Extract a sub line string
+
+        Return
+            Sub Linestring"""
+
+        lst_coords = self._extract_coords(i, j)
+        if len(lst_coords) >=2:
+            line = LineString(lst_coords)
+        else:
+            # create an empty line
+            line = LineString(None)
+
+        return line
 
 
     def _change_inflexion(self, i,j):
@@ -508,7 +526,7 @@ class SpatialConstraints(object):
             in_conflict = self._check_simplicity(line, bend.i, bend.j, bend.replacement_line)
 
         if not in_conflict:
-            in_conflict = self._check_intersection(line, bend.replacement_line)
+            in_conflict = self._check_crossing(line, bend.replacement_line)
 
         if not in_conflict:
             in_conflict = self._check_sidedness(line, bend.polygon)
@@ -534,41 +552,39 @@ class SpatialConstraints(object):
         smaller_sub_line = affinity.scale(new_sub_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
 
         # Creates two lines before and after the new_sub_line
-        start_line = GenUtil.create_LineString(line.coords[:i + 1])
-        end_line = GenUtil.create_LineString(line.coords[j:])
+        start_line = line.extract_sub_line_string(0, i)
+        end_line = line.extract_sub_line_string(j, len(line.coords)-1)
 
         in_conflict = smaller_sub_line.crosses(start_line) or smaller_sub_line.crosses(end_line)
+        if in_conflict:
+            self.nbr_err_simplicity += 1
 
         return in_conflict
 
 
     def _check_crossing(self, line, new_sub_line):
 
-        if line.sb_original_type == 'Polygon-Exterior':
-            # Manage the interiors of a polygon
-            lst_holes = line._sb_interiors
-
-            # Check that the new middle line does not cross any interior holes of the polygon
-            gen_crosses = list(filter(new_sub_line.intersects, lst_holes))  # Creates a generator
-            in_conflict = False
-            for element in gen_crosses:
-                in_conflict = True
-                break
+        features = self.s_container.get_features(line.bounds, remove_features=[line._sb_sc_id])
+        # Check that the new middle line does not cross any interior holes of the polygon
+        gen_crosses = filter(new_sub_line.intersects, features)  # Creates a generator
+        in_conflict = False
+        for element in gen_crosses:
+            in_conflict = True
+            self.nbr_err_crossing += 1
+            break
 
         return in_conflict
 
     def _check_sidedness(self, line, pol):
 
-        if line.sb_original_type == 'Polygon-Exterior':
-            # Manage the interiors of a polygon
-            lst_holes = line._sb_interiors
-
-            # Check that the bend to simplify does not contain any interior holes of the polygon
-            gen_inside = list(filter(pol.contains, lst_holes))
-            in_conflict = False
-            for element in gen_inside:
-                in_conflict = True
-                break
+        features = self.s_container.get_features(pol.bounds, remove_features=[line._sb_sc_id])
+        # Check that the new middle line does not cross any interior holes of the polygon
+        gen_contains = filter(pol.contains, features)  # Creates a generator
+        in_conflict = False
+        for element in gen_contains:
+            in_conflict = True
+            self.nbr_err_sidedness += 1
+            break
 
         return in_conflict
 
@@ -1249,7 +1265,11 @@ class AlgoSherbend(object):
             if nbr_bend_simplified == 0:
                 break
 
-        print('Total number of bend simplified {}'.format(total_nbr_bend_simplified))
+        print('Total number of bend simplified: {}'.format(total_nbr_bend_simplified))
+        print ('Total number of simplicity error: {}'.format(s_constraints.nbr_err_simplicity))
+        print('Total number of crossing error: {}'.format(s_constraints.nbr_err_crossing))
+        print('Total number of sidedness error: {}'.format(s_constraints.nbr_err_sidedness))
+
 
         return total_nbr_bend_simplified
 
@@ -1856,7 +1876,7 @@ class AlgoSherbend(object):
         self.load_features(self.geo_content.features)
 
 
-        s_constraints = SpatialConstraints(self.s_container)
+        s_constraints = SpatialConstraints(s_container=self.s_container)
 
         self._manage_lines_simplification(s_constraints)
 
