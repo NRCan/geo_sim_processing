@@ -11,7 +11,7 @@ import fiona
 
 from shapely.geometry import Polygon
 
-from lib_geobato import GenUtil
+from lib_geosim import GenUtil
 
 a = LinearRing(((0,0),(1,1),(2,0)))
 b = a.is_ccw
