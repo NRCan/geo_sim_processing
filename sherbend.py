@@ -11,14 +11,13 @@ import fiona
 
 from shapely.geometry import Polygon
 
-
 from lib_geobato import GenUtil
 
 a = LinearRing(((0,0),(1,1),(2,0)))
 b = a.is_ccw
 a = LinearRing(((2,0),(1,1),(0,0)))
 b = a.is_ccw
-print (GenUtil.orientation((0,0),(1,1),(2,0)))
+
 
 a = Polygon((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
 a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
@@ -152,7 +151,7 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=
 #command.out_file = r'data\test_pol1_out.gpkg'
 
 command.in_file = r'data\test\hydro_pol_ori.shp'
-command.out_file = r'data\test\hydro_pol_ori_out99.shp'
+command.out_file = r'data\test\hydro_pol_ori_out999.shp'
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
@@ -185,20 +184,19 @@ for layer_name in layer_names:
 
 print ("-----")
 print("Name of input file: {}".format(command.in_file))
+print("Name of output file: {}".format(command.out_file))
 print ("Number of layers read: {}".format(len(geo_content.schemas)))
 print ("Number of features read: {}".format(len(geo_content.features)))
+print ("-----")
 
-import time
-start = time. time()
 # Execute the Sherbend algorithm on the feature read
 sherbend = AlgoSherbend(command, geo_content)
 results = sherbend.process()
-end = time. time()
-print("Le temp est:{}: ".format(end - start))
 
 
 
-# Extract the name of each layer
+
+# Extract the unique name of each layer
 layer_names = set()
 for feature in results:
     layer_names.add(feature.sb_layer_name)
@@ -219,10 +217,11 @@ for layer_name in layer_names:
                 interior = [list(interior.coords) for interior in feature.interiors]
                 coordinates = [exterior]+interior
 
-
             out_feature = {'geometry': {'type': feature.geom_type,
                                         'coordinates': coordinates},
-                            'properties': feature.sb_properties}
+                           'properties': feature.sb_properties}
             dest.write(out_feature)
 
-        dest.close()
+    dest.close()
+
+print ("Number of features written: {}".format(len(results)))

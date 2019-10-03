@@ -30,13 +30,13 @@ from shapely import affinity
 from lib_geobato import GenUtil, SpatialContainer, Polygon
                                
 # Public key word contants
-MULTI_BENDS = "MULTI_BEND"
-SINGLE_BEND = "SINGLE_BEND"
-NO_VERTICE_ADD = "NO_VERTICE_ADD"
+#MULTI_BENDS = "MULTI_BEND"
+#SINGLE_BEND = "SINGLE_BEND"
+#NO_VERTICE_ADD = "NO_VERTICE_ADD"
 
 # Properties name
 _DIAMETER = "diameter"
-_SIMPLIFY_FIRST_LAST = "simplify_first_last"
+#_SIMPLIFY_FIRST_LAST = "simplify_first_last"
 
 # Internal constant
 
@@ -62,15 +62,15 @@ _BIG_BEND_MAX_ADJ_AREA_RATIO = 0.6      # Minimal adjusted area ratio used to de
 _BIG = "Big"
 _BURNED = "Burned"
 _SMALL = "Small"
-_ONE_BEND = 'OneBend'
-_TWO_BENDS = 'TwoBends'
-_THREE_BENDS = 'ThreeBends'
-_FOUR_BENDS = 'FourBends'
-_FIVE_BENDS = 'FiveBends'
+# _ONE_BEND = 'OneBend'
+# _TWO_BENDS = 'TwoBends'
+# _THREE_BENDS = 'ThreeBends'
+# _FOUR_BENDS = 'FourBends'
+# _FIVE_BENDS = 'FiveBends'
 _SIMPLIFIED = 'Simplified'
 _NOT_SIMPLIFIED = 'NotSimplified'
 _UNSIMPLIFIABLE = 'Unsimplifiable'
-_IN_CONFLICT = 'InConflict'
+#_IN_CONFLICT = 'InConflict'
 
 # class SherbendStatistics(GenStatistics):
 #     """Class that contains the statistics for the Sherbend algorithm
@@ -961,145 +961,145 @@ class AlgoSherbend(object):
 #        # Calculates the replacement line for each bend found
 #        self._reduce_bends(line)
 
-
-    def _set_simplest_line(self, line):
-        """ Determine if a line is at its simplest form
-        
-        Set the attribute of the simplest at true when a line as 0 bends (the bend list is empty) or
-        all the bends of the line are of type "UNKNOWN"  this means that all the bends are over 
-        the minimum adjusted size
-        
-        Parameter:
-            line: LineString to check if it is at its simplest form
-            
-        Return value
-            None
-            
-        """
-        
-        if line._gbt_bends:
-            list_unknown = [bend.type for bend in line._gbt_bends if bend.type != _UNKNOWN]
-            # If list is empty ==> All the bends are of type _UNKNOWN and the line is at its simplest form
-            if list_unknown:
-                pass
-            else:
-                line._gbt_simplest= True
-        else:
-            line._gbt_simplest = True
-
-
-    def classify_bends(self, line):
-        """This routine is sliding a window over the bends of a line in order to classify bend for simplification.
-        
-        It tries to find consecutives bends
-        that meet the following criterias:
-          - The bends must have the bend_type _UNKNOWN
-          - The bends must surrounded by bend of type _UNKNOWN
-          - The bends must have a adjusted area below min_adj_area
-          - The first and last bend of the window must be smaller than the 
-               previous and next bend of the window
-               
-        Parameter:
-            line: line object to check for consecutives bend
-            
-        Return value:
-            None
-    
-        """
-        
-#        window_length = self._number_of_bends_to_reduce(bend_type)
-        window_length = 1
-        bend_type = _ONE_BEND
-#        if bend_type == _ONE_BEND:
-#            window_length = 1
-#        else:
-#            window_length = 0
-
-        nbr_bends = len(line._gbt_bends)
-        last_bend = nbr_bends - window_length 
-        
-        # The last bend to process depends on the window length
-        for i in range(0, last_bend + 1):
-            # The sliding window must be surrounded by bend type _UNKNOWN 
-            # otherwise we cannot check if they are similar bends
-            if (i == 0):
-                # Special case for the first bend
-                surround_before = _UNKNOWN
-            else:
-                surround_before = line._gbt_bends[i - 1].type
-            if (i == last_bend):
-                #How the last bend we assume the next bend to _UNKNOWN
-                surround_after = _UNKNOWN
-            else:
-                surround_after = line._gbt_bends[i + window_length].type
-            
-            # Check that all the bends over the window are of type UNKNOWN
-            bend_unknown = True
-            for j in range(window_length):
-                if (line._gbt_bends[i + j].type != _UNKNOWN):
-                    bend_unknown = False
-            
-            # Check previous and next bend are of type _UNKNOWN
-            if (bend_unknown and
-                 surround_before == _UNKNOWN  and
-                 surround_after == _UNKNOWN):
-                
-                # Check that all bends are below min_adj_area
-                window_adj_area = True
-                for j in range(window_length):
-                    if (line._gbt_bends[i + j].adj_area > line._gbt_min_adj_area):
-                        window_adj_area = False
-                    
-                if (window_adj_area):
-                    
-                    if ( self._are_neighbours_bigger(line, i, i+window_length-1) ):
-                        
-                        lst_bends = []
-                        for i_lst in range(window_length):
-                            lst_bends.append(line._gbt_bends[i_lst+i])
-                            
-                        if ( self._are_bends_similar(lst_bends) ):
-                            for i_lst in range(window_length):
-                                line._gbt_bends[i_lst+i].type = bend_type
-                        
-        return
-    
-    def _are_neighbours_bigger(self, line, first_bend, last_bend):
-        """Checks if the bends is surrounded by bigger area bends.
-        
-        Parameters:
-            line: Line object to check
-            first_bend: number of the first bend of the line to check
-            last_bend: Number of the last bend of the line to check
-            
-        Return value:
-            Boolean flag for the state of the bend in comparison to its neighbours
-                True: The neighbours are bigger
-                False:  The neighbours are smaller
-        """
-        
-        # If it is the first bend of the line we assume previous bend as infinite
-        if (first_bend == 0):
-            previous_adj_area = 1.0e+99
-        else:
-            previous_adj_area = line._gbt_bends[first_bend - 1].adj_area
-        
-        # If it is the last bend of the line we assume the next bend as infinite    
-        if (last_bend == len(line._gbt_bends) - 1):
-            next_adj_area = 1.0e+99
-        else:
-            next_adj_area = line._gbt_bends[last_bend + 1].adj_area
-            
-        if (previous_adj_area >= line._gbt_bends[first_bend].adj_area and
-             next_adj_area >= line._gbt_bends[last_bend].adj_area):
-            
-            bigger = True
-        else:
-            bigger = False
-            
-        return bigger
-
-    
+#
+#     def _set_simplest_line(self, line):
+#         """ Determine if a line is at its simplest form
+#
+#         Set the attribute of the simplest at true when a line as 0 bends (the bend list is empty) or
+#         all the bends of the line are of type "UNKNOWN"  this means that all the bends are over
+#         the minimum adjusted size
+#
+#         Parameter:
+#             line: LineString to check if it is at its simplest form
+#
+#         Return value
+#             None
+#
+#         """
+#
+#         if line._gbt_bends:
+#             list_unknown = [bend.type for bend in line._gbt_bends if bend.type != _UNKNOWN]
+#             # If list is empty ==> All the bends are of type _UNKNOWN and the line is at its simplest form
+#             if list_unknown:
+#                 pass
+#             else:
+#                 line._gbt_simplest= True
+#         else:
+#             line._gbt_simplest = True
+# #
+# #
+#     def classify_bends(self, line):
+#         """This routine is sliding a window over the bends of a line in order to classify bend for simplification.
+#
+#         It tries to find consecutives bends
+#         that meet the following criterias:
+#           - The bends must have the bend_type _UNKNOWN
+#           - The bends must surrounded by bend of type _UNKNOWN
+#           - The bends must have a adjusted area below min_adj_area
+#           - The first and last bend of the window must be smaller than the
+#                previous and next bend of the window
+#
+#         Parameter:
+#             line: line object to check for consecutives bend
+#
+#         Return value:
+#             None
+#
+#         """
+#
+# #        window_length = self._number_of_bends_to_reduce(bend_type)
+#         window_length = 1
+#         bend_type = _ONE_BEND
+# #        if bend_type == _ONE_BEND:
+# #            window_length = 1
+# #        else:
+# #            window_length = 0
+#
+#         nbr_bends = len(line._gbt_bends)
+#         last_bend = nbr_bends - window_length
+#
+#         # The last bend to process depends on the window length
+#         for i in range(0, last_bend + 1):
+#             # The sliding window must be surrounded by bend type _UNKNOWN
+#             # otherwise we cannot check if they are similar bends
+#             if (i == 0):
+#                 # Special case for the first bend
+#                 surround_before = _UNKNOWN
+#             else:
+#                 surround_before = line._gbt_bends[i - 1].type
+#             if (i == last_bend):
+#                 #How the last bend we assume the next bend to _UNKNOWN
+#                 surround_after = _UNKNOWN
+#             else:
+#                 surround_after = line._gbt_bends[i + window_length].type
+#
+#             # Check that all the bends over the window are of type UNKNOWN
+#             bend_unknown = True
+#             for j in range(window_length):
+#                 if (line._gbt_bends[i + j].type != _UNKNOWN):
+#                     bend_unknown = False
+#
+#             # Check previous and next bend are of type _UNKNOWN
+#             if (bend_unknown and
+#                  surround_before == _UNKNOWN  and
+#                  surround_after == _UNKNOWN):
+#
+#                 # Check that all bends are below min_adj_area
+#                 window_adj_area = True
+#                 for j in range(window_length):
+#                     if (line._gbt_bends[i + j].adj_area > line._gbt_min_adj_area):
+#                         window_adj_area = False
+#
+#                 if (window_adj_area):
+#
+#                     if ( self._are_neighbours_bigger(line, i, i+window_length-1) ):
+#
+#                         lst_bends = []
+#                         for i_lst in range(window_length):
+#                             lst_bends.append(line._gbt_bends[i_lst+i])
+#
+#                         if ( self._are_bends_similar(lst_bends) ):
+#                             for i_lst in range(window_length):
+#                                 line._gbt_bends[i_lst+i].type = bend_type
+#
+#         return
+#     #
+    # def _are_neighbours_bigger(self, line, first_bend, last_bend):
+    #     """Checks if the bends is surrounded by bigger area bends.
+    #
+    #     Parameters:
+    #         line: Line object to check
+    #         first_bend: number of the first bend of the line to check
+    #         last_bend: Number of the last bend of the line to check
+    #
+    #     Return value:
+    #         Boolean flag for the state of the bend in comparison to its neighbours
+    #             True: The neighbours are bigger
+    #             False:  The neighbours are smaller
+    #     """
+    #
+    #     # If it is the first bend of the line we assume previous bend as infinite
+    #     if (first_bend == 0):
+    #         previous_adj_area = 1.0e+99
+    #     else:
+    #         previous_adj_area = line._gbt_bends[first_bend - 1].adj_area
+    #
+    #     # If it is the last bend of the line we assume the next bend as infinite
+    #     if (last_bend == len(line._gbt_bends) - 1):
+    #         next_adj_area = 1.0e+99
+    #     else:
+    #         next_adj_area = line._gbt_bends[last_bend + 1].adj_area
+    #
+    #     if (previous_adj_area >= line._gbt_bends[first_bend].adj_area and
+    #          next_adj_area >= line._gbt_bends[last_bend].adj_area):
+    #
+    #         bigger = True
+    #     else:
+    #         bigger = False
+    #
+    #     return bigger
+    #
+    #
     # def _compact_bends (self, line):
     #     """This routine compacts the bends.
     #
@@ -1169,66 +1169,66 @@ class AlgoSherbend(object):
 #         return
 
 
-    def rotate_coordinates(self, line):
-        """Rotate the first and last vertice of a closed line on the place where the biggest bend because on a closed
-        line bend located on the first and last bend are not simplified
-
-        It is easier to move (rotate) the first/last vertice than to try to simplifiy the bend located
-        of the first last vertice.  So we try to move the first/last vertice on a bend that do not need
-        simplification
-        
-        Keyword definition
-          line -- LineString object to calculate bends
-        
-        Return value: None  
-        """
-
-        if len(line._gbt_bends) >= 2:
-            # Only process a line if there are two or more bends
-            min_adj_area = -1.
-            for bend in line._gbt_bends:
-                if bend.adj_area > line._gbt_min_adj_area and bend.j-bend.i >= 4:
-                    # A bend formed by 4 vertices (or more) is the ideal cases because if we split this bend
-                    # in the middle it forms 2 smaller bends that are removed as we do not process the first and
-                    # last bend of a closed line
-                    i_j = (bend.i,bend.j)
-                    break
-                if bend.adj_area > min_adj_area:
-                    # Acceptable bend found and favor the biggest bend
-                    min_adj_area = bend.adj_area
-                    i_j = (bend.i, bend.j)
-
-            # Rotate the line at the center of the i_j
-            i = i_j[0]
-            j = i_j[1]
-            if j-i == 2:
-                mid_i_j = i+1
-                del_first = True
-                del_last  = True
-            elif j-i == 3:
-                mid_i_j = i + 1
-                del_first = True
-                del_last = True
-            else:
-                mid_i_j = int((i+j)/2)
-                del_first = True
-                del_last = True
-            line.coords = line.coords[mid_i_j:] + line.coords[1:mid_i_j+1]
-            print (line.coords[mid_i_j:])
-            print (line.coords[1:mid_i_j+1])
-
-            # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
-            self.create_bends(line)
-
-            # Delete the first bend if required
-            if len(line._gbt_bends) >= 1 and del_first:
-                del line._gbt_bends[0]
-
-            # Delete the last bend if required
-            if len(line._gbt_bends) >= 1 and del_last:
-                del line._gbt_bends[-1]
-
-        return
+    # def rotate_coordinates(self, line):
+    #     """Rotate the first and last vertice of a closed line on the place where the biggest bend because on a closed
+    #     line bend located on the first and last bend are not simplified
+    #
+    #     It is easier to move (rotate) the first/last vertice than to try to simplifiy the bend located
+    #     of the first last vertice.  So we try to move the first/last vertice on a bend that do not need
+    #     simplification
+    #
+    #     Keyword definition
+    #       line -- LineString object to calculate bends
+    #
+    #     Return value: None
+    #     """
+    #
+    #     if len(line._gbt_bends) >= 2:
+    #         # Only process a line if there are two or more bends
+    #         min_adj_area = -1.
+    #         for bend in line._gbt_bends:
+    #             if bend.adj_area > line._gbt_min_adj_area and bend.j-bend.i >= 4:
+    #                 # A bend formed by 4 vertices (or more) is the ideal cases because if we split this bend
+    #                 # in the middle it forms 2 smaller bends that are removed as we do not process the first and
+    #                 # last bend of a closed line
+    #                 i_j = (bend.i,bend.j)
+    #                 break
+    #             if bend.adj_area > min_adj_area:
+    #                 # Acceptable bend found and favor the biggest bend
+    #                 min_adj_area = bend.adj_area
+    #                 i_j = (bend.i, bend.j)
+    #
+    #         # Rotate the line at the center of the i_j
+    #         i = i_j[0]
+    #         j = i_j[1]
+    #         if j-i == 2:
+    #             mid_i_j = i+1
+    #             del_first = True
+    #             del_last  = True
+    #         elif j-i == 3:
+    #             mid_i_j = i + 1
+    #             del_first = True
+    #             del_last = True
+    #         else:
+    #             mid_i_j = int((i+j)/2)
+    #             del_first = True
+    #             del_last = True
+    #         line.coords = line.coords[mid_i_j:] + line.coords[1:mid_i_j+1]
+    #         print (line.coords[mid_i_j:])
+    #         print (line.coords[1:mid_i_j+1])
+    #
+    #         # Recreate the bends as the line as beed rotated with the first/last point on the biggest bend
+    #         self.create_bends(line)
+    #
+    #         # Delete the first bend if required
+    #         if len(line._gbt_bends) >= 1 and del_first:
+    #             del line._gbt_bends[0]
+    #
+    #         # Delete the last bend if required
+    #         if len(line._gbt_bends) >= 1 and del_last:
+    #             del line._gbt_bends[-1]
+    #
+    #     return
 
 
     def _manage_lines_simplification (self, s_constraints):
@@ -1262,7 +1262,7 @@ class AlgoSherbend(object):
             print('Number of bend simplified {}'.format(iter_nbr_bend_simplified))
             print('----------')
             iter_nbr += 1
-            if nbr_bend_simplified == 0:
+            if iter_nbr_bend_simplified == 0:
                 break
 
         print('Total number of bend simplified: {}'.format(total_nbr_bend_simplified))
@@ -1273,41 +1273,41 @@ class AlgoSherbend(object):
 
         return total_nbr_bend_simplified
 
-    def _manage_bend_constraints(self, line, bend):
-        """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
-        
-        Parameters
-            bend: Bend object to simplify
-            line: line object to simplify
-
-            
-        Return value
-            Flag indicating the status of the constraint verification
-                _SIMPLIFIED: The bend simplification did not violate any constraint and was simplified
-                _IN_CONFLICT:  The bend simplification did violate a constraint and was not simplified
-        
-        """
-        in_conflict = False
-
-        if self.command.simplicity and not in_conflict:
-            start_line = GenUtil.create_LineString(line.coords[:bend.i+1])
-            end_line = GenUtil.create_LineString(line.coords[bend.j:])
-
-            in_conflict = self.spatial_constraints.validateSimplicity(bend, line, start_line, bend.replacement_line, end_line)
-
-        if self.command.intersection and not in_conflict:
-            in_conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
-
-        if not in_conflict:
-            # No conflict replace the bend by its replacement line
-            status = _SIMPLIFIED
-        else:
-            status = _IN_CONFLICT
-            bend.type = _IN_CONFLICT
-                    
-        return status
-
-# The next lines are disable it was managing the alternate bends
+#     def _manage_bend_constraints(self, line, bend):
+#         """Check if the bend to simplfy will violate the SIMPLE_LINE, LINE_CROSSING or SIDEDNESS constraint
+#
+#         Parameters
+#             bend: Bend object to simplify
+#             line: line object to simplify
+#
+#
+#         Return value
+#             Flag indicating the status of the constraint verification
+#                 _SIMPLIFIED: The bend simplification did not violate any constraint and was simplified
+#                 _IN_CONFLICT:  The bend simplification did violate a constraint and was not simplified
+#
+#         """
+#         in_conflict = False
+#
+#         if self.command.simplicity and not in_conflict:
+#             start_line = GenUtil.create_LineString(line.coords[:bend.i+1])
+#             end_line = GenUtil.create_LineString(line.coords[bend.j:])
+#
+#             in_conflict = self.spatial_constraints.validateSimplicity(bend, line, start_line, bend.replacement_line, end_line)
+#
+#         if self.command.intersection and not in_conflict:
+#             in_conflict = self.spatial_constraints.validateIntersection(self.s_container, line, bend )
+#
+#         if not in_conflict:
+#             # No conflict replace the bend by its replacement line
+#             status = _SIMPLIFIED
+#         else:
+#             status = _IN_CONFLICT
+#             bend.type = _IN_CONFLICT
+#
+#         return status
+#
+# # The next lines are disable it was managing the alternate bends
 # The alternate bends were adding far more complexity in the code for few better results
 #    def _find_alternate_bends (self, line, i):
 #        """Find an alternate bend when the bend to simplify is violating a constraint
@@ -1603,33 +1603,33 @@ class AlgoSherbend(object):
     #
     #     self._create_replacement_line(bend1, lst_coords)
      
-
-    def _are_bends_big(self, bend, min_adj_area):
-        """This routine if the bend are big bend
-        
-        To be considered as big bend the list of bends must have a adjusted area and the compactness index
-        over a certain threshold     
-        
-        Parameters:
-            bends: Bend to process
-            min_adj_area: minimum adjusted area for the line
-             
-        Return value
-            Boolean flag indicating if the bend are candidate for BIG bend
-                True: The bends are big bend
-                False: Otherwise
-        """
-
-        adj_area_ratio = 1.0 - (bend.adj_area/ min_adj_area)
-        cmp_index_ratio = 1.0 - bend.cmp_index
-        if (adj_area_ratio  < _BIG_BEND_MAX_ADJ_AREA_RATIO and
-            cmp_index_ratio < _BIG_BEND_CMP_INDEX_RATIO ):
-            is_big_bend = True
-        else:
-            is_big_bend = False
-
-        return is_big_bend
-
+    #
+    # def _are_bends_big(self, bend, min_adj_area):
+    #     """This routine if the bend are big bend
+    #
+    #     To be considered as big bend the list of bends must have a adjusted area and the compactness index
+    #     over a certain threshold
+    #
+    #     Parameters:
+    #         bends: Bend to process
+    #         min_adj_area: minimum adjusted area for the line
+    #
+    #     Return value
+    #         Boolean flag indicating if the bend are candidate for BIG bend
+    #             True: The bends are big bend
+    #             False: Otherwise
+    #     """
+    #
+    #     adj_area_ratio = 1.0 - (bend.adj_area/ min_adj_area)
+    #     cmp_index_ratio = 1.0 - bend.cmp_index
+    #     if (adj_area_ratio  < _BIG_BEND_MAX_ADJ_AREA_RATIO and
+    #         cmp_index_ratio < _BIG_BEND_CMP_INDEX_RATIO ):
+    #         is_big_bend = True
+    #     else:
+    #         is_big_bend = False
+    #
+    #     return is_big_bend
+    #
 
     # def _number_of_bends_to_reduce (self, bend_type):
     #     """
@@ -1655,49 +1655,49 @@ class AlgoSherbend(object):
     #
     #     return nbr_bends
 
-    def _finalize_bend_information (self, bend, line, in_hand_line_coords):
-        """This routine calculates extra attributes and informaion for the bends and line  that will be simplified.
-        
-        It calculates the following values:
-        replacement_line bounding_box: Extent values for the replacement line
-        bend_polygon: The list of points forming the polygon of all the bends (more than one bend with a multi bends)
-        bend_polygon bounding box: Extent of the bend polygon
-        
-        Parameters:
-            bend: Bend object to simplify
-            line: LineString being processed
-            in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
-                                 the Sahpely structure we keep them in that list
-        
-        """   
-        
-        first_pt = bend.i  # First bend first point
-        last_pt = bend.j  # Last bend last point
-            
-       
-        # Calculate the complete new line with the bend removed
-        new_line_coords = list(in_hand_line_coords)
-        new_line_coords[first_pt:last_pt+1] = bend.replacement_line.coords_dual[0:]
-        bend.new_line = LineString(new_line_coords)
-        
-        # Calculate the sidedness region to use for the constraints
+    # def _finalize_bend_information (self, bend, line, in_hand_line_coords):
+    #     """This routine calculates extra attributes and informaion for the bends and line  that will be simplified.
+    #
+    #     It calculates the following values:
+    #     replacement_line bounding_box: Extent values for the replacement line
+    #     bend_polygon: The list of points forming the polygon of all the bends (more than one bend with a multi bends)
+    #     bend_polygon bounding box: Extent of the bend polygon
+    #
+    #     Parameters:
+    #         bend: Bend object to simplify
+    #         line: LineString being processed
+    #         in_hand_line_coords: In order to increase performance we are not rewriting the coordinates in
+    #                              the Sahpely structure we keep them in that list
+    #
+    #     """
+    #
+    #     first_pt = bend.i  # First bend first point
+    #     last_pt = bend.j  # Last bend last point
+    #
+    #
+    #     # Calculate the complete new line with the bend removed
+    #     new_line_coords = list(in_hand_line_coords)
+    #     new_line_coords[first_pt:last_pt+1] = bend.replacement_line.coords_dual[0:]
+    #     bend.new_line = LineString(new_line_coords)
+    #
+    #     # Calculate the sidedness region to use for the constraints
 #        old_sub_line = list(line.coords[first_pt:last_pt+1])
 #        new_sub_line = list(bend.replacement_line.coords[0:])
 #        bend.sidedness_polygon = GenUtil.calculate_sidedness_polygon(LineString(old_sub_line),
 #                                                                     LineString(new_sub_line) )
         
 
-    def _calculate_number_of_bends (self, lines):
-        """
-        This routine is calculating the total number of bends in the lines
-        """
-        
-        nbr_bends = 0
-        for line in lines:
-            nbr_bends += len(line.bends)
-            
-        return nbr_bends
-    
+    # def _calculate_number_of_bends (self, lines):
+    #     """
+    #     This routine is calculating the total number of bends in the lines
+    #     """
+    #
+    #     nbr_bends = 0
+    #     for line in lines:
+    #         nbr_bends += len(line.bends)
+    #
+    #     return nbr_bends
+    #
     # def _reduce_bend(self, bend, line, bend_depth=_DEPTH_OFFSET_RATIO):
     #
     #     """This routine reduce one bend"""
@@ -1719,43 +1719,43 @@ class AlgoSherbend(object):
     #     scaled_point = self.rescale_vector (base_mid_point, MA_Point(bend.peak_coords),  bend_depth)
     #
     #     return [scaled_point.coords_dual[0]]
-
-    def _are_bends_similar(self, lst_bends):
-        
-        """This routine determines determine if the list of bends are similar"""
-        
-        lst_bend_base      = []
-        lst_bend_adj_area  = []
-        lst_bend_cmp_index = []
-        
-        # Create the list for the base, adj_area and cmp_index
-        for bend in lst_bends:
-            lst_bend_base.append(bend.base)
-            lst_bend_adj_area.append(bend.adj_area)
-            lst_bend_cmp_index.append(bend.cmp_index)
-        
-        # Extract max list values
-        max_base      = max(lst_bend_base)
-        max_adj_area  = max(lst_bend_adj_area)
-        max_cmp_index = max(lst_bend_cmp_index)
-        
-        # Extract min values
-        min_base      = min(lst_bend_base)
-        min_adj_area  = min(lst_bend_adj_area)
-        min_cmp_index = min(lst_bend_cmp_index)
-        
-        delta_base      = 1.0 - (min_base / max_base)
-        delta_cmp_index = 1.0 - (min_cmp_index / max_cmp_index)
-        delta_adj_area  = 1.0 - (min_adj_area / max_adj_area)
-        
-        if (delta_base < _SIMILAR_BEND_BASE_RATIO and
-             delta_cmp_index < _SIMILAR_BEND_CMP_INDEX_RATIO and
-             delta_adj_area < _SIMILAR_BEND_ADJ_AREA_RATIO):
-            similar_bends = True
-        else:
-            similar_bends = False
-        
-        return similar_bends
+    #
+    # def _are_bends_similar(self, lst_bends):
+    #
+    #     """This routine determines determine if the list of bends are similar"""
+    #
+    #     lst_bend_base      = []
+    #     lst_bend_adj_area  = []
+    #     lst_bend_cmp_index = []
+    #
+    #     # Create the list for the base, adj_area and cmp_index
+    #     for bend in lst_bends:
+    #         lst_bend_base.append(bend.base)
+    #         lst_bend_adj_area.append(bend.adj_area)
+    #         lst_bend_cmp_index.append(bend.cmp_index)
+    #
+    #     # Extract max list values
+    #     max_base      = max(lst_bend_base)
+    #     max_adj_area  = max(lst_bend_adj_area)
+    #     max_cmp_index = max(lst_bend_cmp_index)
+    #
+    #     # Extract min values
+    #     min_base      = min(lst_bend_base)
+    #     min_adj_area  = min(lst_bend_adj_area)
+    #     min_cmp_index = min(lst_bend_cmp_index)
+    #
+    #     delta_base      = 1.0 - (min_base / max_base)
+    #     delta_cmp_index = 1.0 - (min_cmp_index / max_cmp_index)
+    #     delta_adj_area  = 1.0 - (min_adj_area / max_adj_area)
+    #
+    #     if (delta_base < _SIMILAR_BEND_BASE_RATIO and
+    #          delta_cmp_index < _SIMILAR_BEND_CMP_INDEX_RATIO and
+    #          delta_adj_area < _SIMILAR_BEND_ADJ_AREA_RATIO):
+    #         similar_bends = True
+    #     else:
+    #         similar_bends = False
+    #
+    #     return similar_bends
     
     # def _replace_bend (self, bend, line, in_hand_line_coords):
     #     """
@@ -1810,36 +1810,36 @@ class AlgoSherbend(object):
 #        y_out = vec_y + y1
 #
 #        return MA_Point([x_out, y_out])
-    
-    def _calculate_bend_depth(self, line, bend):
-        """
-        This routine extract the depth of a bend. 
-        
-        The depth is defined as the furthest point 
-        from the base for the points that delineate the bend
-        
-        Returned values:
-            a tuple containing
-            (the depth as a distance, index of the point on the line where the peak is)
-            
-        """
-        
-        dist_depth = - 1.
-        
-#        bend_base_line = LineString((line.coords_dual[bend.i], line.coords_dual[bend.j]))
-        base_line_p1 = line.coords[bend.i]
-        base_line_p2 = line.coords[bend.j]
-        
-        for n in range(bend.i + 1, bend.j):
-            
-#            distance = bend_base_line.distance(Point(line.coords_dual[n]))
-            distance = GenUtil.distance_line_point (base_line_p1, base_line_p2, line.coords[n])
-            if (distance > dist_depth):
-                dist_depth = distance
-                pt_depth_index = n
-    
-        return (dist_depth, pt_depth_index)
-
+#
+#     def _calculate_bend_depth(self, line, bend):
+#         """
+#         This routine extract the depth of a bend.
+#
+#         The depth is defined as the furthest point
+#         from the base for the points that delineate the bend
+#
+#         Returned values:
+#             a tuple containing
+#             (the depth as a distance, index of the point on the line where the peak is)
+#
+#         """
+#
+#         dist_depth = - 1.
+#
+# #        bend_base_line = LineString((line.coords_dual[bend.i], line.coords_dual[bend.j]))
+#         base_line_p1 = line.coords[bend.i]
+#         base_line_p2 = line.coords[bend.j]
+#
+#         for n in range(bend.i + 1, bend.j):
+#
+# #            distance = bend_base_line.distance(Point(line.coords_dual[n]))
+#             distance = GenUtil.distance_line_point (base_line_p1, base_line_p2, line.coords[n])
+#             if (distance > dist_depth):
+#                 dist_depth = distance
+#                 pt_depth_index = n
+#
+#         return (dist_depth, pt_depth_index)
+#
 
 #    def check_features(self):
 #        """Check if the features passed in parameters are of the good class type and have the good attributes
