@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend, LineStringSb, PointSb
-from shapely.geometry.polygon import orient
-from shapely.geometry import LinearRing, LineString
 
 import fiona
 
@@ -13,6 +12,7 @@ from shapely.geometry import Polygon
 
 from lib_geosim import GenUtil
 
+"""
 a = LinearRing(((0,0),(1,1),(2,0)))
 b = a.is_ccw
 a = LinearRing(((2,0),(1,1),(0,0)))
@@ -91,6 +91,7 @@ a.simplify(5)
 
 a = LineStringSb((( (0,0),(0,3),(1,2),(3,3),(3,0),(1,1),(0,0)) ))
 a.simplify(5)
+"""
 
 
 @dataclass
@@ -110,17 +111,10 @@ class Command:
         verbose -- flag to enable/disable the verbose mode
 
         """
-    in_file: str
-    out_file: str
-    diameter: float
-    rotate_coord: bool
-    simplicity: bool
-    sidedness: bool
-    crossing: bool
-    intersection: bool
-    add_vertex: bool
-    multi_bend: bool
-    verbose: bool
+#    in_file: str
+#    out_file: str
+#    diameter: float
+#    verbose: bool
 
 
 @dataclass
@@ -141,17 +135,19 @@ class GeoContent:
     features: List[object] = None
 
 
-command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simplicity=True,
-                   sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
+#command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simplicity=True,
+#                   sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
 
 
-#command.in_file = r'data\test_pol1.gpkg'
-#command.out_file = r'data\test_pol1_out.gpkg'
-
-command.in_file = r'data\test\hydro_pol_ori.shp'
-command.out_file = r'data\test\hydro_pol_ori_out999.shp'
+# Reading the parameter on the command line
+parser = argparse.ArgumentParser()
+parser.add_argument("in_file", help="input vector file to simplify")
+parser.add_argument("out_file", help="output vector file simplified")
+parser.add_argument("-d", "--diameter", type=float, help="diameter of the bend to simplify")
+command = parser.parse_args()
+print (command.in_file)
 
 # Extract and load the layers of the file
 layer_names = fiona.listlayers(command.in_file)
