@@ -4,7 +4,7 @@
 import argparse
 from dataclasses import dataclass
 from typing import List
-from algo_sherbend import AlgoSherbend, LineStringSb, PointSb
+from algo_sherbend import AlgoSherbend
 
 import fiona
 
@@ -126,6 +126,7 @@ class GeoContent:
         driver -- name of the drive
         schemas -- dictionary of schema with "layer name" as key
         features -- list of geographic features in shapely structure
+        layer_names -- Name of the layers in the spatial file
 
     """
     crs: None
@@ -133,12 +134,13 @@ class GeoContent:
     schemas: dict
     bounds: List[object] = None
     features: List[object] = None
+    layer_names: List[object] = None
 
 
 #command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simplicity=True,
 #                   sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
 
-geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[])
+geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[], layer_names=[])
 
 
 # Reading the parameter on the command line
@@ -147,36 +149,9 @@ parser.add_argument("in_file", help="input vector file to simplify")
 parser.add_argument("out_file", help="output vector file simplified")
 parser.add_argument("-d", "--diameter", type=float, help="diameter of the bend to simplify")
 command = parser.parse_args()
-print (command.in_file)
 
-# Extract and load the layers of the file
-layer_names = fiona.listlayers(command.in_file)
-for layer_name in layer_names:
-    with fiona.open(command.in_file, 'r', layer=layer_name) as src:
-        geo_content.crs = src.crs
-        geo_content.driver = src.driver
-        geo_content.schemas[layer_name] = src.schema
-        geo_content.bounds.append(src.bounds)
-
-        for in_feature in src:
-            geom = in_feature['geometry']
-            if geom['type'] == 'Point':
-                feature = PointSb(geom['coordinates'])
-            elif geom['type'] == 'LineString':
-                feature = LineStringSb(geom['coordinates'])
-            elif geom['type'] == 'Polygon':
-                exterior = geom['coordinates'][0]
-                interiors = geom['coordinates'][1:]
-                feature = Polygon(exterior, interiors)
-            else:
-                print ("The following geometry type is unsupported: {}".format(geom['type']))
-                feature = None
-            if feature is not None:
-                feature.sb_layer_name = layer_name  # Layer name is the key for the schema
-                feature.sb_properties = in_feature['properties']
-                geo_content.features.append(feature)
-    src.close()
-
+# Extract and load the layers of the input file
+GenUtil.read_in_file (command.in_file, geo_content)
 
 print ("-----")
 print("Name of input file: {}".format(command.in_file))
@@ -189,35 +164,13 @@ print ("-----")
 sherbend = AlgoSherbend(command, geo_content)
 results = sherbend.process()
 
-
-
-
 # Extract the unique name of each layer
 layer_names = set()
 for feature in results:
     layer_names.add(feature.sb_layer_name)
 
-# Loop over each layer and write the content of the file
-for layer_name in layer_names:
-    with fiona.open(command.out_file, 'w',
-                    driver=geo_content.driver,
-                    layer=layer_name,
-                    crs=geo_content.crs,
-                    schema=geo_content.schemas[layer_name]) as dest:
-        for feature in (feature for feature in results if feature.sb_layer_name==layer_name):
-            # Transform the Shapely features for fiona writing
-            if feature.geom_type == 'Point' or feature.geom_type == 'LineString':
-                coordinates = list(feature.coords)
-            elif feature.geom_type == 'Polygon':
-                exterior = list(feature.exterior.coords)
-                interior = [list(interior.coords) for interior in feature.interiors]
-                coordinates = [exterior]+interior
+# Copy the results in the output file
+GenUtil.write_out_file (results, command.out_file, geo_content)
 
-            out_feature = {'geometry': {'type': feature.geom_type,
-                                        'coordinates': coordinates},
-                           'properties': feature.sb_properties}
-            dest.write(out_feature)
-
-    dest.close()
 
 print ("Number of features written: {}".format(len(results)))

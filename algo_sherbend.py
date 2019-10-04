@@ -24,9 +24,7 @@
 import math
 
 from shapely.geometry import Point, LineString, LinearRing, Polygon
-from shapely.geometry.polygon import orient
 from shapely import affinity
-
 from lib_geosim import GenUtil, SpatialContainer
                                
 # Public key word contants
@@ -870,10 +868,8 @@ class AlgoSherbend(object):
 
         """
 
-
         # Load the features into the spatial container
         self.load_features(self.geo_content.features)
-
 
         s_constraints = SpatialConstraints(s_container=self.s_container)
 

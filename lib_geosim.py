@@ -6,19 +6,11 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 
 """
 
-from abc import ABCMeta
-from abc import abstractmethod
 import math
-from collections import Iterable
-from copy import deepcopy
-from itertools import count
-
-from shapely.geometry import Point, LineString, Polygon
-from shapely.geometry.polygon import LinearRing
-from shapely.ops import cascaded_union
-
 from rtree import Rtree
-
+import fiona
+from shapely.geometry import Polygon
+#from algo_sherbend import LineStringSb, PointSb
 
 
 class GenUtil:
@@ -83,6 +75,90 @@ class GenUtil:
             orient = 0
 
         return orient
+
+
+    @staticmethod
+    def read_in_file (in_file, geo_content):
+        """
+        Read and load the vectors in the input file
+
+        Args:
+            in_file (str): Name of the input file (geopackage)
+            geo_content (dict): Dictionary containing information to create the spatial database
+
+        Return:
+            None
+
+        """
+
+        # Extract the name of the layers in the file
+        geo_content.layer_names = fiona.listlayers(in_file)
+
+        # extract the spatial feature in the file
+        for layer_name in geo_content.layer_names:
+            with fiona.open(in_file, 'r', layer=layer_name) as src:
+                geo_content.crs = src.crs
+                geo_content.driver = src.driver
+                geo_content.schemas[layer_name] = src.schema
+                geo_content.bounds.append(src.bounds)
+
+                for in_feature in src:
+                    geom = in_feature['geometry']
+                    if geom['type'] == 'Point':
+                        feature = PointSb(geom['coordinates'])
+                    elif geom['type'] == 'LineString':
+                        feature = LineStringSb(geom['coordinates'])
+                    elif geom['type'] == 'Polygon':
+                        exterior = geom['coordinates'][0]
+                        interiors = geom['coordinates'][1:]
+                        feature = Polygon(exterior, interiors)
+                    else:
+                        print("The following geometry type is unsupported: {}".format(geom['type']))
+                        feature = None
+                    if feature is not None:
+                        feature.sb_layer_name = layer_name  # Layer name is the key for the schema
+                        feature.sb_properties = in_feature['properties']
+                        geo_content.features.append(feature)
+            src.close()
+
+
+    @staticmethod
+    def write_out_file (features, out_file, geo_content):
+        """
+        Write the vectors in the output file
+
+        Args:
+            features (list): List of shapely features (Point, LineString, Polygon)
+            out_file (str): Name of the output file (geopackage)
+            geo_content (dict): Dictionary containing information to create the spatial database
+
+        Return:
+            None
+
+        """
+
+        # Loop over each layer and write the content of the file
+        for layer_name in geo_content.layer_names:
+            with fiona.open(out_file, 'w',
+                            driver=geo_content.driver,
+                            layer=layer_name,
+                            crs=geo_content.crs,
+                            schema=geo_content.schemas[layer_name]) as dest:
+                for feature in (feature for feature in features if feature.sb_layer_name==layer_name):
+                    # Transform the Shapely features for fiona writing
+                    if feature.geom_type == 'Point' or feature.geom_type == 'LineString':
+                        coordinates = list(feature.coords)
+                    elif feature.geom_type == 'Polygon':
+                        exterior = list(feature.exterior.coords)
+                        interior = [list(interior.coords) for interior in feature.interiors]
+                        coordinates = [exterior]+interior
+
+                    out_feature = {'geometry': {'type': feature.geom_type,
+                                                'coordinates': coordinates},
+                                   'properties': feature.sb_properties}
+                    dest.write(out_feature)
+
+            dest.close()
 
 
 class SpatialContainer(object):
