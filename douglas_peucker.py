@@ -286,7 +286,7 @@ class AlgoDouglasPeucker(Algorithm):
         replacement_index = list(index)
         
         if (line.is_closed and (len(replacement_index) <= 3)):
-#           Closed line must have at least 4 vertices
+       #   Closed line must have at least 4 vertices
             replacement_index = self._process_closed_line(line)
 
         # Check if the line has been simplified
