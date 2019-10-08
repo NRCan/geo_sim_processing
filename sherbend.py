@@ -12,6 +12,7 @@ from shapely.geometry import Polygon
 
 from lib_geosim import GenUtil
 
+
 """
 a = LinearRing(((0,0),(1,1),(2,0)))
 b = a.is_ccw
@@ -125,52 +126,63 @@ class GeoContent:
         crs -- coordinate reference system
         driver -- name of the drive
         schemas -- dictionary of schema with "layer name" as key
-        features -- list of geographic features in shapely structure
+        in_features -- input list of geographic features in shapely structure
         layer_names -- Name of the layers in the spatial file
 
     """
     crs: None
     driver: None
     schemas: dict
+    in_nbr_points: 0
+    in_nbr_line_strings: 0
+    in_nbr_polygons: 0
+    in_nbr_holes: 0
+    out_nbr_points: 0
+    out_nbr_line_strings: 0
+    out_nbr_polygons: 0
+    out_nbr_holes: 0
+    nbr_del_polygons: 0
+    nbr_del_holes: 0
     bounds: List[object] = None
-    features: List[object] = None
     layer_names: List[object] = None
+    in_features: List[object] = None
+    out_features: List[object] = None
 
-
-#command = Command (in_file='', out_file='', diameter=50, rotate_coord=True, simplicity=True,
-#                   sidedness=True, crossing=True, intersection=True, add_vertex=True, multi_bend=False, verbose=True)
-
-geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], features=[], layer_names=[])
+geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_names=[], in_features=[], out_features=[],
+                         in_nbr_points=0, in_nbr_line_strings=0, in_nbr_polygons=0, in_nbr_holes=0,
+                         out_nbr_points=0, out_nbr_line_strings=0, out_nbr_polygons=0, out_nbr_holes=0,
+                         nbr_del_polygons=0, nbr_del_holes=0 )
 
 
 # Reading the parameter on the command line
 parser = argparse.ArgumentParser()
 parser.add_argument("in_file", help="input vector file to simplify")
 parser.add_argument("out_file", help="output vector file simplified")
-parser.add_argument("-d", "--diameter", type=float, help="diameter of the bend to simplify")
+parser.add_argument("-d", "--diameter", type=float, help="diameter of the minimum adjusted area bend to simplify")
+parser.add_argument("-eh", "--exclude_hole", action='store_true', help="exclude holes (interior) below minimum adjusted area")
+parser.add_argument("-ep", "--exclude_polygon", action='store_true', help="exclude polygons below minimum adjusted area")
 command = parser.parse_args()
 
 # Extract and load the layers of the input file
 GenUtil.read_in_file (command.in_file, geo_content)
 
-print ("-----")
+print ("-------")
 print("Name of input file: {}".format(command.in_file))
 print("Name of output file: {}".format(command.out_file))
 print ("Number of layers read: {}".format(len(geo_content.schemas)))
-print ("Number of features read: {}".format(len(geo_content.features)))
+print ("Number of features read: {}".format(len(geo_content.in_features)))
 print ("-----")
 
 # Execute the Sherbend algorithm on the feature read
 sherbend = AlgoSherbend(command, geo_content)
-results = sherbend.process()
-
-# Extract the unique name of each layer
-layer_names = set()
-for feature in results:
-    layer_names.add(feature.sb_layer_name)
+sherbend.process()
 
 # Copy the results in the output file
-GenUtil.write_out_file (results, command.out_file, geo_content)
+GenUtil.write_out_file (command.out_file, geo_content)
 
-
-print ("Number of features written: {}".format(len(results)))
+print ("Number of polygons excluded: {}".format(geo_content.nbr_del_polygons))
+print ("Number of holes excluded: {}".format(geo_content.nbr_del_holes))
+print ("Number of point features written: {}".format(geo_content.out_nbr_points))
+print ("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
+print ("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
+print ("Number of holes written: {}".format(geo_content.out_nbr_holes))

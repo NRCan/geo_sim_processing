@@ -1,30 +1,35 @@
 from shapely.geometry import Point, LineString, Polygon
-from shapely.geometry.polygon import orient
 from time import time
-import lib_geobato
-import time
+from lib_geobato import GenUtil
 import math
 
 from shapely import affinity
 
-coords = [(0,0),(1,0), (1,1), (0.0000001, 0.0000001)]
-pol = Polygon(coords)
-pol1 = orient(pol, -1.0)
-pol2 = orient(pol, 1.0)
+start_time = time()
+p1 = Point((5,5))
+p2 = Point((3,6))
+line1 = LineString(((0,3),(10,4)))
+line2 = LineString(((5,5),(3,6)))
 
-start = time.time()
-for x in range(10000):
-    coord = line.coords[0]
-    coord = line.coords[1]
-print (time.time()-start)
+total = 0
+for i in range(1):
+    dist1 = line1.distance(p1)
+    dist2 = line1.distance(p2)
+    if dist1>dist2:
+        total+=dist1
+    else:
+        total +=dist2
 
-start = time.time()
-for x in range(10000):
-    line_coords = list(line.coords)
-    coord = line_coords[3]
-    coord = line_coords[4]
-print (time.time()-start)
+print("Distance: {}".format(total))
+print ("Le temps 2: {}".format( time() - start_time) )
 
+total = 0
+start_time = time()
+for i in range(1):
+    dist = line2.hausdorff_distance(line1)
+    total += dist
+print("Distance: {}".format(total))
+print ("Le temps 2: {}".format( time() - start_time) )
 
 0/0
 

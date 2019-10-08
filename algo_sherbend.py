@@ -21,7 +21,7 @@
 
 #####################################################################################################################################
 
-import math
+import math, sys
 
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely import affinity
@@ -605,7 +605,7 @@ class Bend(object):
         try:
             return self._cmp_index
         except AttributeError:
-            self._cmp_index = 4*self._area*math.pi / (self.perimeter**2.0)
+            self._cmp_index = GenUtil.calculate_compactness_index(self.area, self.perimeter)
             return self._cmp_index
 
 
@@ -614,7 +614,7 @@ class Bend(object):
         try:
             return self._adj_area
         except AttributeError:
-            self._adj_area = self.area * (0.75 / self.cmp_index)
+            self._adj_area = GenUtil.calculate_adjusted_area(self.area, self.cmp_index)
             return self._adj_area
 
     @property
@@ -758,15 +758,27 @@ class AlgoSherbend(object):
         self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         self.nbr_bend_simplified = 0
 
+    def _calculate_adj_area(self, exclude, coords):
 
-    def load_features(self, features):
+        if (exclude):
+            pol = Polygon(coords)
+            cmp_index = GenUtil.calculate_compactness_index(pol.area, pol.length)
+            adj_area = GenUtil.calculate_adjusted_area(pol.area, cmp_index)
+        else:
+            adj_area = sys.float_info.max
+
+        return adj_area
+
+
+    def load_features(self, geo_content, command):
         """Load the points, line strings and polygons in the spatial container.
 
         The Polygons are deconstructued into a list LineString with clockwise orientation and extra added information
         needed for the reconstruction of the original Polygon
 
-        Keyword definition
-            features: List of shapely features
+        Args:
+            geo_content (dataClass): Contains all the input#output geo spatial information
+            command (object): Contains the parameters of the command line interface
 
         Return
             None
@@ -776,28 +788,41 @@ class AlgoSherbend(object):
         self.s_container = SpatialContainer()
 
         # Load all the features in the spatial container
-        for feature in features:
+        for feature in geo_content.in_features:
             if feature.geom_type == GenUtil.POLYGON:
-                # Deconstruct the Polygon into a list of LineString with supplementary information
-                # needed to reconstruct the original Polygon
-                ext_feature = LineStringSb(feature.exterior.coords)
-                interiors = feature.interiors
-                int_features = []
-                # Extract the interiors as LineString
-                for interior in interiors:
-                    interior = LineStringSb(interior.coords)  # Transform to LineString
-                    interior.sb_original_type = GenUtil.POLYGON_INTERIOR
-                    int_features.append(interior)
+                adj_area = self._calculate_adj_area(command.exclude_polygon, feature.exterior.coords)
+                if (adj_area > self.min_adj_area):
+                    # Only keep the polygon over the minimum adjusted area
+                    # Deconstruct the Polygon into a list of LineString with supplementary information
+                    # needed to reconstruct the original Polygon
+                    ext_feature = LineStringSb(feature.exterior.coords)
+                    interiors = feature.interiors
+                    int_features = []
+                    # Extract the interiors as LineString
+                    for interior in interiors:
+                        adj_area = self._calculate_adj_area(command.exclude_hole, interior.coords)
+                        if (adj_area > self.min_adj_area):
+                            # Keep the interior over the minimal adjusted area
+                            interior = LineStringSb(interior.coords)  # Transform to LineString
+                            interior.sb_original_type = GenUtil.POLYGON_INTERIOR
+                            int_features.append(interior)
+                        else:
+                            geo_content.nbr_del_holes += len(feature.interiors)
 
-                # Add attributes needed for reconstruction
-                ext_feature.sb_interiors = int_features
-                ext_feature.sb_layer_name = feature.sb_layer_name
-                ext_feature.sb_properties = feature.sb_properties
-                ext_feature.sb_original_type = GenUtil.POLYGON_EXTERIOR
+                    # Add attributes needed for reconstruction
+                    ext_feature.sb_interiors = int_features
+                    ext_feature.sb_layer_name = feature.sb_layer_name
+                    ext_feature.sb_properties = feature.sb_properties
+                    ext_feature.sb_original_type = GenUtil.POLYGON_EXTERIOR
 
-                # Add the exterior and the interior independently
-                self.s_container.add_feature(ext_feature)  # Add the exterior
-                self.s_container.add_features(int_features)  # Add the interiorS
+                    # Add the exterior and the interior independently
+                    self.s_container.add_feature(ext_feature)  # Add the exterior
+                    self.s_container.add_features(int_features)  # Add the interiorS
+                else:
+                    # Do not add the feature (exterior and interiors ) in the spatial container
+                    # Update some stats
+                    geo_content.nbr_del_polygons += 1
+                    geo_content.nbr_del_holes += len(feature.interiors)
             else:  # Geometry is Point or LinseString
                 feature = LineStringSb(feature.coords)
                 feature.sb_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
@@ -805,11 +830,7 @@ class AlgoSherbend(object):
 
                 self.s_container.add_feature(feature)  # Add the feature
 
-        # Empty the feature list
-        features.clear()
-
         return
-
 
     def _manage_lines_simplification (self, s_constraints):
         """Main routine to simplify the lines
@@ -869,19 +890,18 @@ class AlgoSherbend(object):
         """
 
         # Load the features into the spatial container
-        self.load_features(self.geo_content.features)
+        self.load_features(self.geo_content, self.command)
 
         s_constraints = SpatialConstraints(s_container=self.s_container)
 
         self._manage_lines_simplification(s_constraints)
 
-        out_features = []
         for feature in self.s_container.get_features():
             if feature.sb_geom_type == GenUtil.POINT:
-                out_features.append(feature)
+                self.geo_content.out_features.append(feature)
             elif feature.sb_geom_type == GenUtil.LINE_STRING:
                 if feature.sb_original_type == GenUtil.LINE_STRING:
-                    out_features.append(feature)
+                    self.out_features.append(feature)
                 else:
                     if feature.sb_original_type == GenUtil.POLYGON_EXTERIOR:
                         # The LineString was an exterior Polygon so reconstruct the originalPolygon
@@ -889,8 +909,8 @@ class AlgoSherbend(object):
                         polygon = Polygon(feature.coords, interiors)
                         polygon.sb_layer_name = feature.sb_layer_name
                         polygon.sb_properties = feature.sb_properties
-                        out_features.append(polygon)
+                        self.geo_content.out_features.append(polygon)
                     else:
                         pass  # Nothing to do with the holes here
 
-        return out_features
+        return

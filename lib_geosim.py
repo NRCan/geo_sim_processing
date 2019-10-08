@@ -78,6 +78,37 @@ class GenUtil:
 
 
     @staticmethod
+    def calculate_compactness_index(area, perimeter):
+        """Calculate the compactness index based of the perimeter and area
+
+        Args:
+            area (float): Area of the polygon
+            perimeter (float): Perimeter of the area
+
+        Return:
+            (float): Compactness index
+
+        """
+
+        return (4 * area * math.pi / (perimeter ** 2.0))
+
+
+    @staticmethod
+    def calculate_adjusted_area(area, cmp_index):
+        """Calculate the adjusted area from the area and compactness index
+
+        Args:
+            area (float): Area of the polygon
+            cmp_index (float): Compactness index of the areea
+
+        Return:
+            flot: Adjusted area of the polygon
+
+            """
+        return (area * (0.75 / cmp_index))
+
+
+    @staticmethod
     def read_in_file (in_file, geo_content):
         """
         Read and load the vectors in the input file
@@ -118,19 +149,18 @@ class GenUtil:
                     if feature is not None:
                         feature.sb_layer_name = layer_name  # Layer name is the key for the schema
                         feature.sb_properties = in_feature['properties']
-                        geo_content.features.append(feature)
+                        geo_content.in_features.append(feature)
             src.close()
 
 
     @staticmethod
-    def write_out_file (features, out_file, geo_content):
+    def write_out_file (out_file, geo_content):
         """
         Write the vectors in the output file
 
         Args:
-            features (list): List of shapely features (Point, LineString, Polygon)
             out_file (str): Name of the output file (geopackage)
-            geo_content (dict): Dictionary containing information to create the spatial database
+            geo_content (DataClass): Contains information to create the spatial database
 
         Return:
             None
@@ -144,14 +174,21 @@ class GenUtil:
                             layer=layer_name,
                             crs=geo_content.crs,
                             schema=geo_content.schemas[layer_name]) as dest:
-                for feature in (feature for feature in features if feature.sb_layer_name==layer_name):
+                for feature in (feature for feature in geo_content.out_features
+                                if feature.sb_layer_name==layer_name):
                     # Transform the Shapely features for fiona writing
-                    if feature.geom_type == 'Point' or feature.geom_type == 'LineString':
+                    if feature.geom_type == GenUtil.POINT:
                         coordinates = list(feature.coords)
-                    elif feature.geom_type == 'Polygon':
+                        geo_content.out_nbr_points += 1
+                    elif feature.geom_type == GenUtil.LINE_STRING:
+                        coordinates = list(feature.coords)
+                        geo_content.out_nbr_line_Strings += 1
+                    elif feature.geom_type == GenUtil.POLYGON:
                         exterior = list(feature.exterior.coords)
-                        interior = [list(interior.coords) for interior in feature.interiors]
-                        coordinates = [exterior]+interior
+                        interiors = [list(interior.coords) for interior in feature.interiors]
+                        coordinates = [exterior]+interiors
+                        geo_content.out_nbr_polygons += 1
+                        geo_content.out_nbr_holes += len(interiors)
 
                     out_feature = {'geometry': {'type': feature.geom_type,
                                                 'coordinates': coordinates},
