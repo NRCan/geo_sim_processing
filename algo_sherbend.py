@@ -824,11 +824,16 @@ class AlgoSherbend(object):
                     geo_content.nbr_del_polygons += 1
                     geo_content.nbr_del_holes += len(feature.interiors)
             else:  # Geometry is Point or LinseString
-                feature = LineStringSb(feature.coords)
-                feature.sb_geom_type = feature.geom_type  # For performance to avoid the C caller overhead
-                feature.sb_original_type = feature.sb_geom_type
+                if feature.geom_type == GenUtil.POINT:
+                    out_feature = PointSb(feature.coords)
+                    out_feature.sb_geom_type = GenUtil.POINT
+                else:
+                    out_feature = LineStringSb(feature.coords)
+                    out_feature.sb_geom_type_type = GenUtil.LINE_STRING
+                out_feature.sb_layer_name = feature.sb_layer_name
+                out_feature.sb_properties = feature.sb_properties
 
-                self.s_container.add_feature(feature)  # Add the feature
+                self.s_container.add_feature(out_feature)  # Add the feature
 
         return
 
@@ -856,10 +861,15 @@ class AlgoSherbend(object):
         while (True):
             iter_nbr_bend_simplified = 0
             print('Iteration # {}'.format(iter_nbr))
-            for line in self.s_container.get_features(filter=lambda feature: feature.sb_geo_type == 'LineString' and not feature.sb_is_simplest):
+            i = 0
+            for line in self.s_container.get_features(filter=lambda feature: True if(feature.sb_geom_type =="COCO" and not feature.sb_is_simplest) else False):
+                print (i)
+                if i == 49:
+                    print (i)
                 nbr_bend_simplified = line.simplify(self.command.diameter, s_constraints)
                 iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified
+                i += 1
             print('Number of bend simplified {}'.format(iter_nbr_bend_simplified))
             print('----------')
             iter_nbr += 1
@@ -901,7 +911,7 @@ class AlgoSherbend(object):
                 self.geo_content.out_features.append(feature)
             elif feature.sb_geom_type == GenUtil.LINE_STRING:
                 if feature.sb_original_type == GenUtil.LINE_STRING:
-                    self.out_features.append(feature)
+                    self.geo_content.out_features.append(feature)
                 else:
                     if feature.sb_original_type == GenUtil.POLYGON_EXTERIOR:
                         # The LineString was an exterior Polygon so reconstruct the originalPolygon

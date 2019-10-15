@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend
 
-import fiona
-
-from shapely.geometry import Polygon
 
 from lib_geosim import GenUtil
 
@@ -162,6 +160,14 @@ parser.add_argument("-d", "--diameter", type=float, help="diameter of the minimu
 parser.add_argument("-eh", "--exclude_hole", action='store_true', help="exclude holes (interior) below minimum adjusted area")
 parser.add_argument("-ep", "--exclude_polygon", action='store_true', help="exclude polygons below minimum adjusted area")
 command = parser.parse_args()
+
+# Check that the input file exist. Exit if missing
+if not os.path.isfile(command.in_file):
+    raise Exception('Input file is missing: {}'.format(command.in_file))
+
+# Check that the output file exist. Exit if present
+if os.path.isfile(command.out_file):
+    raise Exception('Output file is present: {}'.format(command.out_file))
 
 # Extract and load the layers of the input file
 GenUtil.read_in_file (command.in_file, geo_content)

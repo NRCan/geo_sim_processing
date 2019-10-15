@@ -9,7 +9,7 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 import math
 from rtree import Rtree
 import fiona
-from shapely.geometry import Polygon
+from shapely.geometry import Point, LineString, Polygon
 #from algo_sherbend import LineStringSb, PointSb
 
 
@@ -136,9 +136,9 @@ class GenUtil:
                 for in_feature in src:
                     geom = in_feature['geometry']
                     if geom['type'] == 'Point':
-                        feature = PointSb(geom['coordinates'])
+                        feature = Point(geom['coordinates'])
                     elif geom['type'] == 'LineString':
-                        feature = LineStringSb(geom['coordinates'])
+                        feature = LineString(geom['coordinates'])
                     elif geom['type'] == 'Polygon':
                         exterior = geom['coordinates'][0]
                         interiors = geom['coordinates'][1:]
@@ -182,7 +182,7 @@ class GenUtil:
                         geo_content.out_nbr_points += 1
                     elif feature.geom_type == GenUtil.LINE_STRING:
                         coordinates = list(feature.coords)
-                        geo_content.out_nbr_line_Strings += 1
+                        geo_content.out_nbr_line_strings += 1
                     elif feature.geom_type == GenUtil.POLYGON:
                         exterior = list(feature.exterior.coords)
                         interiors = [list(interior.coords) for interior in feature.interiors]
