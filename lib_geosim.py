@@ -178,7 +178,7 @@ class GenUtil:
                                 if feature.sb_layer_name==layer_name):
                     # Transform the Shapely features for fiona writing
                     if feature.geom_type == GenUtil.POINT:
-                        coordinates = list(feature.coords)
+                        coordinates = (feature.x, feature.y)
                         geo_content.out_nbr_points += 1
                     elif feature.geom_type == GenUtil.LINE_STRING:
                         coordinates = list(feature.coords)
@@ -381,47 +381,6 @@ class SpatialContainer(object):
 
         return bounds
 
-    # def _set_if_statement(self, filter, remove_keys):
-    #     """Set the if statement needed to extract features from the container
-    #
-    #     *Parameters*:
-    #         - filter: This parameter define the if statement to be used in order to filter
-    #                 the features based on the value of some properties. If *None* no filter are applied.
-    #                 Example of a filters to filter on feature type: "if feature.feature_type == 'LINE'"
-    #                 The filters must be a valid python expression
-    #         - remove_keys: List of keys to be removes from the selection
-    #
-    #     *Returns*:
-    #         - String containing the if statement
-    #
-    #     """
-    #
-    #     if remove_keys is not None and len(remove_keys) != 0:
-    #         str_remove_keys = "".join([str(key)+"," for key in remove_keys])
-    #         str_remove_keys = "feature._sci_id not in [%s]" %(str_remove_keys)
-    #     else:
-    #         str_remove_keys = ""
-    #
-    #     str_filter = filter
-    #     if (str_filter is not None):
-    #         str_filter = str_filter.rstrip()
-    #         str_filter = str_filter.lstrip()
-    #         str_filter = "(" + str_filter + ")"
-    #     else:
-    #         str_filter = ""
-    #
-    #     str_if = ""
-    #     if (str_filter != ""):
-    #         str_if = str_filter
-    #
-    #     if (str_remove_keys != ""):
-    #         if (str_filter != ""):
-    #             str_if = "%s and %s" %(str_filter, str_remove_keys)
-    #         else:
-    #             str_if = str_remove_keys
-    #
-    #     return str_if
-
     def add_feature(self, feature):
         """Adds a feature in the container and update the spatial index with the feature's bound
 
@@ -607,10 +566,6 @@ class SpatialContainer(object):
 
         *Parameters*:
             - bounds: Bounding for the spatial extraction. *None* means all the features
-            - filter: This parameter define the if statement to be used in order to filter
-                      the features based on the value of some properties. If *None* no filter are applied.
-                      The filters must be a valid python expression.
-                      Example of a filter to filter on feature type: "if feature.feature_type == 'LINE'"
             - remove_keys: List of keys to be removed from the selection
 
         *Returns*:
@@ -625,10 +580,6 @@ class SpatialContainer(object):
             features = (self._features[key] for key in keys if key in self._features)
         else:
             features = (feature for feature in self._features.values() if feature not in remove_features)
-
-        # Filter the result if requested
-        if filter:
-            features = [feature for feature in features if filter]
 
         return features
 

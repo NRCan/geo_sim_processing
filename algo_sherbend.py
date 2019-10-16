@@ -26,15 +26,10 @@ import math, sys
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely import affinity
 from lib_geosim import GenUtil, SpatialContainer
-                               
-# Public key word contants
-#MULTI_BENDS = "MULTI_BEND"
-#SINGLE_BEND = "SINGLE_BEND"
-#NO_VERTICE_ADD = "NO_VERTICE_ADD"
+
 
 # Properties name
 _DIAMETER = "diameter"
-#_SIMPLIFY_FIRST_LAST = "simplify_first_last"
 
 # Internal constant
 
@@ -69,8 +64,11 @@ class LineStringSb(LineString):
 
     """LineString specialization for the SherBend algorithm"""
 
-    def __init__(self, coords, fast_access=True):
+    def __init__(self, coords, original_type, layer_name, properties, fast_access=True):
         super().__init__(coords)
+        self.sb_original_type = original_type
+        self.sb_layer_name = layer_name
+        self.sb_properties = properties
         self.fast_access = fast_access
         if self.fast_access:
             self.__lst_coords = list(super().coords)
@@ -403,8 +401,13 @@ class LineStringSb(LineString):
 
 class PointSb(Point):
 
-    def __init__(self, coords, fast_access=True):
+    def __init__(self, coords, layer_name, properties, fast_access=True):
         super().__init__(coords)
+        self.sb_is_simplest = True
+        self.sb_layer_name = layer_name
+        self.sb_properties = properties
+        self.sb_original_type = GenUtil.POINT
+        self.sb_geom_type = GenUtil.POINT  # For faster acces than calling C (geom_type)
         self.fast_access = fast_access
         if self.fast_access:
             self.__lst_coords = list(super().coords)
@@ -455,7 +458,6 @@ class SpatialConstraints(object):
 
         return in_conflict
 
-
     def _check_simplicity(self, line, i, j, new_sub_line):
         """Check if the new sub line creates a self intersection in the line
 
@@ -483,7 +485,6 @@ class SpatialConstraints(object):
 
         return in_conflict
 
-
     def _check_crossing(self, line, new_sub_line):
 
         features = self.s_container.get_features(line.bounds, remove_features=[line._sb_sc_id])
@@ -509,35 +510,6 @@ class SpatialConstraints(object):
             break
 
         return in_conflict
-
-
-    def validateIntersection(self, sp_container, line, bend):
-        """Check that the replacement line does not intersect against another line
-
-        Keyword definition
-           sp_container -- SpatialContainer containing all the features
-           replacement_line -- LineString used to replace the bend
-           line -- Linestring line to validate
-
-        Return
-            Boolean indicating if the line pass(True) or failed(False) the validation
-        """
-
-        lst_lines = sp_container.get_features(bounds=bend.replacement_line.bounds,
-                                              remove_features=[line._sb_sc_id],
-                                              filter=lambda feature: feature._gbt_geom_type == 'LineString')
-
-        lst_line = list(lst_lines)
-        if len(lst_line) !=0:
-            print ("Le nombre de lignes est:", len(lst_line))
-
-        gen_crosses = filter(bend.replacement_line.intersects, lst_lines)  # Creates a generator
-        intersection = False
-        for element in gen_crosses:
-            intersection = True
-            break # One crossing is enough... we can stop
-
-        return intersection
 
 
 class Bend(object):
@@ -622,7 +594,7 @@ class Bend(object):
         try:
             return self._replacement_line
         except AttributeError:
-            self._replacement_line = LineStringSb((self.bend_coords[0], self.bend_coords[-1]))
+            self._replacement_line = LineString((self.bend_coords[0], self.bend_coords[-1]))
             return self._replacement_line
 
     def create_replacement_line (lst_coords, bend, diameter):
@@ -790,12 +762,14 @@ class AlgoSherbend(object):
         # Load all the features in the spatial container
         for feature in geo_content.in_features:
             if feature.geom_type == GenUtil.POLYGON:
+
+                # Only keep the polygon over the minimum adjusted area
                 adj_area = self._calculate_adj_area(command.exclude_polygon, feature.exterior.coords)
                 if (adj_area > self.min_adj_area):
-                    # Only keep the polygon over the minimum adjusted area
                     # Deconstruct the Polygon into a list of LineString with supplementary information
                     # needed to reconstruct the original Polygon
-                    ext_feature = LineStringSb(feature.exterior.coords)
+                    ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, feature.sb_layer_name,
+                                               feature.sb_properties)
                     interiors = feature.interiors
                     int_features = []
                     # Extract the interiors as LineString
@@ -803,17 +777,14 @@ class AlgoSherbend(object):
                         adj_area = self._calculate_adj_area(command.exclude_hole, interior.coords)
                         if (adj_area > self.min_adj_area):
                             # Keep the interior over the minimal adjusted area
-                            interior = LineStringSb(interior.coords)  # Transform to LineString
-                            interior.sb_original_type = GenUtil.POLYGON_INTERIOR
+                            interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, None, None)
                             int_features.append(interior)
                         else:
                             geo_content.nbr_del_holes += len(feature.interiors)
 
-                    # Add attributes needed for reconstruction
+                    # Add interior features needed for Polygon reconstruction
                     ext_feature.sb_interiors = int_features
-                    ext_feature.sb_layer_name = feature.sb_layer_name
-                    ext_feature.sb_properties = feature.sb_properties
-                    ext_feature.sb_original_type = GenUtil.POLYGON_EXTERIOR
+
 
                     # Add the exterior and the interior independently
                     self.s_container.add_feature(ext_feature)  # Add the exterior
@@ -823,15 +794,14 @@ class AlgoSherbend(object):
                     # Update some stats
                     geo_content.nbr_del_polygons += 1
                     geo_content.nbr_del_holes += len(feature.interiors)
-            else:  # Geometry is Point or LinseString
+            else:
                 if feature.geom_type == GenUtil.POINT:
-                    out_feature = PointSb(feature.coords)
-                    out_feature.sb_geom_type = GenUtil.POINT
+                    out_feature = PointSb(feature.coords, feature.sb_layer_name, feature.sb_properties)
+                elif feature.geom_type == GenUtil.LINE_STRING:
+                    out_feature = LineStringSb(feature.coords, GenUtil.LINE_STRING, feature.sb_layer_name,
+                                               feature.sb_properties)
                 else:
-                    out_feature = LineStringSb(feature.coords)
-                    out_feature.sb_geom_type_type = GenUtil.LINE_STRING
-                out_feature.sb_layer_name = feature.sb_layer_name
-                out_feature.sb_properties = feature.sb_properties
+                    raise Exception ("Invalide geometry type: {}".format(feature.geometry))
 
                 self.s_container.add_feature(out_feature)  # Add the feature
 
@@ -861,15 +831,14 @@ class AlgoSherbend(object):
         while (True):
             iter_nbr_bend_simplified = 0
             print('Iteration # {}'.format(iter_nbr))
-            i = 0
-            for line in self.s_container.get_features(filter=lambda feature: True if(feature.sb_geom_type =="COCO" and not feature.sb_is_simplest) else False):
-                print (i)
-                if i == 49:
-                    print (i)
+
+            # Build line iterator
+            lines = (feature for feature in self.s_container.get_features()
+                                 if(not feature.sb_is_simplest and feature.sb_geom_type==GenUtil.LINE_STRING ))
+            for line in lines:
                 nbr_bend_simplified = line.simplify(self.command.diameter, s_constraints)
                 iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified
-                i += 1
             print('Number of bend simplified {}'.format(iter_nbr_bend_simplified))
             print('----------')
             iter_nbr += 1
