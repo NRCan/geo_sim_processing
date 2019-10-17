@@ -24,6 +24,7 @@
 import math, sys
 
 from shapely.geometry import Point, LineString, LinearRing, Polygon
+from shapely.prepared import prep
 from shapely import affinity
 from lib_geosim import GenUtil, SpatialContainer
 
@@ -378,10 +379,14 @@ class LineStringSb(LineString):
                     # Manage circular list
                     lst_coords = self.coords[j:i+1] + self.coords[j:j+1]
 
-                if s_constraints is not None:
-                    in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                if self.is_closed and len(lst_coords) >= 4:
+                    if s_constraints is not None:
+                        in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                    else:
+                        in_conflict = False
                 else:
-                    in_conflict = False
+                    # A closed line cannot have less than 4 verticej
+                    in_conflict = True
 
                 if not in_conflict:
                     # Update the coordinates
@@ -479,22 +484,46 @@ class SpatialConstraints(object):
         start_line = line.extract_sub_line_string(0, i)
         end_line = line.extract_sub_line_string(j, len(line.coords)-1)
 
-        in_conflict = smaller_sub_line.crosses(start_line) or smaller_sub_line.crosses(end_line)
-        if in_conflict:
+        prepared_smaller_sub_line = prep(smaller_sub_line)
+        gen_crosses = filter(prepared_smaller_sub_line.intersects, (start_line, end_line))
+        in_conflict = False
+        for element in gen_crosses:
+            in_conflict = True
             self.nbr_err_simplicity += 1
+            break
+
+
+#        in_conflict = smaller_sub_line.intersects(start_line) or smaller_sub_line.intersects(end_line)
+#        if in_conflict:
+#            self.nbr_err_simplicity += 1
 
         return in_conflict
 
     def _check_crossing(self, line, new_sub_line):
 
-        features = self.s_container.get_features(line.bounds, remove_features=[line._sb_sc_id])
+        features = self.s_container.get_features(new_sub_line.bounds, remove_features=[line._sb_sc_id])
+
         # Check that the new middle line does not cross any interior holes of the polygon
-        gen_crosses = filter(new_sub_line.intersects, features)  # Creates a generator
+        prepared_new_sub_line = prep(new_sub_line)
+        gen_crosses = filter(prepared_new_sub_line.intersects, features)
+
         in_conflict = False
         for element in gen_crosses:
             in_conflict = True
             self.nbr_err_crossing += 1
             break
+
+
+
+
+
+#        # Check that the new middle line does not cross any interior holes of the polygon
+#        gen_crosses = filter(new_sub_line.intersects, features)  # Creates a generator
+#        in_conflict = False
+#        for element in gen_crosses:
+#            in_conflict = True
+#            self.nbr_err_crossing += 1
+#            break
 
         return in_conflict
 
@@ -502,7 +531,8 @@ class SpatialConstraints(object):
 
         features = self.s_container.get_features(pol.bounds, remove_features=[line._sb_sc_id])
         # Check that the new middle line does not cross any interior holes of the polygon
-        gen_contains = filter(pol.contains, features)  # Creates a generator
+        prepared_pol = prep(pol)
+        gen_contains = filter(prepared_pol.contains, features)
         in_conflict = False
         for element in gen_contains:
             in_conflict = True

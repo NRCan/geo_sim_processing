@@ -174,6 +174,7 @@ class GenUtil:
                             layer=layer_name,
                             crs=geo_content.crs,
                             schema=geo_content.schemas[layer_name]) as dest:
+                out_features = []
                 for feature in (feature for feature in geo_content.out_features
                                 if feature.sb_layer_name==layer_name):
                     # Transform the Shapely features for fiona writing
@@ -193,7 +194,9 @@ class GenUtil:
                     out_feature = {'geometry': {'type': feature.geom_type,
                                                 'coordinates': coordinates},
                                    'properties': feature.sb_properties}
-                    dest.write(out_feature)
+                    out_features.append(out_feature)
+
+                dest.writerecords(out_features)
 
             dest.close()
 
