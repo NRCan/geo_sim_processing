@@ -202,13 +202,20 @@ command = managae_arguments()
 # Extract and load the layers of the input file
 GenUtil.read_in_file (command.in_file, geo_content)
 
-# Set the diameter per layer
+# Set the diameter for each layer
 geo_content.layrer_diameter = {}
 for layer_name in geo_content.layer_names:
-    if command.layer_dimater.exists(layer_name):
-        # set the value as defines in the command line
-        geo_content.layrer_diameter[layer_name] = command.layer_dimater.exists(layer_name)
+    if command.diameter is not None:
+        # The same diameter is applied to all the layers
+        geo_content.layrer_diameter[layer_name] = command.diameter
     else:
+        # Tehere is a specific diameter by layer
+        if command.layer_dimater.exists(layer_name):
+            # set the value as defines in the command line
+            geo_content.layrer_diameter[layer_name] = command.layer_dimater.exists(layer_name)
+        else:
+            # The layer was not speciied put the layer at 0 (no simplification)
+            geo_content.layrer_diameter[layer_name] = 0
 
 
 
