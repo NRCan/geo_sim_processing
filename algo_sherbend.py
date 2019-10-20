@@ -453,7 +453,7 @@ class SpatialConstraints(object):
         in_conflict = False
 
         if not in_conflict:
-            in_conflict = self._check_simplicity(line, bend.i, bend.j, bend.replacement_line)
+            in_conflict = self._check_simplicity(line, bend.replacement_line)
 
         if not in_conflict:
             in_conflict = self._check_crossing(line, bend.replacement_line)
@@ -463,13 +463,11 @@ class SpatialConstraints(object):
 
         return in_conflict
 
-    def _check_simplicity(self, line, i, j, new_sub_line):
+    def _check_simplicity(self, line, new_sub_line):
         """Check if the new sub line creates a self intersection in the line
 
         Parameter:
             line -- LineString to verify for self intersection
-            i -- Start index of the new sub line in the line
-            j -- End index of the new sub line in the line
             new_sub_line -- Replacement line string
 
         Return
@@ -480,56 +478,32 @@ class SpatialConstraints(object):
         # Create a very short line so that the line does not -touch the start and end line (increase performance)
         smaller_sub_line = affinity.scale(new_sub_line, xfact=1. - GenUtil.ZERO, yfact=1. - GenUtil.ZERO)
 
-        # Creates two lines before and after the new_sub_line
-        start_line = line.extract_sub_line_string(0, i)
-        end_line = line.extract_sub_line_string(j, len(line.coords)-1)
-
-        prepared_smaller_sub_line = prep(smaller_sub_line)
-        gen_crosses = filter(prepared_smaller_sub_line.intersects, (start_line, end_line))
         in_conflict = False
-        for element in gen_crosses:
+        prepared_smaller_sub_line = prep(smaller_sub_line)
+        if prepared_smaller_sub_line.intersects(line):
             in_conflict = True
             self.nbr_err_simplicity += 1
-            break
-
-
-#        in_conflict = smaller_sub_line.intersects(start_line) or smaller_sub_line.intersects(end_line)
-#        if in_conflict:
-#            self.nbr_err_simplicity += 1
 
         return in_conflict
 
     def _check_crossing(self, line, new_sub_line):
 
-        features = self.s_container.get_features(new_sub_line.bounds, remove_features=[line._sb_sc_id])
+        features = self.s_container.get_features(new_sub_line.bounds, remove_features=(line._sb_sc_id,))
 
         # Check that the new middle line does not cross any interior holes of the polygon
         prepared_new_sub_line = prep(new_sub_line)
-        gen_crosses = filter(prepared_new_sub_line.intersects, features)
-
         in_conflict = False
+        gen_crosses = filter(prepared_new_sub_line.intersects, features)
         for element in gen_crosses:
             in_conflict = True
             self.nbr_err_crossing += 1
             break
 
-
-
-
-
-#        # Check that the new middle line does not cross any interior holes of the polygon
-#        gen_crosses = filter(new_sub_line.intersects, features)  # Creates a generator
-#        in_conflict = False
-#        for element in gen_crosses:
-#            in_conflict = True
-#            self.nbr_err_crossing += 1
-#            break
-
         return in_conflict
 
     def _check_sidedness(self, line, pol):
 
-        features = self.s_container.get_features(pol.bounds, remove_features=[line._sb_sc_id])
+        features = self.s_container.get_features(pol.bounds, remove_features=(line._sb_sc_id,))
         # Check that the new middle line does not cross any interior holes of the polygon
         prepared_pol = prep(pol)
         gen_contains = filter(prepared_pol.contains, features)
@@ -865,7 +839,11 @@ class AlgoSherbend(object):
             # Build line iterator
             lines = (feature for feature in self.s_container.get_features()
                                  if(not feature.sb_is_simplest and feature.sb_geom_type==GenUtil.LINE_STRING ))
+            i = 0
             for line in lines:
+                i += 1
+                if i%10 == 0:
+                    print (i, nbr_bend_simplified)
                 nbr_bend_simplified = line.simplify(self.command.diameter, s_constraints)
                 iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified

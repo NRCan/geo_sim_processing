@@ -540,25 +540,28 @@ class SpatialContainer(object):
 
         return
 
-    def get_keys_by_bounds(self, bounds, keys_to_remove=None):
-        """Extract keys in the container based on the value of a bounding box
-
-        *Parameters*:
-            - bounds: Bounding box defined as a list: xmin, ymin, xmax, ymax
-            - keys_to_remove: List of keys to remove  removed from the list of key features returned
-
-        *Returns*:
-            - List of keys contained in the bounding box
-
-        """
-
-        # Extract the keys from the RTree
-        keys = list(self._r_tree.intersection(bounds))
-
-        # Remove the keys which are in the keys to remove list
-        keys = list(set(keys) - set(keys_to_remove))
-
-        return keys
+# #    def _get_keys_by_bounds(self, bounds, keys_to_remove=None):
+# #        """Extract keys in the container based on the value of a bounding box#
+# #
+# #        *Parameters*:
+# #            - bounds: Bounding box defined as a list: xmin, ymin, xmax, ymax
+# #            - keys_to_remove: List of keys to remove  removed from the list of key features returned
+#
+#         *Returns*:
+#             - List of keys contained in the bounding box
+#
+#         """
+#
+#         # Extract the keys from the RTree
+# #        keys = list(self._r_tree.intersection(bounds))
+#
+#         # Remove the keys which are in the keys to remove list
+# #        keys = list(set(keys) - set(keys_to_remove))
+#
+#         keys = (key for key in self._r_tree.intersection(bounds) if key not in keys_to_remove)
+#
+#
+#         return keys
 
     def get_features(self, bounds=None, filter=True, remove_features=[]):
         """Extract the features from the spatial container.
@@ -579,7 +582,8 @@ class SpatialContainer(object):
         # Extract the features by bounds if requested
         if (bounds != None):
             # Extract features by bounds
-            keys = self.get_keys_by_bounds(bounds, remove_features)
+#            keys = self._get_keys_by_bounds(bounds, remove_features)
+            keys = (key for key in self._r_tree.intersection(bounds) if key not in remove_features)
             features = (self._features[key] for key in keys if key in self._features)
         else:
             features = (feature for feature in self._features.values() if feature not in remove_features)
