@@ -9,7 +9,7 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 import math
 from rtree import Rtree
 import fiona
-from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry import Point, LineString, LinearRing, Polygon
 #from algo_sherbend import LineStringSb, PointSb
 
 
@@ -76,6 +76,23 @@ class GenUtil:
 
         return orient
 
+    @staticmethod
+    def mid_point(p1, p2):
+        """Return a point in the middle of the 2 points
+
+        *Parameters*:
+            - p1: x,y tuple for the first point
+            - p2: x,y tuple for the second point
+
+        *Returns*:
+            - x,y tuple of the milddle point
+        """
+
+        x = (p1[0] + p2[0]) / 2.
+        y = (p1[1] + p2[1]) / 2.
+
+        return (x, y)
+
 
     @staticmethod
     def calculate_compactness_index(area, perimeter):
@@ -92,6 +109,26 @@ class GenUtil:
 
         return (4 * area * math.pi / (perimeter ** 2.0))
 
+
+    @staticmethod
+    def build_bounding_box(tolerance, coord):
+        """Create and adjust a bounding box (xmin, ymin, xmax, ymax) with a small tolerance
+
+        *Parameters*:
+            tolerance: A delta to add to the bounding box
+            coord: (x,y) tuple
+
+         *Returns*:
+            Tuple of the bounding box (xmin, ymin, xmax, ymax)
+
+        """
+
+        xmin = coord[0] - tolerance
+        ymin = coord[1] - tolerance
+        xmax = coord[0] + tolerance
+        ymax = coord[1] + tolerance
+
+        return (xmin, ymin, xmax, ymax)
 
     @staticmethod
     def calculate_adjusted_area(area, cmp_index):
@@ -398,13 +435,13 @@ class SpatialContainer(object):
         """
 
         # Check if the type is valid
-        if feature.sb_geom_type == "Point" or feature.sb_geom_type == "LineString":
+        if feature.sb_geom_type == GenUtil.POINT or feature.sb_geom_type == GenUtil.LINE_STRING:
             pass
         else:
             raise GenException('Unsupported feature type...')
 
         # Check if the feature is already in a spatial container
-        if hasattr(feature, "_gbt_sc_id"):
+        if hasattr(feature, "_sb_sc_id"):
             raise GenException('Feature is already in a spatial container')
 
         bounds = self._extract_bounding_box(feature)
@@ -591,7 +628,7 @@ class SpatialContainer(object):
         return features
 
 
-class ChordalAxisTransformer(object):
+class ChordalAxis(object):
     """This class is creating  a skeleton and identify bottleneck based on the Chordal Axis Transform CAT
 
        The CAT is very interesting as it simulate the skeleton created by the Medial Axis Transform (MAT).
@@ -706,9 +743,10 @@ class ChordalAxisTransformer(object):
             if triangle.get_nbr_internal() == 3:
                 # Only process Junction triangle
                 side_demoted = []  # Contains the side number of the triangle that will be pruned
-                for i in xrange(3):
-                    p0 = triangle.coords_dual[i]
-                    p1 = triangle.coords_dual[(i + 1) % 3]
+                coords = list(self.coords)
+                for i in range(3):
+                    p0 = triangle.coords[i]
+                    p1 = triangle.coords[(i + 1) % 3]
                     # Check if the perimeter distance is below the minimal width
                     extremity = self.perimeter_distance.is_extremity(p0, p1, self._minimal_width)
                     if extremity:
@@ -758,7 +796,7 @@ class ChordalAxisTransformer(object):
 
         center_lines = []
         for triangle in self.s_cont_triangles.get_features():
-            center_lines += triangle.get_center_line()
+            center_lines += triangle.get_centre_line()
 
         return center_lines
 
@@ -790,7 +828,7 @@ class ChordalAxisTransformer(object):
         return triangles
 
 
-class _Triangle(MA_LineString):
+class _Triangle(LineString):
     """Calculates the
     """
 
@@ -802,7 +840,8 @@ class _Triangle(MA_LineString):
 
     def __init__(self, lst_coords):
         if (len(lst_coords) == 4):
-            MA_LineString.__init__(self, lst_coords)
+            LineString.__init__(self, lst_coords)
+            self.sb_geom_type = GenUtil.LINE_STRING
             self._nbr_internal = None  #
             self._centre_lines = None
             self._side_type = None
@@ -823,7 +862,7 @@ class _Triangle(MA_LineString):
 
         acute_angle = None
 
-        for i in xrange(3):
+        for i in range(3):
             p0 = self.coords_dual[(i - 1) % 3]
             p1 = self.coords_dual[(i) % 3]
             p2 = self.coords_dual[(i + 1) % 3]
@@ -959,8 +998,9 @@ class _Triangle(MA_LineString):
 
             nbr_internal = self.get_nbr_internal()
 
-            for i in xrange(3):
-                mid_side_points.append(GenUtil.mid_point(self.coords_dual[i], self.coords_dual[i + 1]))
+            coords = list(self.coords)
+            for i in range(3):
+                mid_side_points.append(GenUtil.mid_point(coords[i], coords[i + 1]))
                 if self._side_type[i] == _Triangle.INTERNAL:
                     internal_sides.append(i)
                 else:
@@ -979,7 +1019,7 @@ class _Triangle(MA_LineString):
                 # Sleeve triangle skeleton added between the mid point of each chord
                 internal_side0 = internal_sides[0]
                 internal_side1 = internal_sides[1]
-                self._centre_lines.append(MA_LineString([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
+                self._centre_lines.append(LineString([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
                 self._mid_triangle = GenUtil.mid_point(mid_side_points[internal_side0], mid_side_points[internal_side1])
 
             if (nbr_internal == 3):
@@ -990,15 +1030,15 @@ class _Triangle(MA_LineString):
                     centroid = self.get_centroid()
                     self._mid_triangle = centroid
                     for mid_side_point in mid_side_points:
-                        self._centre_lines.append(MA_LineString([centroid, mid_side_point]))
+                        self._centre_lines.append(LineString([centroid, mid_side_point]))
                 else:
                     # With an obtuse triangle the mid point is placed on the sided opposite to the obtuse angle
                     opposite_side = (obtuse_angle + 1) % 3
                     left_side = (opposite_side + 1) % 3
                     right_side = (opposite_side - 1) % 3
                     self._mid_triangle = mid_side_points[opposite_side]
-                    self._centre_lines.append(MA_LineString([mid_side_points[opposite_side], mid_side_points[left_side]]))
-                    self._centre_lines.append(MA_LineString([mid_side_points[opposite_side], mid_side_points[right_side]]))
+                    self._centre_lines.append(LineString([mid_side_points[opposite_side], mid_side_points[left_side]]))
+                    self._centre_lines.append(LineString([mid_side_points[opposite_side], mid_side_points[right_side]]))
         else:
             # Centre line was already calculated... nothing to do
             pass
@@ -1021,10 +1061,11 @@ class _Triangle(MA_LineString):
         if self._nbr_internal is None:
             self._side_type = []
             self._nbr_internal = 0
+            coords = list(self.coords)
             for i in range(3):
-                p0 = self.coords_dual[i]
-                p1 = self.coords_dual[i + 1]
-                if (_Triangle.line_segments.is_line_segment_present(p0, p1)):
+#                p0 = coords[i]
+#                p1 = coords[i + 1]
+                if (_Triangle.line_segments.is_line_segment_present(coords[i], coords[i+1])):
                     self._side_type.append(_Triangle.SUPERIMPOSED)
                 else:
                     self._side_type.append(_Triangle.INTERNAL)
@@ -1112,11 +1153,11 @@ class _LineSegments(object):
             lst_coords = list(ring.coords)
             nbr_coord_ring = len(lst_coords)
             # Split the line string into line segment of 2 vertice
-            for j in xrange(nbr_coord_ring - 1):
+            for j in range(nbr_coord_ring - 1):
                 p0 = lst_coords[j]
                 p1 = lst_coords[j + 1]
-                line = MA_LineString([p0, p1], dual=None)  # Dual is False as there are so many LineSegment
-                del line.ma_properties  # Save some space as there are so many LineSegment
+                line = LineString((lst_coords[j], lst_coords[j+1]))
+                line.sb_geom_type = GenUtil.LINE_STRING
                 #                line.ma_properties[_LineSegments.ID_RING] = id_ring
                 self._s_container.add_feature(line)
 
@@ -1269,9 +1310,12 @@ class PerimeterDistance(object):
 
         nbr_coords = len(lst_coords)
         for i in range(1, nbr_coords):
-            point = MA_Point(lst_coords[i])
-            point.ma_properties[PerimeterDistance._ID_RING] = id_ring
-            point.ma_properties[PerimeterDistance._ID_COORD] = i
+            point = Point(lst_coords[i])
+            point.sb_geom_type = GenUtil.POINT
+            point.sb_id_ring = id_ring
+            point.sb_id_coord = i
+#            point.ma_properties[PerimeterDistance._ID_RING] = id_ring
+#            point.ma_properties[PerimeterDistance._ID_COORD] = i
             self.s_cont_points.add_feature(point)
 
     def _init_load_cum_distance(self, lst_coords):

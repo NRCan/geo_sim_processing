@@ -5,10 +5,10 @@ import argparse
 import sys, os
 from dataclasses import dataclass
 from typing import List
-from algo_sherbend import AlgoSherbend
+from shapely.geometry import Point, LineString, Polygon
 
 
-from lib_geosim import GenUtil
+from lib_geosim import GenUtil, ChordalAxis
 
 
 def managae_arguments():
@@ -143,23 +143,35 @@ class GeoContent:
     schemas: dict
     in_nbr_triangles: 0
     in_nbr_polygons: 0
-    in_triangle: Dict[object] = None
-    in_polygon: Dict[object] = None
+    in_triangles: List[object] = None
+    in_polygons: List[object] = None
     out_features: List[object] = None
 
-geo_content = GeoContent(crs=None, driver=None, schemas={}, in_triangle=[], in_polygons = [], out_features=[],
-                         in_nbr_triangles=0, in_nbr_polygons=0, in_nbr_holes=0  )
+geo_content = GeoContent(crs=None, driver=None, schemas={}, in_triangles=[], in_polygons = [], out_features=[],
+                         in_nbr_triangles=0, in_nbr_polygons=0)
 
 
 
 # Read the command line arguments
-command = managae_arguments()
+###command = managae_arguments()
 
 # Extract and load the layers of the input file
-GenUtil.read_in_file (command.in_triangle, geo_content)
+###GenUtil.read_in_file (command.in_triangle, geo_content)
 
 
+coords = ((0,0),(0,3),(1.5,2),(3,3),(3,0),(1.5,1),(0,0))
+pol = Polygon(coords)
+l1 = ((0,0),(0,3),(1.5,2),(0,0))
+t1 = LineString(l1)
+l2 = ((1.5,2),(1.5,1),(0,0),(1.5,2))
+t2 = LineString(l2)
+l3 = ((1.5,2),(1.5,1),(3,0),(1.5,2))
+t3 = LineString(l3)
+l4 = ((1.5,2),(3,3),(3,0),(1.5,2))
+t4 = LineString(l4)
 
+a = ChordalAxis(pol, [t1,t2,t3,t4], 0.0)
+center_line = a.get_skeletton()
 
 
 print ("-------")

@@ -1,29 +1,15 @@
-from CGAL.CGAL_Kernel import Point_2
-from CGAL.CGAL_Triangulation_2 import Triangulation_2
-from CGAL.CGAL_Triangulation_2 import Triangulation_2_Vertex_circulator
-from CGAL.CGAL_Triangulation_2 import Triangulation_2_Vertex_handle
-
-points = []
-points.append(Point_2(1, 0))
-points.append(Point_2(3, 2))
-points.append(Point_2(4, 5))
-points.append(Point_2(9, 8))
-points.append(Point_2(7, 4))
-points.append(Point_2(5, 2))
-points.append(Point_2(6, 3))
-points.append(Point_2(10, 1))
-
-t = Triangulation_2()
-t.insert(points)
-
-vc = t.incident_vertices(t.infinite_vertex())
-
-if vc.hasNext():
-    done = vc.next();
-    iter = Triangulation_2_Vertex_handle()
-    while (1):
-        iter = vc.next()
-        print
-        iter.point()
-        if iter == done:
-            break
+from shapely.ops import linemerge
+from shapely.geometry import LineString
+l0 = LineString(((0,0),(1,1)))
+l0i = LineString(((1,1),(0,0)))
+l1 = LineString(((1,1),(2,2)))
+l1i = LineString(((2,2),(1,1)))
+l2 = LineString(((2,2),(3,3)))
+l2i = LineString(((3,3),(2,2)))
+lm0 = linemerge([l0,l1,l2])
+lm1i = linemerge([l0i,l1i,l2i])
+lm2i = linemerge([l0,l2,l1])
+lm3i = linemerge([l2,l1,l0])
+lm4i = linemerge([l2,l1i,l0])
+lm5i = linemerge([l2,l1i,l0])
+print
