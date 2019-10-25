@@ -1,48 +1,29 @@
-from shapely.geometry import LineString
+from CGAL.CGAL_Kernel import Point_2
+from CGAL.CGAL_Triangulation_2 import Triangulation_2
+from CGAL.CGAL_Triangulation_2 import Triangulation_2_Vertex_circulator
+from CGAL.CGAL_Triangulation_2 import Triangulation_2_Vertex_handle
 
-class LineStringSc(LineString):
+points = []
+points.append(Point_2(1, 0))
+points.append(Point_2(3, 2))
+points.append(Point_2(4, 5))
+points.append(Point_2(9, 8))
+points.append(Point_2(7, 4))
+points.append(Point_2(5, 2))
+points.append(Point_2(6, 3))
+points.append(Point_2(10, 1))
 
-    def __init__(self, coords, fast_access=True):
-        super().__init__(coords)
-        self.fast_access = fast_access
-        if self.fast_access:
-            self.__lst_coords = list(super().coords)
+t = Triangulation_2()
+t.insert(points)
 
-    @property
-    def coords(self):
-        if self.fast_access:
-            return self.__lst_coords
-        else:
-            return super().coords
+vc = t.incident_vertices(t.infinite_vertex())
 
-    @coords.setter
-    def coords(self, coords):
-        print ("Need to update the spatial container...")
-        LineString.coords.__set__(self, coords)
-        if self.fast_access:
-            self.__lst_coords = list(super().coords)
-
-
-aa = B()
-aa.a = 45
-aa.c = 3
-
-
-xy1 = [(10,10),(20,20)]
-xy2 = [(11,11),(21,21)]
-line_B = Line(xy1)
-line_C = Line(xy2)
-
-print  ("Len B: ", len(line_B.coords))
-print  ("Len C: ", len(line_C.coords))
-print ("List B: ", line_B.coords[0])
-print ("List C: ", line_C.coords[0])
-
-line_B.coords =  [(10,10),(20,20),(30,30)]
-line_C.coords = [(1,1),(2,2),(3,3),(4,4)]
-print (len(line_B.coords), list(line_B.coords))
-print (len(line_C.coords), list(line_C.coords))
-#t = a.xy[0:2]
-#print (t)
-#print (len(xy))
-print ("Fin...")
+if vc.hasNext():
+    done = vc.next();
+    iter = Triangulation_2_Vertex_handle()
+    while (1):
+        iter = vc.next()
+        print
+        iter.point()
+        if iter == done:
+            break
