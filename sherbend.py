@@ -31,14 +31,14 @@ def managae_arguments():
 
     if command.dlayer is not None:
         # extract the diameter for each layer
-        command.layers = {}
+        command.dlayer_dict = {}
         # Split on the comas
         layers = command.dlayer.split(',')
         for layer in layers:
             # Split the layer name and the tolerance
             layer_tol = layer.split('=')
             try:
-                command.layers[layer_tol[0]] = float(layer_tol[1])
+                command.dlayer_dict[layer_tol[0]] = float(layer_tol[1])
             except:
                 print ('Error in the definition of the diameter per layer: "{}"'.format(command.dlayer))
                 parser.print_help()
@@ -203,21 +203,23 @@ command = managae_arguments()
 GenUtil.read_in_file (command.in_file, geo_content)
 
 # Set the diameter for each layer
-geo_content.layrer_diameter = {}
+tmp_dlayer_dict = {}
 for layer_name in geo_content.layer_names:
     if command.diameter is not None:
-        # The same diameter is applied to all the layers
-        geo_content.layrer_diameter[layer_name] = command.diameter
+        # The same diameter valie is applied to all the layers
+        tmp_dlayer_dict[layer_name] = command.diameter
     else:
-        # Tehere is a specific diameter by layer
-        if command.layer_dimater.exists(layer_name):
-            # set the value as defines in the command line
-            geo_content.layrer_diameter[layer_name] = command.layer_dimater.exists(layer_name)
+        # There is a specific diameter by layer
+        if layer_name in command.dlayer_dict:
+            # Set the value as defined in the command line
+            tmp_dlayer_dict[layer_name] = command.dlayer_dict[layer_name]
         else:
-            # The layer was not speciied put the layer at 0 (no simplification)
-            geo_content.layrer_diameter[layer_name] = 0
+            # The layer was not specified in the command line; put the diameter at 0 (no simplification)
+            tmp_dlayer_dict[layer_name] = 0
 
 
+#Reset the value of dlayer
+command.dlayer_dict = tmp_dlayer_dict
 
 print ("-------")
 print("Name of input file: {}".format(command.in_file))
