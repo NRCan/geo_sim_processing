@@ -16,26 +16,18 @@ def managae_arguments():
 
     # Setting the parameters of the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument("out_file", help="output vector file simplified")
-    parser.add_argument("-t", "--triangle", action='store_true', help="input file containing the result of the triangulation")
-    parser.add_argument("-p", "--polygon", action='store_true', help="input file containing the polygon")
-    parser.add_argument("-a", "--attribute", action='store_true', help="name of attribute linking the triangle to the polygon")
-
+    parser.add_argument("in_file", help="input vector file")
+    parser.add_argument("-p", "--polygon", type=str, help="input layer name containing the polygon")
+    parser.add_argument("-t", "--tesselation", type=str, help="input layer name containing the result of the tesselation (triangle)")
+    parser.add_argument("-a", "--attribute", type=str, help="name of attribute linking the triangle to the polygon")
 
     # Read the command line parameter
     command = parser.parse_args()
 
     # Check that the triangle input file exist. Exit if missing
-    if not os.path.isfile(command.triangle):
-        raise Exception('Input triangle file is missing: {}'.format(command.in_file))
+    if not os.path.isfile(command.in_file):
+        raise Exception('Input file is missing: {}'.format(command.in_file))
 
-    # Check that the polygon input file exist. Exit if missing
-    if not os.path.isfile(command.triangle):
-        raise Exception('Input triangle file is missing: {}'.format(command.in_file))
-
-    # Check that the output file exist. Exit if present
-    if os.path.isfile(command.out_file):
-        raise Exception('Output file is present: {}'.format(command.out_file))
 
     return command
 
@@ -143,35 +135,40 @@ class GeoContent:
     schemas: dict
     in_nbr_triangles: 0
     in_nbr_polygons: 0
-    in_triangles: List[object] = None
-    in_polygons: List[object] = None
+    in_features: List[object] = None
     out_features: List[object] = None
+    bounds: List[object] = None
 
-geo_content = GeoContent(crs=None, driver=None, schemas={}, in_triangles=[], in_polygons = [], out_features=[],
-                         in_nbr_triangles=0, in_nbr_polygons=0)
+geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_features=[],
+                         in_nbr_triangles=0, in_nbr_polygons=0, bounds=[])
 
 
 
 # Read the command line arguments
-###command = managae_arguments()
+command = managae_arguments()
 
 # Extract and load the layers of the input file
-###GenUtil.read_in_file (command.in_triangle, geo_content)
+layers = [command.polygon, command.tesselation]
+GenUtil.read_in_file (command.in_file, geo_content, layers)
+
+polygon_dict = {}
+triangle_dict = {}
+for in_feature in geo_content.in_features:
+    key = in_feature.sb_properties[command.attribute]
+    if in_feature.sb_layer_name == command.polygon:
+        polygon_dict[key] = in_feature
+    else:
+        if key in triangle_dict.keys():
+            triangle_dict[key].append(in_feature)
+        else:
+            triangle_dict[key] = [in_feature]
+
+geo_content.in_features = None
 
 
-coords = ((0,0),(0,3),(1.5,2),(3,3),(3,0),(1.5,1),(0,0))
-pol = Polygon(coords)
-l1 = ((0,0),(0,3),(1.5,2),(0,0))
-t1 = LineString(l1)
-l2 = ((1.5,2),(1.5,1),(0,0),(1.5,2))
-t2 = LineString(l2)
-l3 = ((1.5,2),(1.5,1),(3,0),(1.5,2))
-t3 = LineString(l3)
-l4 = ((1.5,2),(3,3),(3,0),(1.5,2))
-t4 = LineString(l4)
-
-a = ChordalAxis(pol, [t1,t2,t3,t4], 0.0)
-center_line = a.get_skeletton()
+for key in polygon_dict.keys():
+    ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 50., 0.001)
+    center_line = ca.get_skeletton()
 
 
 print ("-------")

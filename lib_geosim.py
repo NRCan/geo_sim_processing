@@ -51,6 +51,52 @@ class GenUtil:
 
 
     @staticmethod
+    def compute_angle (p1, p2, p3, type=DEGREE):
+        """
+        Function to calculate angle between two vectors.
+        """
+
+        return (GenUtil.angle_vector(p1, p2, p3, type))
+
+    @staticmethod
+    def angle_vector(p1, p2, p3, type=DEGREE):
+        """Calculate the angle formed by the vector p1-p2 and p2-p3
+
+        *Parameters*:
+            - p1: (x,y) tuple of coordinates
+            - p2: (x,y) tuple of coordinates
+            - p3: (x,y) tuple of coordinates
+            - type: Angle type DEGREE or ANGLE
+
+        *Returns*:
+            - The angle between the vector p1-p2 and p2-p3 (float)
+
+        """
+
+        a = (p2[0] - p1[0], p2[1] - p1[1])
+        b = (p2[0] - p3[0], p2[1] - p3[1])
+        len_a = (a[0] ** 2. + a[1] ** 2.) ** .5
+        len_b = (b[0] ** 2. + b[1] ** 2.) ** .5
+
+        dot_p = a[0] * b[0] + a[1] * b[1]
+
+        # If P1 == P2 or P2 == P3 ===> angle is 180.
+        if (len_a * len_b != 0.0):
+            value = dot_p / (len_a * len_b)
+            if value >= 1.0:  value = 1.0
+            if value <= -1.0: value = -1.0
+        else:
+            value = -1.0
+
+        theta = math.acos(value)
+
+        if (type == GenUtil.DEGREE):
+            theta = math.degrees(theta)
+
+        return theta
+
+
+    @staticmethod
     def orientation(p0, p1, p2):
         """ Calculate the orientation (clockwise or anticlockwise) of a line formed by 3 vertices using the dot product
 
@@ -75,6 +121,40 @@ class GenUtil:
             orient = 0
 
         return orient
+
+    @staticmethod
+    def rescale_vector(p1, p2, scale_factor):
+        """Rescale the vector defined by the points P1 and P2 by a factor
+        of SCALE_FACTOR
+
+        Rescale the vector defined by the points P1 and P2 by a factor
+        of SCALE_FACTOR
+
+        *Parameters*:
+            - P1: First coordinate of the vector. Tuple (x,y)
+            - P2: Last  coordinate vector to rescale (second point)
+            - scale_factor: factor to scale the vector (same for x and y)
+
+        *Returns*: *TBA*
+
+        """
+
+        x1 = p1[0]
+        y1 = p1[1]
+        x2 = p2[0]
+        y2 = p2[1]
+
+        vec_x = x2 - x1
+        vec_y = y2 - y1
+
+        vec_x = vec_x * scale_factor
+        vec_y = vec_y * scale_factor
+
+        x_out = vec_x + x1
+        y_out = vec_y + y1
+
+        return (x_out, y_out)
+
 
     @staticmethod
     def mid_point(p1, p2):
@@ -146,21 +226,26 @@ class GenUtil:
 
 
     @staticmethod
-    def read_in_file (in_file, geo_content):
+    def read_in_file (in_file, geo_content, layer_in=None):
         """
         Read and load the vectors in the input file
 
         Args:
             in_file (str): Name of the input file (geopackage)
             geo_content (dict): Dictionary containing information to create the spatial database
+            layer_in (str): Layer name to read
 
         Return:
             None
 
         """
 
-        # Extract the name of the layers in the file
-        geo_content.layer_names = fiona.listlayers(in_file)
+        if layer_in is None:
+            # Extract the name of the layers in the file
+            geo_content.layer_names = fiona.listlayers(in_file)
+        else:
+            # Only extract specific layer
+            geo_content.layer_names = layer_in
 
         # extract the spatial feature in the file
         for layer_name in geo_content.layer_names:
@@ -676,7 +761,7 @@ class ChordalAxis(object):
         _Triangle.perimeters = self.perimeter_distance
 
         self._build_skeleton()
-        self._prune_skeleton()
+#        self._prune_skeleton()
 
     def _process_polygon(self, polygon):
         """Process a polygon to create the object property line_segments and perimeter_distance
@@ -743,7 +828,6 @@ class ChordalAxis(object):
             if triangle.get_nbr_internal() == 3:
                 # Only process Junction triangle
                 side_demoted = []  # Contains the side number of the triangle that will be pruned
-                coords = list(self.coords)
                 for i in range(3):
                     p0 = triangle.coords[i]
                     p1 = triangle.coords[(i + 1) % 3]
@@ -806,7 +890,7 @@ class ChordalAxis(object):
         Parameters: None
 
         Return value:
-            - List of the MA_LineString of 4 vertice each.
+            - List of the LineString of 4 vertice each.
               Each triangle also have the following ma_properties
                   - type: The type of triangle can take 2 values:
                           - bottleneck: If the width of the triangle is below the minimal widt
@@ -863,9 +947,10 @@ class _Triangle(LineString):
         acute_angle = None
 
         for i in range(3):
-            p0 = self.coords_dual[(i - 1) % 3]
-            p1 = self.coords_dual[(i) % 3]
-            p2 = self.coords_dual[(i + 1) % 3]
+            coords = list(self.coords)
+            p0 = coords[(i - 1) % 3]
+            p1 = coords[(i) % 3]
+            p2 = coords[(i + 1) % 3]
             angle = GenUtil.compute_angle(p0, p1, p2)
             if (angle > 90.):
                 # There is only angle greater than 90 in a triangle so break after
@@ -939,8 +1024,9 @@ class _Triangle(LineString):
 
         """
 
-        mid_point = GenUtil.mid_point(self.coords_dual[0], self.coords_dual[1])
-        centroid = GenUtil.rescale_vector(mid_point, self.coords_dual[2], 1. / 3.)
+        coords = list(self.coords)
+        mid_point = GenUtil.mid_point(coords[0], coords[1])
+        centroid = GenUtil.rescale_vector(mid_point, coords[2], 1. / 3.)
 
         return centroid
 
@@ -953,14 +1039,15 @@ class _Triangle(LineString):
             side_number: The side number of the triangle to demote. Value [0..2]
         """
 
-        p0 = self.coords_dual[(side_number + 1) % 3]
-        p1 = self.coords_dual[(side_number + 2) % 3]
-        p2 = self.coords_dual[(side_number + 3) % 3]
+        coords = list(self.coords)
+        p0 = coords[(side_number + 1) % 3]
+        p1 = coords[(side_number + 2) % 3]
+        p2 = coords[(side_number + 3) % 3]
 
         mid_p0_p1 = GenUtil.mid_point(p0, p1)
         mid_p1_p2 = GenUtil.mid_point(p1, p2)
 
-        centre_line = MA_LineString([mid_p0_p1, mid_p1_p2])
+        centre_line = LineString([mid_p0_p1, mid_p1_p2])
 
         self._centre_lines = [centre_line]
 
@@ -1358,7 +1445,7 @@ class PerimeterDistance(object):
         """
 
         b_box = GenUtil.build_bounding_box(self._search_tolerance, coord)
-        points = self.s_cont_points.get_features(bounds=b_box)
+        points = list(self.s_cont_points.get_features(bounds=b_box))
         nbr_points = len(points)
         if (nbr_points == 0):
             # Nothing is found
@@ -1368,7 +1455,7 @@ class PerimeterDistance(object):
                 raise Exception("Integrity problem at coordinate: (%f,%f)" % (coord[0], coord[1]))
         else:
             if (nbr_points == 1):
-                # There is only onpoint
+                # There is only one point
                 point = points[0]
             else:
                 # Take the closest point
@@ -1378,8 +1465,8 @@ class PerimeterDistance(object):
                     if (dist < min_dist):
                         point = p
                         dist = min_dist
-            id_ring = points[0].ma_properties[PerimeterDistance._ID_RING]
-            id_coord = points[0].ma_properties[PerimeterDistance._ID_COORD]
+            id_ring = points[0].sb_id_ring
+            id_coord = points[0].sb_id_coord
 
         return (id_ring, id_coord)
 
