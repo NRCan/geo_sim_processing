@@ -10,6 +10,7 @@ import math
 from rtree import Rtree
 import fiona
 from shapely.geometry import Point, LineString, LinearRing, Polygon
+from collections import OrderedDict
 #from algo_sherbend import LineStringSb, PointSb
 
 
@@ -296,6 +297,58 @@ class GenUtil:
                             layer=layer_name,
                             crs=geo_content.crs,
                             schema=geo_content.schemas[layer_name]) as dest:
+                out_features = []
+                for feature in (feature for feature in geo_content.out_features
+                                if feature.sb_layer_name==layer_name):
+                    # Transform the Shapely features for fiona writing
+                    if feature.geom_type == GenUtil.POINT:
+                        coordinates = (feature.x, feature.y)
+                        geo_content.out_nbr_points += 1
+                    elif feature.geom_type == GenUtil.LINE_STRING:
+                        coordinates = list(feature.coords)
+                        geo_content.out_nbr_line_strings += 1
+                    elif feature.geom_type == GenUtil.POLYGON:
+                        exterior = list(feature.exterior.coords)
+                        interiors = [list(interior.coords) for interior in feature.interiors]
+                        coordinates = [exterior]+interiors
+                        geo_content.out_nbr_polygons += 1
+                        geo_content.out_nbr_holes += len(interiors)
+
+                    out_feature = {'geometry': {'type': feature.geom_type,
+                                                'coordinates': coordinates},
+                                   'properties': feature.sb_properties}
+                    out_features.append(out_feature)
+
+                dest.writerecords(out_features)
+
+            dest.close()
+
+
+    @staticmethod
+    def write_out_file_append (out_file, geo_content):
+        """
+        Write the vectors in the output file
+
+        Args:
+            out_file (str): Name of the output file (geopackage)
+            geo_content (DataClass): Contains information to create the spatial database
+
+        Return:
+            None
+
+        """
+
+        line_schema = landmarks_schema = { 'geometry': 'LineString',
+                                           'properties': OrderedDict([])
+                                         }
+
+        # Loop over each layer and write the content of the file
+        for layer_name in geo_content.layer_names:
+            with fiona.open(out_file, 'w',
+                            driver=geo_content.driver,
+                            layer=layer_name,
+                            crs=geo_content.crs,
+                            schema=line_schema) as dest:
                 out_features = []
                 for feature in (feature for feature in geo_content.out_features
                                 if feature.sb_layer_name==layer_name):

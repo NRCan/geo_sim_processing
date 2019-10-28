@@ -20,6 +20,7 @@ def managae_arguments():
     parser.add_argument("-p", "--polygon", type=str, help="input layer name containing the polygon")
     parser.add_argument("-t", "--tesselation", type=str, help="input layer name containing the result of the tesselation (triangle)")
     parser.add_argument("-a", "--attribute", type=str, help="name of attribute linking the triangle to the polygon")
+    parser.add_argument("-s", "--skeleton", type=str, help="name of output skeleton layer (centre line)")
 
     # Read the command line parameter
     command = parser.parse_args()
@@ -30,88 +31,6 @@ def managae_arguments():
 
 
     return command
-
-"""
-a = LinearRing(((0,0),(1,1),(2,0)))
-b = a.is_ccw
-a = LinearRing(((2,0),(1,1),(0,0)))
-b = a.is_ccw
-
-
-a = Polygon((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
-a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
-a = LineStringSb(a.exterior.coords)
-a.simplify(15)
-
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
-a.simplify(5)
-
-a = Polygon (( (1647625.889999593, 195454.0860011009),\
-(1647630.371999593, 195435.4470011005),\
-(1647640.775999592, 195439.1370011028),\
-(1647649.498999593, 195447.547001102),\
-(1647644.202999593, 195459.5080011021),\
-(1647638.619999593, 195469.246001103),\
-(1647618.486999592, 195492.9860011013),\
-(1647623.151999593, 195464.8150011022),\
-(1647625.889999593, 195454.0860011009)))
-a.simplify(1.5)
-
-a = LineStringSb(((0,0), (2,2)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,2)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0)))
-a.simplify(5)
-
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,2), (4,0), (5,3), (6,0), (7,.1), (8,0)))
-a.simplify(5)
-
-# Closed star
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (2.5,1.5), (3,0), (0,0) ))
-a.simplify(5)
-
-# Closed star
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
-a.simplify(5)
-
-
-
-
-a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,1)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,1), (4,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (0,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (0,2), (1,1), (2,2), (2,0), (0,0)))
-a.simplify(5)
-
-a = LineStringSb((((0,2), (1,1), (2,2), (2,0), (0,0), (0,2))))
-a.simplify(5)
-
-a = LineStringSb((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
-a.simplify(5)
-
-a = LineStringSb((((2,2), (2,0), (0,0), (0,2), (1,1), (2,2))))
-a.simplify(5)
-
-a = LineStringSb((((2,0), (0,0), (0,2), (1,1), (2,2), (2,0))))
-a.simplify(5)
-
-a = LineStringSb((( (0,0),(0,3),(1,2),(3,3),(3,0),(1,1),(0,0)) ))
-a.simplify(5)
-"""
-
 
 @dataclass
 class Command:
@@ -135,12 +54,16 @@ class GeoContent:
     schemas: dict
     in_nbr_triangles: 0
     in_nbr_polygons: 0
-    in_features: List[object] = None
-    out_features: List[object] = None
+    in_features: List[object]
+    out_features: List[object]
+    out_nbr_points: 0
+    out_nbr_line_strings: 0
+    out_nbr_polygons: 0
     bounds: List[object] = None
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_features=[],
-                         in_nbr_triangles=0, in_nbr_polygons=0, bounds=[])
+                         in_nbr_triangles=0, in_nbr_polygons=0, bounds=[], out_nbr_points=0,
+                         out_nbr_line_strings=0, out_nbr_polygons=0)
 
 
 
@@ -165,29 +88,32 @@ for in_feature in geo_content.in_features:
 
 geo_content.in_features = None
 
-
+i=0
 for key in polygon_dict.keys():
     ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 50., 0.001)
-    center_line = ca.get_skeletton()
-
+    centre_lines = ca.get_skeletton()
+    if i==100:
+        break
+    else:
+        i+=1
+    # Store the chordal axis in the output
+    for centre_line in centre_lines:
+        centre_line.sb_layer_name = command.skeleton
+        centre_line.sb_properties={}
+        geo_content.out_features.append(centre_line)
 
 print ("-------")
 print("Name of input file: {}".format(command.in_file))
-print("Name of output file: {}".format(command.out_file))
-print ("Number of layers read: {}".format(len(geo_content.schemas)))
-print ("Number of features read: {}".format(len(geo_content.in_features)))
+print("Name of input polygon layer: {}".format(command.polygon))
+print ("Name of input tesselation layer: {}".format(command.tesselation))
+print ("Nampe of output skeleton layer: {}".format(command.skeleton))
 print ("-----")
 
-# Execute the Sherbend algorithm on the feature read
-sherbend = AlgoSherbend(command, geo_content)
-sherbend.process()
 
 # Copy the results in the output file
-GenUtil.write_out_file (command.out_file, geo_content)
+geo_content.layer_names = [command.skeleton]
+GenUtil.write_out_file_append (command.in_file, geo_content)
 
-print ("Number of polygons excluded: {}".format(geo_content.nbr_del_polygons))
-print ("Number of holes excluded: {}".format(geo_content.nbr_del_holes))
 print ("Number of point features written: {}".format(geo_content.out_nbr_points))
 print ("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
 print ("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
-print ("Number of holes written: {}".format(geo_content.out_nbr_holes))
