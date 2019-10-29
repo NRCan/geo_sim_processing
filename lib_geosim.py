@@ -815,7 +815,7 @@ class ChordalAxis(object):
         _Triangle.perimeters = self.perimeter_distance
 
         self._build_skeleton()
-#        self._prune_skeleton()
+        self._prune_skeleton()
 
     def _process_polygon(self, polygon):
         """Process a polygon to create the object property line_segments and perimeter_distance
@@ -866,7 +866,7 @@ class ChordalAxis(object):
         """Prune the noise of Chordal Axis Transform skeleton to remove detail below the minimum width
 
         Remove the small lines of the skeleton.  In the chordal axis tranform each junction triangles
-        is a bifurcation (skeleton splitting).  The is removing noisy skeleton arm that are
+        is a bifurcation (skeleton splitting).  The method is removing noisy skeleton arm that are
         below a treshold.  We use the distance along the perimeter to determine if an arm must be pruned
 
         Refer to the original paper for more details
@@ -965,9 +965,9 @@ class ChordalAxis(object):
         for triangle in self.s_cont_triangles.get_features():
             (category, width) = triangle.get_category(self._minimal_width)
             tri = triangle.cloner()  # Create a copy of the triangle not a reference
-            tri.ma_properties[ChordalAxisTransformer.CODE] = category
-            tri.ma_properties[ChordalAxisTransformer.WIDTH] = width
-            tri.ma_properties[ChordalAxisTransformer.CENTER_LINE] = triangle.get_centre_line()
+            tri.ma_properties[ChordalAxis.CODE] = category
+            tri.ma_properties[ChordalAxis.WIDTH] = width
+            tri.ma_properties[ChordalAxis.CENTER_LINE] = triangle.get_centre_line()
             triangles.append(tri)
 
         return triangles
@@ -1041,9 +1041,10 @@ class _Triangle(LineString):
             if (side_type == _Triangle.SUPERIMPOSED):
                 superimposed = i
 
-        p0_base = self.coords_dual[superimposed % 3]
-        p1_base = self.coords_dual[(superimposed + 1) % 3]
-        p_summit = self.coords_dual[(superimposed + 2) % 3]
+        coords = list(self.coords)
+        p0_base = self.coords[superimposed % 3]
+        p1_base = self.coords[(superimposed + 1) % 3]
+        p_summit = self.coords[(superimposed + 2) % 3]
 
         # Extract the side of the triangle
         a = GenUtil.distance(p0_base, p1_base)
@@ -1240,7 +1241,7 @@ class _Triangle(LineString):
 
             if len(self._centre_lines) == 0:
                 # If there is no center line the polygon is of type other
-                self._category = ChordalAxisTransformer.OTHER
+                self._category = ChordalAxis.OTHER
             else:
                 nbr_internal = self.get_nbr_internal()
                 if (nbr_internal == 2 and self._is_acute_triangle()):
@@ -1258,19 +1259,19 @@ class _Triangle(LineString):
                     extremity = False
                     for i, type in enumerate(self._side_type):
                         if (type == _Triangle.INTERNAL):
-                            coord0 = self.coords_dual[i]
-                            coord1 = self.coords_dual[i + 1]
+                            coord0 = self.coords[i]
+                            coord1 = self.coords[i + 1]
                             # Check if the triangle is located near the extremity of the polygon
                             # A triangle near an extremity of a polygon is not considered as a bottleneck
                             extremity = extremity or _Triangle.perimeters.is_extremity(coord0, coord1, minimal_width)
                     if extremity:
-                        self._category = ChordalAxisTransformer.OTHER
+                        self._category = ChordalAxis.OTHER
                     else:
-                        self._category = ChordalAxisTransformer.BOTTLENECK
+                        self._category = ChordalAxis.BOTTLENECK
                 else:
-                    self._category = ChordalAxisTransformer.OTHER
+                    self._category = ChordalAxis.OTHER
 
-            if self._category != ChordalAxisTransformer.BOTTLENECK:
+            if self._category != ChordalAxis.BOTTLENECK:
                 self._width = None
 
         return self._category, self._width
@@ -1522,7 +1523,7 @@ class PerimeterDistance(object):
                 # Take the closest point
                 min_dist = 1.0E+99
                 for p in points:
-                    dist = GenUtil.distance(p.coords_dual[0], coord)
+                    dist = GenUtil.distance(p.coords[0], coord)
                     if (dist < min_dist):
                         point = p
                         dist = min_dist

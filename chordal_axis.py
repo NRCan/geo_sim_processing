@@ -88,8 +88,12 @@ for in_feature in geo_content.in_features:
 
 geo_content.in_features = None
 
+i = 0
 for key in polygon_dict.keys():
-    ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 50., 0.001)
+    i += 1
+    if i == 100:
+        break
+    ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 10., 0.001)
     centre_lines = ca.get_skeletton()
     # Store the chordal axis in the output
     for centre_line in centre_lines:
