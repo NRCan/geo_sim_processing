@@ -10,6 +10,7 @@ import math
 from rtree import Rtree
 import fiona
 from shapely.geometry import Point, LineString, LinearRing, Polygon
+from shapely.ops import linemerge
 from collections import OrderedDict
 #from algo_sherbend import LineStringSb, PointSb
 
@@ -934,6 +935,13 @@ class ChordalAxis(object):
         center_lines = []
         for triangle in self.s_cont_triangles.get_features():
             center_lines += triangle.get_centre_line()
+
+        # Merge the center line
+        merged_center_lines = linemerge(center_lines)
+        if merged_center_lines.geom_type == GenUtil.LINE_STRING:
+            center_lines = [merged_center_lines]
+        else:
+            center_lines = [center_line for center_line in merged_center_lines]
 
         return center_lines
 

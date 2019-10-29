@@ -839,11 +839,7 @@ class AlgoSherbend(object):
             # Build line iterator
             lines = (feature for feature in self.s_container.get_features()
                                  if(not feature.sb_is_simplest and feature.sb_geom_type==GenUtil.LINE_STRING ))
-            i = 0
             for line in lines:
-                i += 1
-                if i%10 == 0:
-                    print (i, nbr_bend_simplified)
                 nbr_bend_simplified = line.simplify(self.command.diameter, s_constraints)
                 iter_nbr_bend_simplified += nbr_bend_simplified
                 total_nbr_bend_simplified += nbr_bend_simplified
