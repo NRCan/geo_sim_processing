@@ -637,21 +637,21 @@ class SpatialContainer(object):
         ret_value = 0
 
         # Check if the feature has a container_key
-        if hasattr(feature, "_gbt_sci_id"):
+        if hasattr(feature, "_sb_sc_id"):
 
-            if (feature._gbt_sci_id in self._features and
-                    feature._gbt_sci_id in self._bbox_features):
+            if (feature._sb_sc_id in self._features and
+                    feature._sb_sc_id in self._bbox_features):
 
                 try:
                     # Retreive the bounding boxes of this feature
-                    lst_bbox = self._bbox_features[feature._sci_id]
+                    bbox = self._bbox_features[feature._sb_sc_id]
                     # Delete the feature from the features and the bbox_features
-                    del self._features[feature._sci_id]
-                    del self._bbox_features[feature._sci_id]
+                    del self._features[feature._sb_sc_id]
+                    del self._bbox_features[feature._sb_sc_id]
                     # Delete the different bounds in RTree
-                    self._r_tree.delete(feature._sci_id, bbox)
+                    self._r_tree.delete(feature._sb_sc_id, bbox)
                     # Delete the property _sci_id
-                    del feature._sci_id
+                    del feature._sb_sc_id
                 except:
                     raise InternalError("Internal corruption, problem with the container and/or the RTree")
             else:
