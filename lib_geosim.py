@@ -815,7 +815,7 @@ class ChordalAxis(object):
         _Triangle.perimeters = self.perimeter_distance
 
         self._build_skeleton()
-        self._prune_skeleton()
+#        self._prune_skeleton()
 
     def _process_polygon(self, polygon):
         """Process a polygon to create the object property line_segments and perimeter_distance
@@ -923,13 +923,13 @@ class ChordalAxis(object):
                         # Nothing has changed on the state of the triangle
                         pass
 
-    def get_skeletton(self):
+    def get_skeletton(self, noise=0.):
         """Extract the Chordal Axis Transform skeleton from a constrained Delanauy trianulation
 
         Parameters: None
 
         Return value:
-            - List of MA_LineString of the skeleton of the polygon
+            - List of LineString of the skeleton of the polygon
         """
 
         center_lines = []
@@ -942,6 +942,9 @@ class ChordalAxis(object):
             center_lines = [merged_center_lines]
         else:
             center_lines = [center_line for center_line in merged_center_lines]
+
+        if noise > 0.:
+            center_lines = self._remove_noise(center_lines, noise)
 
         return center_lines
 
@@ -971,6 +974,82 @@ class ChordalAxis(object):
             triangles.append(tri)
 
         return triangles
+
+
+    def  _remove_noise(self, center_lines, noise):
+        """remove the noise (small lines) in the skeleton
+
+        Parameters:
+            center_lines: List of LineString
+
+        Return:
+            List of LineString
+        """
+
+#        a = LineString(((0,0),(15,0)))
+#        b = LineString(((15,0),(30,0)))
+#        c = LineString(((30,0),(30,5)))
+#        d = LineString(((30,0),(45,0)))
+#        e = LineString(((45,0),(60,0)))
+#        center_lines = [a,b,c,d,e]
+
+
+        # Load the features in the spatial container (accelerate the search)
+        s_container = SpatialContainer()
+        for center_line in center_lines:
+            center_line.sb_geom_type = GenUtil.LINE_STRING
+            s_container.add_feature(center_line)
+
+        # Build topology. For each create list of connecting lines
+        for line in center_lines:
+            p_start = line.coords[0]
+            p_end = line.coords[-1]
+            b_box = GenUtil.build_bounding_box(self._search_tolerance, p_start)
+            lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+            line.start_lines = []
+            for line_b_box in lines_b_box:
+                if line.touches(line_b_box):
+                    line.start_lines.append(line)
+            b_box = GenUtil.build_bounding_box(self._search_tolerance, p_end)
+            lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+            line.end_lines = []
+            for line_b_box in lines_b_box:
+                if line.touches(line_b_box):
+                    line.end_lines.append(line)
+
+        lines = s_container.get_features()
+        center_lines = []
+        for line in lines:
+            keep_line = True
+            if line.length <= noise:
+                # Only line below noise length are candidate to be removed
+                if (len(line.start_lines) == 0 and len(line.end_lines) == 0):
+                    # Isolated line . Nothing to do
+                    pass
+                else:
+                    if (len(line.start_lines) != 0):
+                        tmp_lines = line.start_lines
+                    else:
+                        tmp_lines = line.end_lines
+                    for tmp_line in tmp_lines:
+                        if len(tmp_line.start_lines) == 0 or len(tmp_line.end_lines) == 0:
+                            keep_line = False
+                            break
+            if keep_line:
+                center_lines.append(line)
+            else:
+                print ("Line deleted")
+
+        # Merge the center line
+        merged_center_lines = linemerge(center_lines)
+        if merged_center_lines.geom_type == GenUtil.LINE_STRING:
+            center_lines = [merged_center_lines]
+        else:
+            center_lines = [center_line for center_line in merged_center_lines]
+
+
+        return center_lines
+
 
 
 class _Triangle(LineString):
