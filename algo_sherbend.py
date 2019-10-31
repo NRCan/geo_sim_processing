@@ -379,14 +379,24 @@ class LineStringSb(LineString):
                     # Manage circular list
                     lst_coords = self.coords[j:i+1] + self.coords[j:j+1]
 
-                if self.is_closed and len(lst_coords) >= 4:
-                    if s_constraints is not None:
-                        in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                if self.is_closed:
+                    if len(lst_coords) >= 4:
+                        if s_constraints is not None:
+                            in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                        else:
+                            in_conflict = False
                     else:
-                        in_conflict = False
+                        # A closed line cannot have less than 4 vertices
+                        in_conflict = True
                 else:
-                    # A closed line cannot have less than 4 verticej
-                    in_conflict = True
+                    if len(lst_coords) >= 2:
+                        if s_constraints is not None:
+                            in_conflict = s_constraints.check_constraints(self, self.sb_bends[ind])
+                        else:
+                            in_conflict = False
+                    else:
+                        # An open line cannot have less than  3 vertices
+                        in_conflict = True
 
                 if not in_conflict:
                     # Update the coordinates

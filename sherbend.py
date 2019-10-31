@@ -54,6 +54,9 @@ def managae_arguments():
 
     return command
 
+
+
+
 """
 a = LinearRing(((0,0),(1,1),(2,0)))
 b = a.is_ccw
