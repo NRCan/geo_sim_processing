@@ -61,7 +61,86 @@ def build_topology(center_lines, search_tolerance):
 
     return s_container
 
+
+def clean_y_junction(s_container, command, geo_content):
+    """Clean road junction that form forms a configuration in Y """
+
+    # Loop over each line in the container
+    for y_line in s_container.get_features():
+
+        # Process both the start and the end of the line
+        start_end_lines = [y_line.start_lines] + [y_line.end_lines]
+        for i, linked_lines in enumerate(start_end_lines):
+            if  len(linked_lines) == 2 and \
+                len(linked_lines[0].coords) >= 3 and \
+                len(linked_lines[1].coords) >= 3:
+                # The current line must be link to 2 and exactly 2 lines
+                line_to_edit = []  # List containing a reference to the lines to edit; if the Y crossing is edited
+                coord_to_edit = []  # List containing tfor each the coord index to edit
+                line_to_edit.append(y_line) # append the current line
+                # Extract the position of the P0
+                if i == 0:
+                    # Testing Y crossing on the first vertice of the line
+                    coord_to_edit.append(0)
+                    p0 = y_line.coords[0]
+                else:
+                    # Testing Y crossing on the last vertice of the line
+                    coord_to_edit.append(-1)
+                    p0 = y_line.coords[-1]
+
+                for num_line, linked_line in enumerate(linked_lines):
+                    line_to_edit.append(linked_line)
+                    if Point(p0).distance(Point(linked_line.coords[0])) <= GenUtil.ZERO:
+                        # Extract the second and third vertices
+                        i1 = 1
+                        i2 = 2
+                        coord_to_edit.append(0)
+                    else:
+                        # Extract before last and before before last vertice
+                        i1 = -2
+                        i2 = -3
+                        coord_to_edit.append(-1)
+                        # P0 is located at the start of the linked line
+                        if num_line==0:
+                            # Process of the first line
+                            p11 = linked_line.coords[i1]
+                            p12 = linked_line.coords[i2]
+                        else:
+                            # Process of the second line
+                            p21 = linked_line.coords[i1]
+                            p22 = linked_line.coords[i2]
+
+                angle_p11_p21_p22 = GenUtil.compute_angle(p11, p21, p22, type=GenUtil.DEGREE)
+                angle_p12_p11_p21 = GenUtil.compute_angle(p11, p21, p22, type=GenUtil.DEGREE)
+                if angle_p11_p21_p22 > 100. and angle_p12_p11_p21 > 100.:
+                    # The base of the triangle is pseudo alignes
+                    point_mid_p11_p21 = LineString((p11, p21)).interpolate(.5, normalized=True)
+                    coord_mid_p11_21 = (point_mid_p11_p21.x,point_mid_p11_p21.y)
+                    line_y_crossing = LineString((p0, coord_mid_p11_21))
+                    if (line_y_crossing.length <= command.yjunction):
+                        # The Y crossing requirements are all met ===> edit the line now
+                        for i in range(3):
+                            # Loop over the 3 line to edit
+                            line = line_to_edit[i]
+                            ind = coord_to_edit[i]
+                            lst_coord = list(line.coords)
+                            lst_coord[ind] = coord_mid_p11_21
+                            line.coords = lst_coord
+                            print ("Adjust update spatial index!!!")
+                            #s_container.update_spatial_index(line)
+                    else:
+                        # Over the tolerance do not edit the line
+                        pass
+                else:
+                    # the base of the triangle is not flat enough do not edit the line
+                    pass
+            else:
+                # the basic requirment are not met do not edit the line
+                pass
+
+
 def clean_x_junction(s_container, command, geo_content):
+    """Clean a road junction that should form 4 line crossing"""
 
     # Loop over each line in the container
     for x_line in s_container.get_features():
@@ -90,8 +169,6 @@ def clean_x_junction(s_container, command, geo_content):
             # Delete de x_line from the spatial container
             s_container.del_feature(x_line)
 
-        a = list(s_container.get_features())
-        print (a)
 
 
 def manage_cleaning(command, geo_content):
@@ -105,8 +182,8 @@ def manage_cleaning(command, geo_content):
     s_container = build_topology(geo_content.in_features, GenUtil.ZERO)
 
     # Clean junction in Y form
-#    if command.yjunction >= 0:
-#        clean_y_junction(command, geo_content)
+    if command.yjunction >= 0:
+        clean_y_junction(s_container, command, geo_content)
 
     # Clean junction in X form
     if command.xjunction >= 0:
@@ -173,10 +250,18 @@ b = LineString(((5,0),(5,-5)))
 c = LineString(((5,0),(10,5)))
 d = LineString(((10,10),(10,5)))
 e = LineString(((10,5),(15,5)))
-geo_content.in_features = [a,b,c,d,e]
+
+f = LineString(((10,10),(10,20)))
+g = LineString (((6,21),(8,21),(10,20)))
+h = LineString (((14,21),(12,21),(10,20)))
+i = LineString (((6,9),(8,9),(10,10)))
+j = LineString (((14,9),(12,9),(10,10)))
+
+geo_content.in_features = [f,g,h,i,j]
 
 command = SpatialContainer()
 command.xjunction = 10
+command.yjunction=10
 
 manage_cleaning(command, geo_content)
 

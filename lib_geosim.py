@@ -697,7 +697,7 @@ class SpatialContainer(object):
 
         """
 
-        old_bbox = self._bbox_features[feature._sci_id]
+        old_bbox = self._bbox_features[feature._sb_sc_id]
         new_bbox = self._extract_bounding_box(feature)
 
         if (self._is_bbox_the_same(feature, old_bbox, new_bbox)):
