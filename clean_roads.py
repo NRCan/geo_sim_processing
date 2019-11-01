@@ -18,7 +18,7 @@ def read_arguments():
     parser.add_argument("-y", "--yjunction", type=float, default=0.0, help="max tolerance for cleaning Y junction ")
     parser.add_argument("-x", "--xjunction", type=float, help="max tolerance for cleaning X junction")
     parser.add_argument("-j", "--join", type=float, help="max tolerance for joining 2 roads")
-    parser.add_argument("-r", "--remove", type=float, help="max tolerance for removing noise")
+    parser.add_argument("-n", "--noise", type=float, help="max tolerance for removing noise")
     parser.add_argument("-il", "--input_layer", type=str, help="name input layer containing the roads")
     parser.add_argument("-ol", "--output_layer", type=str, help="name output layer containing the roads")
 
@@ -62,20 +62,45 @@ def build_topology(center_lines, search_tolerance):
     return s_container
 
 
+def is_open_arm(line):
+
+    if len(line.start_lines) == 0 or len(line.end_lines) == 0
+        open_arm = true
+    else:
+        open_arm = false
+
+    return open_arm
+
 def clean_noise(s_container, command, geo_content):
 
     for noise_line in s_container.get_features():
         delete_line = False
         if noise_line.length <= command.noise:
             # Line is below tolerance... possible edition
-            if len(noise_line.start_lines) != 0 or len(noise_line.end_lines) != 0:
+            if is_open_arm(noise_line):
                 # Line is connected. No edition
                 pass
                 if len(noise_line.start_lines) == 0:
                     linked_lines = noise_line.start_lines
                 else:
                     linked_lines = noise_line.end_lines
-                if linked_line[0].length >
+                for linked_line in linked_lines:
+                    if is_open_arm(linked_line) or linked_line.length >
+                        if linked_
+                        break
+                if all_linked:
+                    # The open arm can be deleted
+                    # Delete THE NOISE LINE from the spatial container
+                    s_container.del_feature(noise_line)
+                    geo_content.nbr_noise += 1  # Add stats counter
+
+
+def clean_open_arms()
+
+    for line in s_container.get_feature()
+        if is_open_arm(line.start_lines[0]) and line.start_line[0].length <= command.noise and
+           is_open_arm(line.start_lines[1]) and line.start_line[1].length <= command.noise:
+           
 
 
 
@@ -263,8 +288,8 @@ class GeoContent:
     schemas: dict
     nbr_xjunction: 0
     nbr_yjunction: 0
-    nbr_join: 0
     nbr_noise: 0
+    nbr_join: 0
     in_features: List[object]
     out_features: List[object]
     in_nbr_line_strings: 0
