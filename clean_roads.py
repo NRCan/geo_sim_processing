@@ -15,12 +15,12 @@ def read_arguments():
     # Setting the parameters of the command line
     parser = argparse.ArgumentParser()
     parser.add_argument("in_file", help="geopackage vector file to clean")
-    parser.add_argument("-y", "--yjunction", type=str, default=0.0, help="max tolerance for cleaning Y junction ")
-    parser.add_argument("-x", "--xjunction", type=str, help="max tolerance for cleaning X junction")
-    parser.add_argument("-j", "--join", type=str, help="max tolerance for joining 2 roads")
-    parser.add_argument("-r", "--remove", type=str, help="max tolerance for removing noise")
-    parser.add_argument("-il", "--input", type=str, help="name input layer containing the roads")
-    parser.add_argument("-ol", "--output", type=str, help="name output layer containing the roads")
+    parser.add_argument("-y", "--yjunction", type=float, default=0.0, help="max tolerance for cleaning Y junction ")
+    parser.add_argument("-x", "--xjunction", type=float, help="max tolerance for cleaning X junction")
+    parser.add_argument("-j", "--join", type=float, help="max tolerance for joining 2 roads")
+    parser.add_argument("-r", "--remove", type=float, help="max tolerance for removing noise")
+    parser.add_argument("-il", "--input_layer", type=str, help="name input layer containing the roads")
+    parser.add_argument("-ol", "--output_layer", type=str, help="name output layer containing the roads")
 
     # Read the command line parameter
     command = parser.parse_args()
@@ -62,6 +62,23 @@ def build_topology(center_lines, search_tolerance):
     return s_container
 
 
+def clean_noise(s_container, command, geo_content):
+
+    for noise_line in s_container.get_features():
+        delete_line = False
+        if noise_line.length <= command.noise:
+            # Line is below tolerance... possible edition
+            if len(noise_line.start_lines) != 0 or len(noise_line.end_lines) != 0:
+                # Line is connected. No edition
+                pass
+                if len(noise_line.start_lines) == 0:
+                    linked_lines = noise_line.start_lines
+                else:
+                    linked_lines = noise_line.end_lines
+                if linked_line[0].length >
+
+
+
 def clean_y_junction(s_container, command, geo_content):
     """Clean road junction that form forms a configuration in Y """
 
@@ -101,18 +118,20 @@ def clean_y_junction(s_container, command, geo_content):
                         i2 = -3
                         coord_to_edit.append(-1)
                         # P0 is located at the start of the linked line
-                        if num_line==0:
-                            # Process of the first line
-                            p11 = linked_line.coords[i1]
-                            p12 = linked_line.coords[i2]
-                        else:
-                            # Process of the second line
-                            p21 = linked_line.coords[i1]
-                            p22 = linked_line.coords[i2]
+                    if num_line==0:
+                        # Process of the first line
+                        p11 = linked_line.coords[i1]
+                        p12 = linked_line.coords[i2]
+                    else:
+                        # Process of the second line
+                        p21 = linked_line.coords[i1]
+                        p22 = linked_line.coords[i2]
 
+                angle_p11_p0_21 = GenUtil.compute_angle(p11, p0, p21, type=GenUtil.DEGREE)
                 angle_p11_p21_p22 = GenUtil.compute_angle(p11, p21, p22, type=GenUtil.DEGREE)
                 angle_p12_p11_p21 = GenUtil.compute_angle(p11, p21, p22, type=GenUtil.DEGREE)
-                if angle_p11_p21_p22 > 100. and angle_p12_p11_p21 > 100.:
+                if angle_p11_p21_p22 > 100. and angle_p12_p11_p21 > 100. and \
+                   angle_p11_p0_21 < 165.:
                     # The base of the triangle is pseudo alignes
                     point_mid_p11_p21 = LineString((p11, p21)).interpolate(.5, normalized=True)
                     coord_mid_p11_21 = (point_mid_p11_p21.x,point_mid_p11_p21.y)
@@ -139,35 +158,46 @@ def clean_y_junction(s_container, command, geo_content):
                 pass
 
 
+def adjust_coords (target_point, new_point, line, s_container):
+
+    if target_point.distance(Point(line.coords[0])) <= GenUtil.ZERO:
+        # Move/edit the first coordinate to the new mid point
+        i = 0
+    else:
+        # Move/edit the last coordinate to the new mid point
+        i = len(line.coords) - 1
+
+    lst_coords = list(line.coords)
+    lst_coords[i] = (new_point.x, new_point.y)
+    line.coords = lst_coords
+    #s_container.update_spatial_index(line)
+
+
+
+
+
 def clean_x_junction(s_container, command, geo_content):
     """Clean a road junction that should form 4 line crossing"""
 
+    x_lines = list(s_container.get_features())
     # Loop over each line in the container
-    for x_line in s_container.get_features():
+    for x_line in x_lines:
         # Only select line below the tolerance and linked to 2 other lines at each extremity
         if x_line.length <= command.xjunction and \
            len(x_line.start_lines) == 2 and \
            len(x_line.end_lines) == 2:
             mid_point = x_line.interpolate(.5, normalized=True) # Find the new intersection point
-            p_start = Point(x_line.coords[0])
-            p_end = Point(x_line.coords[-1])
-            lst_lines = x_line.start_lines+x_line.end_lines
-            for line in lst_lines:
-                if mid_point.distance(p_start) <= GenUtil.ZERO or \
-                   mid_point.distance(p_end) <= GenUtil.ZERO:
-                    # Move the first coordinate to the new mid point
-                    i = 0
-                else:
-                    # Move the last coordinate to the new mid point
-                    i = len(line.coords)-1
-                # reset the coordinate
-                lst_coords = list(line.coords)
-                lst_coords[i] = (mid_point.x,mid_point.y)
-                line.coords = lst_coords
-                geo_content.nbr_xjunction += 1 # Add stats counter
+
+            start_point = Point(x_line.coords[0])
+            adjust_coords(start_point, mid_point, x_line.start_lines[0], s_container)
+            adjust_coords(start_point, mid_point, x_line.start_lines[1], s_container)
+            end_point = Point(x_line.coords[-1])
+            adjust_coords(end_point, mid_point, x_line.end_lines[0], s_container)
+            adjust_coords(end_point, mid_point, x_line.end_lines[1], s_container)
 
             # Delete de x_line from the spatial container
             s_container.del_feature(x_line)
+            geo_content.nbr_xjunction += 1  # Add stats counter
 
 
 
@@ -181,13 +211,19 @@ def manage_cleaning(command, geo_content):
 
     s_container = build_topology(geo_content.in_features, GenUtil.ZERO)
 
-    # Clean junction in Y form
-    if command.yjunction >= 0:
-        clean_y_junction(s_container, command, geo_content)
+    # Clean the noise
+    if commend.noise:
+        clean_noise((s_container, command, geo_content))
 
     # Clean junction in X form
     if command.xjunction >= 0:
         clean_x_junction(s_container, command, geo_content)
+
+    # Clean junction in Y form
+#    if command.yjunction >= 0:
+#        clean_y_junction(s_container, command, geo_content)
+
+
 
     # Extend line
 #    if command.extend_line >= 0:
@@ -199,6 +235,10 @@ def manage_cleaning(command, geo_content):
 #    centre_lines = extract_lines(command, geo_content)
 
 #    return centre_lines
+
+    geo_content.out_features = list(s_container.get_features())
+
+    return
 
 
 @dataclass
@@ -227,22 +267,21 @@ class GeoContent:
     nbr_noise: 0
     in_features: List[object]
     out_features: List[object]
-    nbr_in_line_strings: 0
-    nbr_out_line_strings: 0
+    in_nbr_line_strings: 0
+    out_nbr_line_strings: 0
     bounds: List[object] = None
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_features=[],
                          nbr_xjunction=0, nbr_yjunction=0, nbr_join=0, nbr_noise=0,
-                         nbr_in_line_strings=0, nbr_out_line_strings=0, bounds=[])
+                         in_nbr_line_strings=0, out_nbr_line_strings=0, bounds=[])
 
 
 
 # Read the command line arguments
-#command = read_arguments()
+command = read_arguments()
 
-# Extract and load the layers of the input file
-#layers = [command.polygon, command.tesselation]
-#GenUtil.read_in_file (command.in_file, geo_content, layers)
+
+GenUtil.read_in_file (command.in_file, geo_content, [command.input_layer])
 
 
 a = LineString(((0,0),(5,0)))
@@ -253,15 +292,15 @@ e = LineString(((10,5),(15,5)))
 
 f = LineString(((10,10),(10,20)))
 g = LineString (((6,21),(8,21),(10,20)))
-h = LineString (((14,21),(12,21),(10,20)))
-i = LineString (((6,9),(8,9),(10,10)))
+h = LineString (((10,20),(12,21),(14,21)))
+i = LineString (((10,10), (8,9), (6,9)))
 j = LineString (((14,9),(12,9),(10,10)))
 
-geo_content.in_features = [f,g,h,i,j]
+#geo_content.in_features = [a,b,c,d,e]
 
-command = SpatialContainer()
-command.xjunction = 10
-command.yjunction=10
+#command = SpatialContainer()
+#command.xjunction = 10
+#command.yjunction=10
 
 manage_cleaning(command, geo_content)
 
@@ -270,16 +309,16 @@ manage_cleaning(command, geo_content)
 
 print ("-------")
 print("Name of input file: {}".format(command.in_file))
-print("Name of input polygon layer: {}".format(command.polygon))
-print ("Name of input tesselation layer: {}".format(command.tesselation))
-print ("Nampe of output skeleton layer: {}".format(command.skeleton))
+print("Name of input layer: {}".format(command.input_layer))
+print("Name of output_layer: {}".format(command.output_layer))
+print("Tolerance for Y junction: {}".format(command.yjunction))
+print("Tolerance for X junction: {}".format(command.xjunction))
 print ("-----")
 
 
 # Copy the results in the output file
-geo_content.layer_names = [command.skeleton]
-GenUtil.write_out_file_append (command.in_file, geo_content)
+geo_content.layer_names = [command.output_layer]
+for feature in geo_content.out_features:
+    feature.sb_layer_name = command.output_layer
 
-print ("Number of point features written: {}".format(geo_content.out_nbr_points))
-print ("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
-print ("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
+GenUtil.write_out_file_append (command.in_file, geo_content)
