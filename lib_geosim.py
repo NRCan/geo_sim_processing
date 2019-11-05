@@ -574,7 +574,7 @@ class SpatialContainer(object):
         """
 
         # Check if the type is valid
-        if feature.sb_geom_type == GenUtil.POINT or feature.sb_geom_type == GenUtil.LINE_STRING:
+        if feature.geom_type == GenUtil.POINT or feature.geom_type == GenUtil.LINE_STRING:
             pass
         else:
             raise GenException('Unsupported feature type...')
@@ -699,20 +699,25 @@ class SpatialContainer(object):
 
         old_bbox = self._bbox_features[feature._sb_sc_id]
         new_bbox = self._extract_bounding_box(feature)
+        old_x_min, old_y_min, old_x_max, old_y_max = old_bbox[0], old_bbox[1], old_bbox[2], old_bbox[3]
+        new_x_min, new_y_min, new_x_max, new_y_max = new_bbox[0], new_bbox[1], new_bbox[2], new_bbox[3]
 
-        if (self._is_bbox_the_same(feature, old_bbox, new_bbox)):
-            # Nothing special to do
+        if old_x_min <= new_x_min and \
+           old_y_min <= new_y_min and \
+           old_x_max >= new_x_max and \
+           old_y_max >= new_y_max:
+            # Nothing to do new bounding box is completely included into the old one
             pass
         else:
             # The bounding box has changed
             # Delete The old bounding box in Rtree
-            self._r_tree.delete(feature._gbt_sci_id, old_bbox
+            self._r_tree.delete(feature._sb_sc_id, old_bbox
                                 )
             # Add the new bounding boxes in Rtree
-            self._r_tree.add(feature.__gbt_sci_id, new_bbox)
+            self._r_tree.add(feature._sb_sc_id, new_bbox)
 
             # Save the bounding boxes
-            self._bbox_features[feature._sci_id] = new_bbox
+            self._bbox_features[feature._sb_sc_id] = new_bbox
 
         return
 
