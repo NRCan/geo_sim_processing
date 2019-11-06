@@ -13,18 +13,17 @@ LAST = -1
 BOTH = "Both"
 
 
-class Topology(object)
+class Topology(object):
 
     def __init__(self, s_container, line, search_tolerance=GenUtil.ZERO):
 
         self.line = line
         self.s_container = s_container
-        self.lst_coord = list(line.coords)
         self.start_linked_lines = []
         self.end_linked_lines = []
 
         # Find the linked lines of the start of the line
-        p_start = self.lst_coord[0]
+        p_start = self.line.coords[0]
         b_box = GenUtil.build_bounding_box(search_tolerance, p_start)
         linked_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
         for linked_line in linked_lines:
@@ -32,7 +31,7 @@ class Topology(object)
                 self.start_linked_lines.append(linked_line)
 
         # Find the linked lines of the end of the line
-        p_end = self.line.coord[-1]
+        p_end = self.line.coords[-1]
         b_box = GenUtil.build_bounding_box(search_tolerance, p_end)
         linked_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
         for linked_line in linked_lines:
@@ -44,24 +43,26 @@ class Topology(object)
 
     def orient_linked_lines(self, target=BOTH):
 
+        line_lst_coord = list(self.line.coords)
         if target == BOTH:
-            for (ind,linked_lines) in ((0,self.start_linked_lines), (self.end_linked_lines, -1)):
-                for linked_line in linked_lines:
+            for (ind,linked_lines) in ((0, self.start_linked_lines), (-1, self.end_linked_lines)):
+                for i, linked_line in enumerate(linked_lines):
                     lst_linked_line_coord = list(linked_line.coords)
-                    if Point(self.lst_coord[ind]).distance(Point(lst_linked_line_coord[0])) > GenUtil.distance:
+                    if Point(line_lst_coord[ind]).distance(Point(lst_linked_line_coord[0])) > GenUtil.ZERO:
                         lst_linked_line_coord.reverse()
                         linked_line.coords = lst_linked_line_coord
         else:
-            raise Exception "Only value BOTH is accepted for 'target' parameter"
+            raise Exception ("Only value BOTH is accepted for 'target' parameter")
 
 
     def reverse(self):
 
-        self.lst_coord.reverse()
-        self.line.coords = self.lst_coord
-        self.lst_coord = list(line.coords)
-        self.start_linked_lines = []
-        self.end_linked_lines = []
+        lst_coord = list(self.line.coords)
+        lst_coord.reverse()
+        self.line.coords = lst_coord
+        tmp = self.start_linked_lines
+        self.start_linked_lines = self.end_linked_lines
+        self.end_linked_lines = tmp
 
 
 def read_arguments():
@@ -71,11 +72,11 @@ def read_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("in_file", help="geopackage vector file to clean")
     parser.add_argument("-y", "--yjunction", type=float, default=0.0, help="max tolerance for cleaning Y junction ")
-    parser.add_argument("-x", "--xjunction", type=float, help="max tolerance for cleaning X junction")
-    parser.add_argument("-j", "--join", type=float, help="max tolerance for joining 2 roads")
-    parser.add_argument("-n", "--noise", type=float, help="max tolerance for removing noise")
-    parser.add_argument("-e", "--extend", type=float, help="max tolerance for extending line")
-    parser.add_argument("-i", "--iteration", type=int, default=5, help="Number of iteration for extending line")
+    parser.add_argument("-x", "--xjunction", type=float, default=0.0, help="max tolerance for cleaning X junction")
+    parser.add_argument("-j", "--join", type=float, default=0.0, help="max tolerance for joining 2 roads")
+    parser.add_argument("-n", "--noise", type=float, default=0.0, help="max tolerance for removing noise")
+    parser.add_argument("-e", "--extend", type=float, default=0.0, help="max tolerance for extending line")
+    parser.add_argument("-i", "--iteration", type=int, default=5,  help="Number of iteration for extending line")
     parser.add_argument("-il", "--input_layer", type=str, help="name input layer containing the roads")
     parser.add_argument("-ol", "--output_layer", type=str, help="name output layer containing the roads")
 
@@ -149,22 +150,11 @@ def build_topology(s_container, line):
 
 
 
-
-
-#def clean_noise_one_extrimity(line, extremity):
-
-
-#    if are_open_arm(target_lines)
-
-
-
-def clean_noise_lines(s_container, command, geo_content):
+def clean_noise_lines2(s_container, command, geo_content):
 
      delete_features = []
      lines = list(s_container.get_features())
      for line in lines:
-         if id(line) in delete_features:
-             print ("Trouve...")
 
          start_lines = point_topolgy(s_container, line, FIRST)
          end_lines = point_topolgy(s_container, line, LAST)
@@ -203,6 +193,60 @@ def clean_noise_lines(s_container, command, geo_content):
                              command.noise += 1
 
 
+def clean_noise(s_container, command, geo_content):
+
+
+    delete_features = []
+    lines = list(s_container.get_features())
+    for line in lines:
+
+        if id(line) not in delete_features:
+
+            line_topology = Topology(s_container, line)
+            line_topology.orient_linked_lines()
+
+            if len(line_topology.start_linked_lines) >= 2 and len(line_topology.end_linked_lines) >= 2:
+                for ind in [FIRST, LAST]:
+                    if ind == LAST:
+                        line_topology.reverse()
+                    linked_lines = line_topology.start_linked_lines
+                    if is_open_arm(s_container, linked_lines[0]) and \
+                       is_open_arm(s_container, linked_lines[1]):
+
+                        if len(linked_lines) == 2 and \
+                                linked_lines[0].length <= command.noise and \
+                                linked_lines[1].length <= command.noise:
+                            p = []
+                            for linked_line in linked_lines:
+                                p.append(linked_line.coords[-1])
+                            p_line = LineString((p[0], p[1]))
+                            if p_line.disjoint(line):
+                                new_point = p_line.interpolate(.5, normalized=True)
+                                lst_coords = list(line.coords)
+                                new_coord = [(new_point.x, new_point.y)]
+                                lst_coords = new_coord + lst_coords
+                                line.coords = lst_coords
+                                s_container.update_spatial_index(line)
+                                delete_features.append(id(linked_lines[0]))
+                                delete_features.append(id(linked_lines[1]))
+                                s_container.del_features(linked_lines)
+                                geo_content.nbr_noise += 2
+                            else:
+                                # The new line is touching something ===> No edtion
+                                pass
+
+                        else:
+                            # There must be 2 lines under the noise tolerance
+                            pass
+                    else:
+                        # The line to edit must have an open arm (no links)
+                        pass
+            else:
+                # The line is not linked to other line
+                pass
+        else:
+            # Feature already processed
+            pass
 
 def is_edition_needed(lst_coord_0, lst_coord_1, lst_coord_2):
 
@@ -217,22 +261,39 @@ def is_edition_needed(lst_coord_0, lst_coord_1, lst_coord_2):
 
     if angle_1 >= 165. or angle_2 >= 165. or angle_3 >= 165.:
         edition_needed = False
-        print ("Position {}".format(str(p0)))
     else:
         edition_needed = True
 
     return edition_needed
 
 
-def metric_y_junction (lst_coord_0, lst_coord_1, command):
+def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
 
-    if len(lst_coord_0) >=3 and len(lst_coord_1) >=3:
-        p0 = lst_coord_0[0]
-        p01 = lst_coord_0[1]
-        p02 = lst_coord_0[2]
+    lst_coord = [[[None],[None],[None]], [[None],[None],[None]], [[None],[None],[None]]]
+    for i, coords in enumerate([lst_coord_0, lst_coord_1, lst_coord_2]):
+        if len(coords)  <= 2:
+            lst_coord[i][0] = coords[0]
+            mid_point = LineString((coords[0], coords[1])).interpolate(.5, normalized=True)
+            lst_coord[i][1] = (mid_point.x, mid_point.y)
+            lst_coord[i][2] = coords[1]
+        else:
+            for j in range(3):
+                lst_coord[i][j] = coords[j]
 
-        p11 = lst_coord_1[1]
-        p12 = lst_coord_1[2]
+    try_0 = (lst_coord[0], lst_coord[1])
+    try_1 = (lst_coord[1], lst_coord[2])
+    try_2 = (lst_coord[0], lst_coord[2])
+    max_sum_angles = -1.
+    max_mid_p01_p11 = None
+
+    for (lst_coord_a, lst_coord_b) in (try_0, try_1, try_2 ):
+
+        p0 = lst_coord_a[0]
+        p01 = lst_coord_a[1]
+        p02 = lst_coord_a[2]
+
+        p11 = lst_coord_b[1]
+        p12 = lst_coord_b[2]
 
         tmp_mid_p01_p11 = LineString((p01,p11)).interpolate(.5, normalized=True)
         mid_p01_p11 = (tmp_mid_p01_p11.x, tmp_mid_p01_p11.y)
@@ -244,15 +305,11 @@ def metric_y_junction (lst_coord_0, lst_coord_1, command):
 
         if (length_y_junction <= command.yjunction):
             sum_angles = angle_mid_p01_p02 + angle_mid_p11_p12
-        else:
-            sum_angles = None
+            if sum_angles > max_sum_angles:
+                max_sum_angles = sum_angles
+                max_mid_p01_p11 = mid_p01_p11
 
-    else:
-        print ("Add a pseudo mid point...")
-        sum_angles = None
-        mid_p01_p11 = None
-
-    return (sum_angles, mid_p01_p11)
+    return max_mid_p01_p11
 
 
 def clean_y_junction_dummy(s_container, command, geo_content):
@@ -281,31 +338,11 @@ def clean_y_junction_dummy(s_container, command, geo_content):
                 current_y_junction = sorted((id(y0_line), id(y1_line), id(y2_line))) #
                 if current_y_junction not in processed_y_junction:
 
-                    # Add the current junction
                     processed_y_junction.append(current_y_junction)
-
-                    if num == 1:
-                        y0_lst_coord.reverse()
-
-                    if y1_order == -1: # Line is connect by the last coordinate
-                        y1_lst_coord.reverse()
-
-                    if y2_order == -1: # Line is connect by the last coordinate
-                        y2_lst_coord.reverse()
 
                     if is_edition_needed (y0_lst_coord, y1_lst_coord, y2_lst_coord):
 
-                        metric_0 = metric_y_junction(y0_lst_coord, y1_lst_coord, command)
-                        metric_1 = metric_y_junction(y1_lst_coord, y2_lst_coord, command)
-                        metric_2 = metric_y_junction(y0_lst_coord, y2_lst_coord, command)
-
-                        max_sum_angles = -1.
-                        new_mid_coord = None
-                        for (sum_angles, mid_coord) in (metric_0, metric_1, metric_2):
-                            if sum_angles is not None:
-                                if sum_angles >= max_sum_angles:
-                                    max_sum_angles = sum_angles
-                                    new_mid_coord = mid_coord
+                        new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y1_lst_coord, command)
 
                         if new_mid_coord is not None:
 
@@ -347,14 +384,16 @@ def clean_y_junction(s_container, command, geo_content):
     for y0_line in list(s_container.get_features()):
 
         y0_topology = Topology(s_container, y0_line)
-        y0_lst_coord = list(y0_line.coords)
+        y0_topology.orient_linked_lines()
 
         # Process both the start and the end of the line
-        start_end_lines = [(FIRST, y0_topology.start_lines)] + [(LAST, y0_topology.end_lines)]
-        for (ind, linked_lines) in enumerate(start_end_lines):
+        for ind in [FIRST,LAST]:
+            if ind == LAST:
+                y0_topology.reverse()
+            y0_lst_coord = list(y0_line.coords)
+            linked_lines = y0_topology.start_linked_lines
             if len(linked_lines) == 2:
                 # Line needs to be linked to 2 and only 2 lines to form a valid Y junction
-                y0_topology.orient_linked_lines()
                 y1_line = linked_lines[0]
                 y1_lst_coord = list(y1_line.coords)
 
@@ -367,19 +406,9 @@ def clean_y_junction(s_container, command, geo_content):
                     # Add the current junction to the list of process jnction
                     processed_y_junction.append(current_y_junction)
 
-                    if is_edition_needed (y0_lst_coord, y1_lst_coord, y2_lst_coord):
+                    if is_edition_needed(y0_lst_coord, y1_lst_coord, y2_lst_coord):
 
-                        metric_0 = metric_y_junction(y0_lst_coord, y1_lst_coord, command)
-                        metric_1 = metric_y_junction(y1_lst_coord, y2_lst_coord, command)
-                        metric_2 = metric_y_junction(y0_lst_coord, y2_lst_coord, command)
-
-                        max_sum_angles = -1.
-                        new_mid_coord = None
-                        for (sum_angles, mid_coord) in (metric_0, metric_1, metric_2):
-                            if sum_angles is not None:
-                                if sum_angles >= max_sum_angles:
-                                    max_sum_angles = sum_angles
-                                    new_mid_coord = mid_coord
+                        new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y2_lst_coord, command)
 
                         if new_mid_coord is not None:
 
@@ -415,8 +444,8 @@ def clean_y_junction(s_container, command, geo_content):
 def is_open_arm(s_container, line):
 
     open_arm = False
-    build_topology(s_container, line)
-    if len(line.start_lines) == 0 or len(line.end_lines) == 0:
+    line_topology = Topology(s_container, line)
+    if len(line_topology.start_linked_lines) == 0 or len(line_topology.end_linked_lines) == 0:
         open_arm = True
 
     return open_arm
@@ -487,19 +516,17 @@ def clean_x_junction(s_container, command, geo_content):
         # Only select line below the tolerance and linked to 2 other lines at each extremity
         if x_line.length <= command.xjunction:
             # Build the topology for the line
-            build_topology(s_container, x_line)
-            if len(x_line.start_lines) == 2 and \
-               len(x_line.end_lines) == 2:
+            x_line_topology = Topology(s_container, x_line)
+            if len(x_line_topology.start_linked_lines) == 2 and \
+               len(x_line_topology.end_linked_lines) == 2:
+                x_line_topology.orient_linked_lines()
                 mid_point = x_line.interpolate(.5, normalized=True) # Find the new intersection point
                 coord_point = [mid_point.x, mid_point.y]
-                for tuple_line_ind in (x_line.start_lines+x_line.end_lines):
-                    line = tuple_line_ind[0]
-                    ind = tuple_line_ind[1]
-                    lst_coord = list(line.coords)
-                    lst_coord[ind] = coord_point
-                    line.coords = lst_coord
-                    #s_container.update_spatial_index(line)
-                    print ("Edit Update spatial index...")
+                for linked_line in (x_line_topology.start_linked_lines+x_line_topology.end_linked_lines):
+                    lst_coord = list(linked_line.coords)
+                    lst_coord[0] = coord_point
+                    linked_line.coords = lst_coord
+                    s_container.update_spatial_index(linked_line)
 
                 # Delete de x_line from the spatial container
                 s_container.del_feature(x_line)
@@ -596,10 +623,10 @@ def manage_cleaning(command, geo_content):
 
     # Clean the noise
     if command.noise:
-        clean_dual_fork(s_container, command, geo_content)
-        clean_dual_fork(s_container, command, geo_content)
+        clean_noise(s_container, command, geo_content)
+#        clean_noise(s_container, command, geo_content)
 
-
+    """
     # Clean junction in X form
     if command.xjunction >= 0:
         clean_x_junction(s_container, command, geo_content)
@@ -607,10 +634,10 @@ def manage_cleaning(command, geo_content):
     # Clean junction in Y form
     if command.yjunction >= 0:
         clean_y_junction(s_container, command, geo_content)
-
-    # Extend line
-    if command.extend >= 0:
-        extend_line(s_container, command, geo_content)
+    """
+#    # Extend line
+#    if command.extend >= 0:
+#        extend_line(s_container, command, geo_content)
 
     geo_content.out_features = list(s_container.get_features())
     geo_content.out_nbr_line_strings = len(geo_content.out_features)
@@ -662,11 +689,11 @@ GenUtil.read_in_file (command.in_file, geo_content, [command.input_layer])
 
 
 # test for Ycrossing
-a = LineString(((0,0),(5,0)))
-b = LineString(((5,0),(5,-5)))
-c = LineString(((5,0),(10,5)))
-d = LineString(((10,10),(10,5)))
-e = LineString(((10,5),(15,5)))
+a = LineString(((5,5),(5,10)))
+b = LineString(((0,4),(3,4),(5,5)))
+c = LineString(((5,5),(7,4),(10,4)))
+d = LineString(((5,10),(7,11), (10,11)))
+e = LineString(((0,11),(3,11),(5,10)))
 
 # Test for X crossing
 f = LineString(((10,10), (10,15),(10,20)))
@@ -675,7 +702,7 @@ h = LineString (((10,20),(12,21),(14,21)))
 i = LineString (((10,10), (8,9), (6,9)))
 j = LineString (((14,9),(12,9),(10,10)))
 
-# Test for dual fork
+# Test for noise type 1
 k = LineString (((10,0), (30,0)))
 l = LineString (((30,0),(35,3)))
 m = LineString (((30,0),(35,-3)))
@@ -691,9 +718,11 @@ s = LineString(((10,0),(0,0)))
 t = LineString(((10,0),(10,10)))
 
 
-#geo_content.in_features = [p,q,r]
+#geo_content.in_features = [k,l,m,n,o]
 
 #command = SpatialContainer()
+#command.yjunction = 5
+#command.xjunction = 10
 #command.extend = 3
 #command.iteration=5
 #command.noise = 7
@@ -710,14 +739,14 @@ print("Name of output_layer: {}".format(command.output_layer))
 print("Tolerance for Y junction: {}".format(command.yjunction))
 print("Tolerance for X junction: {}".format(command.xjunction))
 print("Tolerance for noise detection: {}".format(command.xjunction))
-print("Tolerance for extending lines: {}".format(command.extending))
+print("Tolerance for extending lines: {}".format(command.extend))
 print ("-----")
-print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings.extending))
-print("Number of features (line) written: {}".forma(geo_content.out_nbr_line_strings.extending))
-print("Number of Y junction corrected: {}".format(geo_content.nbr_y_junction))
-print("Number of X junction corrected: {}".format(geo_content.nbr_x_junction))
-print("Number of line (noise) deleted: {}".format(geo_content.nbr_noise))
-print("Number of line extended: {}".format(geo_content.nbr_extended))
+print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings))
+print("Number of features (line) written: {}".format(geo_content.out_nbr_line_strings))
+#print("Number of Y junction corrected: {}".format(geo_content.nbr_y_junction))
+#print("Number of X junction corrected: {}".format(geo_content.nbr_x_junction))
+#print("Number of line (noise) deleted: {}".format(geo_content.nbr_noise))
+#print("Number of line extended: {}".format(geo_content.nbr_extended))
 
 
 # Copy the results in the output file
