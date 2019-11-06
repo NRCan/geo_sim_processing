@@ -149,48 +149,62 @@ def build_topology(s_container, line):
                 line.end_lines.append((line_b_box, ind))
 
 
+def clean_noise_type_2(s_container, command, geo_content):
 
-def clean_noise_lines2(s_container, command, geo_content):
 
-     delete_features = []
-     lines = list(s_container.get_features())
-     for line in lines:
+    delete_features = []
+    lines = list(s_container.get_features())
+    for line in lines:
 
-         start_lines = point_topolgy(s_container, line, FIRST)
-         end_lines = point_topolgy(s_container, line, LAST)
-         if id(line) not in delete_features and \
-            len(start_lines) >= 2 and len(end_lines) >= 2:
-             for i, target_lines in enumerate([start_lines]+[line.end_lines]):
-                 if are_open_arms(target_lines):
-                     if i == 0:
-                         ind_coord = 0
-                     else:
-                         ind_coord = -1
+        if line.length <= command.length:
 
-                     if len(target_lines) == 2 and \
-                         target_lines[0].length <= command.noise and \
-                         target_lines[1].length <= command.noise:
-                         p = []
-                         for target_line in target_lines:
-                             if line.distance(Point(target_line.coords[0]))<= GenUtil.ZERO:
-                                 p.append(target_line.coords[-1])
-                             else:
-                                 p.append(target_line.coords[0])
-                         p_line = LineString((p[0], p[1]))
-                         if p_line.disjoint(line):
-                             new_point = p_line.interpolate(.5, normalized=True)
-                             lst_coords = list(line.coords)
-                             new_coord = [(new_point.x, new_point.y)]
-                             if ind_coord == -1:
-                                 lst_coords = lst_coords + new_coord
-                             else:
-                                 lst_coords = new_coord + lst_coords
-                             line.coords = lst_coords
-                             s_container.update_spatial_index(line)
-                             delete_features.append(id(target_lines[0]))
-                             delete_features.append(id(target_lines[1]))
-                             s_container.del_features(target_lines)
-                             command.noise += 1
+            if id(line) not in delete_features:
+
+                line_topology = Topology(s_container, line)
+                line_topology.orient_linked_lines()
+
+                for ind in [FIRST, LAST]:
+                    if ind == LAST:
+                        line_topology.reverse()
+
+                    if len(line_topology.start_linked_lines) == 2 and len(line_topology.end_linked_lines) == 0:
+
+                        line_a = line_topology.start_linked_lines[0]
+                        line_b = line_topology.start_linked_lines[1]
+
+                        line_a_topology = Topology(s_container, line_a)
+                        line_b_topology = Topology(s_container, line_b)
+
+                        if (len(line_a_topology.end_linked_lines) >= 2 or line_a.length > command.noise) and \
+                           (len(line_b_topology.end_linked_lines) >= 2 or line_b.length > command.noise):
+                            # the requirements are met to delete the line
+                            merged_line = linemerge((line_a, line_b))
+                            if merged_line.geom_type == GenUtil.LINE_STRING:
+                                # Merge the line and house keeping in the spatial container
+                                lst_coord = list(merged_line.coords)
+                                line_a.coords = lst_coord
+                                delete_features.append(id(line_b))
+                                delete_features.append(id(line))
+                                s_container.del_feature(line)
+                                s_container.del_feature(line_b)
+                                s_container.update_spatial_index(line_a)
+                                break
+                            else:
+                                # Merging did not worked as planned... skip...
+                                    pass
+                        else:
+                            # requirement not met for delete line
+                            pass
+                    else:
+                        # The line is not open... skip...
+                        pass
+            else:
+                # Feature already processed
+                pass
+        else:
+            # Features over noise tolerace
+            pass
+
 
 
 def clean_noise(s_container, command, geo_content):
@@ -621,10 +635,14 @@ def manage_cleaning(command, geo_content):
     geo_content.in_nbr_line_strings = len(geo_content.in_features)
     geo_content.in_features=[]
 
-    # Clean the noise
+    # Clean the noise type 2
     if command.noise:
+        clean_noise_type_2(s_container, command, geo_content)
+
+    # Clean the noise type 1
+#    if command.noise:
         clean_noise(s_container, command, geo_content)
-#        clean_noise(s_container, command, geo_content)
+        clean_noise(s_container, command, geo_content)
 
     """
     # Clean junction in X form
@@ -717,6 +735,18 @@ r = LineString(((19,1),(10,0)))
 s = LineString(((10,0),(0,0)))
 t = LineString(((10,0),(10,10)))
 
+# Test noise tryp II
+
+u = LineString(((50,0),(0,0)))
+v = LineString(((50,0),(50,5)))
+w = LineString(((50,0),(55,0)))
+x = LineString(((55,-5),(55,0)))
+y = LineString(((60,0),(55,0)))
+z = LineString(((60,0),(65,-2)))
+zz = LineString(((65,2),(60,0)))
+
+#geo_content.in_features = [u,v,w,x,y,z,zz]
+
 
 #geo_content.in_features = [k,l,m,n,o]
 
@@ -741,8 +771,8 @@ print("Tolerance for X junction: {}".format(command.xjunction))
 print("Tolerance for noise detection: {}".format(command.xjunction))
 print("Tolerance for extending lines: {}".format(command.extend))
 print ("-----")
-print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings))
-print("Number of features (line) written: {}".format(geo_content.out_nbr_line_strings))
+#print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings))
+#print("Number of features (line) written: {}".format(geo_content.out_nbr_line_strings))
 #print("Number of Y junction corrected: {}".format(geo_content.nbr_y_junction))
 #print("Number of X junction corrected: {}".format(geo_content.nbr_x_junction))
 #print("Number of line (noise) deleted: {}".format(geo_content.nbr_noise))

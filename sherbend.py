@@ -11,7 +11,7 @@ from algo_sherbend import AlgoSherbend
 from lib_geosim import GenUtil
 
 
-def managae_arguments():
+def manage_arguments():
     """Read and manage the input arguments in the command line"""
 
     # Setting the parameters of the command line
@@ -200,7 +200,7 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_nam
 
 
 # Read the command line arguments
-command = managae_arguments()
+command = manage_arguments()
 
 # Extract and load the layers of the input file
 GenUtil.read_in_file (command.in_file, geo_content)
