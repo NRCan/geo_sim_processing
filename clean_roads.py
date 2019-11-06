@@ -18,27 +18,33 @@ class Topology(object):
     def __init__(self, s_container, line, search_tolerance=GenUtil.ZERO):
 
         self.line = line
+        self.search_tolerance = search_tolerance
         self.s_container = s_container
         self.start_linked_lines = []
         self.end_linked_lines = []
 
         # Find the linked lines of the start of the line
-        p_start = self.line.coords[0]
-        b_box = GenUtil.build_bounding_box(search_tolerance, p_start)
-        linked_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-        for linked_line in linked_lines:
-            if self.line.touches(linked_line):
-                self.start_linked_lines.append(linked_line)
+        self.start_linked_lines = self._extract_linked_lines (self.line.coords[0])
 
         # Find the linked lines of the end of the line
-        p_end = self.line.coords[-1]
-        b_box = GenUtil.build_bounding_box(search_tolerance, p_end)
-        linked_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-        for linked_line in linked_lines:
-            if line.touches(linked_line):
-                self.end_linked_lines.append(linked_line)
+        self.end_linked_lines = self._extract_linked_lines(self.line.coords[-1])
 
         return
+
+
+    def _extract_linked_lines(self, coord):
+
+        linked_lines = []
+        b_box = GenUtil.build_bounding_box(self. search_tolerance, coord)
+        potential_lines = self.s_container.get_features(b_box, remove_features=[self.line._sb_sc_id])
+        for potential_line in potential_lines:
+            if potential_line.distance(Point(coord)) <= GenUtil.ZERO:
+                linked_lines.append(potential_line)
+
+        return linked_lines
+
+
+
 
 
     def orient_linked_lines(self, target=BOTH):
@@ -156,7 +162,7 @@ def clean_noise_type_2(s_container, command, geo_content):
     lines = list(s_container.get_features())
     for line in lines:
 
-        if line.length <= command.length:
+        if line.length <= command.noise:
 
             if id(line) not in delete_features:
 
@@ -219,17 +225,16 @@ def clean_noise(s_container, command, geo_content):
             line_topology = Topology(s_container, line)
             line_topology.orient_linked_lines()
 
-            if len(line_topology.start_linked_lines) >= 2 and len(line_topology.end_linked_lines) >= 2:
+            if line.length > command.noise or len(line_topology.start_linked_lines) >= 2:
                 for ind in [FIRST, LAST]:
                     if ind == LAST:
                         line_topology.reverse()
                     linked_lines = line_topology.start_linked_lines
-                    if is_open_arm(s_container, linked_lines[0]) and \
+                    if len(linked_lines) == 2 and \
+                       is_open_arm(s_container, linked_lines[0]) and \
                        is_open_arm(s_container, linked_lines[1]):
 
-                        if len(linked_lines) == 2 and \
-                                linked_lines[0].length <= command.noise and \
-                                linked_lines[1].length <= command.noise:
+                        if linked_lines[0].length <= command.noise and linked_lines[1].length <= command.noise:
                             p = []
                             for linked_line in linked_lines:
                                 p.append(linked_line.coords[-1])
@@ -640,7 +645,7 @@ def manage_cleaning(command, geo_content):
         clean_noise_type_2(s_container, command, geo_content)
 
     # Clean the noise type 1
-#    if command.noise:
+    if command.noise:
         clean_noise(s_container, command, geo_content)
         clean_noise(s_container, command, geo_content)
 
