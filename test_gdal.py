@@ -4,7 +4,17 @@ from lib_geobato import GenUtil
 import math
 
 from shapely import affinity
+from shapely.ops import snap
+b = Point(0,0)
+c = LineString(((2,-2),(2,2)))
+a = c.project(b)
 
+
+p1 = Point(0,0)
+l1 =  LineString (((2,-5),(3,5) ))
+result = snap(p1, l1, 15)
+
+line = LineString([(0,0), (0.8, 0.8), (1.8, 0.95), (2.6, 0.5)])
 start_time = time()
 p1 = Point((5,5))
 p2 = Point((3,6))
