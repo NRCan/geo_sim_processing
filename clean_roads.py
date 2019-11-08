@@ -588,7 +588,8 @@ def join_lines(s_container, command, geo_content, tolerance):
                                 processed_lines.append(id(target_line))
                                 s_container.update_spatial_index(line)
                                 s_container.del_feature(target_line)
-                                geo_content.nbr_extend += 1
+                                print (target_coord)
+                                geo_content.nbr_join += 1
                             else:
                                 # Possible problem with the merged line go to next line
                                 pass
@@ -640,7 +641,7 @@ def extend_line(s_container, command, geo_content, tolerance):
                             lst_new_coord_line = [new_coord] + lst_coord_line
                             line.coords = lst_new_coord_line
                             s_container.update_spatial_index(line)
-                            geo_content.nbr_join += 1
+                            geo_content.nbr_extend += 1
                         else:
                             # No line to merged with
                             pass
@@ -689,7 +690,7 @@ def manage_cleaning(command, geo_content):
     # Join line
     if command.join >= 0:
         for i in range(command.iteration):
-            tolerance = command.extend * (float(i + 1) / command.iteration)
+            tolerance = command.join * (float(i + 1) / command.iteration)
             join_lines(s_container, command, geo_content, tolerance)
 
     # Extend line
@@ -817,12 +818,13 @@ print("Tolerance for X junction: {}".format(command.xjunction))
 print("Tolerance for noise detection: {}".format(command.xjunction))
 print("Tolerance for extending lines: {}".format(command.extend))
 print ("-----")
-#print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings))
-#print("Number of features (line) written: {}".format(geo_content.out_nbr_line_strings))
-#print("Number of Y junction corrected: {}".format(geo_content.nbr_y_junction))
-#print("Number of X junction corrected: {}".format(geo_content.nbr_x_junction))
-#print("Number of line (noise) deleted: {}".format(geo_content.nbr_noise))
-#print("Number of line extended: {}".format(geo_content.nbr_extended))
+print("Number of features (line) read: {}".format(geo_content.in_nbr_line_strings))
+print("Number of features (line) written: {}".format(geo_content.out_nbr_line_strings))
+print("Number of Y junction corrected: {}".format(geo_content.nbr_yjunction))
+print("Number of X junction corrected: {}".format(geo_content.nbr_xjunction))
+print("Number of end line joined: {}".format(geo_content.nbr_join))
+print("Number of line extended: {}".format(geo_content.nbr_extend))
+print("Number of line (noise) deleted: {}".format(geo_content.nbr_noise))
 
 
 # Copy the results in the output file
