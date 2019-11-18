@@ -65,13 +65,14 @@ class LineStringSb(LineString):
 
     """LineString specialization for the SherBend algorithm"""
 
-    def __init__(self, coords, original_type, layer_name, properties, fast_access=True):
+    def __init__(self, coords, original_type, min_adj_area, layer_name, properties, fast_access=True):
         super().__init__(coords)
         self.sb_original_type = original_type
         self.sb_layer_name = layer_name
         self.sb_properties = properties
-        self.fast_access = fast_access
-        if self.fast_access:
+        self.sb_min_adj_area = min_adj_area
+        self._sb_fast_access = fast_access
+        if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
 
         # Declaration of the instance variable
@@ -95,7 +96,7 @@ class LineStringSb(LineString):
 
     @property
     def coords(self):
-        if self.fast_access:
+        if self._sb_fast_access:
             return self.__lst_coords
         else:
             return super().coords
@@ -104,7 +105,7 @@ class LineStringSb(LineString):
     @coords.setter
     def coords(self, coords):
         LineString.coords.__set__(self, coords)
-        if self.fast_access:
+        if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
         # Delete variable that are now outdated. so they will be computed next time it will be accessed
         try:
@@ -332,8 +333,8 @@ class LineStringSb(LineString):
     def simplify(self, diameter, s_constraints=None):
         """Simplify the line by reducing each bend"""
 
-        ray = diameter / 2.0
-        self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+#        ray = diameter / 2.0
+#        self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         nbr_bend_simplified = 0
 
         # Make sure the line is counter clockwise
@@ -423,13 +424,13 @@ class PointSb(Point):
         self.sb_properties = properties
         self.sb_original_type = GenUtil.POINT
         self.sb_geom_type = GenUtil.POINT  # For faster acces than calling C (geom_type)
-        self.fast_access = fast_access
-        if self.fast_access:
+        self._sb_fast_access = fast_access
+        if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
 
     @property
     def coords(self):
-        if self.fast_access:
+        if self._sb_fast_access:
             return self.__lst_coords
         else:
             return super().coords
@@ -438,7 +439,7 @@ class PointSb(Point):
     def coords(self, coords):
         print ("Need to update the spatial container...")
         Point.coords.__set__(self, coords)
-        if self.fast_access:
+        if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
 
 
@@ -740,18 +741,21 @@ class AlgoSherbend(object):
         
         self.command = command
         self.geo_content = geo_content
-        ray = command.diameter / 2.0
-        self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
+#        ray = command.diameter / 2.0
+#        self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         self.nbr_bend_simplified = 0
 
-    def _calculate_adj_area(self, exclude, coords):
 
-        if (exclude):
-            pol = Polygon(coords)
-            cmp_index = GenUtil.calculate_compactness_index(pol.area, pol.length)
-            adj_area = GenUtil.calculate_adjusted_area(pol.area, cmp_index)
-        else:
-            adj_area = sys.float_info.max
+    def calculate_min_adj_area(self, diameter):
+
+        return  (_AREA_CMP_INDEX * math.pi * (diameter/2.0)**2.0)
+
+
+    def _calculate_adj_area(self, coords):
+
+        pol = Polygon(coords)
+        cmp_index = GenUtil.calculate_compactness_index(pol.area, pol.length)
+        adj_area = GenUtil.calculate_adjusted_area(pol.area, cmp_index)
 
         return adj_area
 
@@ -778,20 +782,22 @@ class AlgoSherbend(object):
             if feature.geom_type == GenUtil.POLYGON:
 
                 # Only keep the polygon over the minimum adjusted area
-                adj_area = self._calculate_adj_area(command.exclude_polygon, feature.exterior.coords)
-                if (adj_area > self.min_adj_area):
+                diameter = command.dlayer_dict[feature.sb_layer_name]
+                adj_area = self._calculate_adj_area(feature.exterior.coords)
+                min_adj_area = self.calculate_min_adj_area(diameter)
+                if not command.exclude_polygon or adj_area > min_adj_area:
                     # Deconstruct the Polygon into a list of LineString with supplementary information
                     # needed to reconstruct the original Polygon
-                    ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, feature.sb_layer_name,
-                                               feature.sb_properties)
+                    ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, min_adj_area,
+                                               feature.sb_layer_name, feature.sb_properties)
                     interiors = feature.interiors
                     int_features = []
                     # Extract the interiors as LineString
                     for interior in interiors:
-                        adj_area = self._calculate_adj_area(command.exclude_hole, interior.coords)
-                        if (adj_area > self.min_adj_area):
+                        adj_area = self._calculate_adj_area(interior.coords)
+                        if not command.exclude_hole or adj_area > min_adj_area:
                             # Keep the interior over the minimal adjusted area
-                            interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, None, None)
+                            interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, min_adj_area, None, None)
                             int_features.append(interior)
                         else:
                             geo_content.nbr_del_holes += len(feature.interiors)

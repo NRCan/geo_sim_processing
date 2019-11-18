@@ -217,8 +217,8 @@ for layer_name in geo_content.layer_names:
             # Set the value as defined in the command line
             tmp_dlayer_dict[layer_name] = command.dlayer_dict[layer_name]
         else:
-            # The layer was not specified in the command line; put the diameter at 0 (no simplification)
-            tmp_dlayer_dict[layer_name] = 0
+            # The layer name was not specified in the command line; ignore the layer in the output file
+            tmp_dlayer_dict[layer_name] = -1
 
 
 #Reset the value of dlayer
