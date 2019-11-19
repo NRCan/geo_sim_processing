@@ -6,8 +6,6 @@ import sys, os
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend
-
-
 from lib_geosim import GenUtil
 
 
@@ -24,7 +22,7 @@ def manage_arguments():
     # Set exclusively mutual parameters
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-d", "--diameter", type=float, help="diameter of the minimum adjusted area bend to simplify")
-    group.add_argument("-dl", "--dlayer", type=str, help="diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)")
+    group.add_argument("-dl", "--dlayer", type=str, help="diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5")
 
     # Read the command line parameter
     command = parser.parse_args()
@@ -39,8 +37,8 @@ def manage_arguments():
             layer_tol = layer.split('=')
             try:
                 command.dlayer_dict[layer_tol[0]] = float(layer_tol[1])
-            except:
-                print ('Error in the definition of the diameter per layer: "{}"'.format(command.dlayer))
+            except Exception:
+                print('Error in the definition of the diameter per layer: "{}"'.format(command.dlayer))
                 parser.print_help()
                 sys.exit(1)
 
@@ -53,8 +51,6 @@ def manage_arguments():
         raise Exception('Output file is present: {}'.format(command.out_file))
 
     return command
-
-
 
 
 """
@@ -92,7 +88,6 @@ a.simplify(5)
 a = LineStringSb(((0,0), (1,1), (2,0)))
 a.simplify(5)
 
-
 a = LineStringSb(((0,0), (1,1), (2,0), (3,2), (4,0), (5,3), (6,0), (7,.1), (8,0)))
 a.simplify(5)
 
@@ -103,9 +98,6 @@ a.simplify(5)
 # Closed star
 a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
 a.simplify(5)
-
-
-
 
 a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
 a.simplify(5)
@@ -192,55 +184,57 @@ class GeoContent:
     in_features: List[object] = None
     out_features: List[object] = None
 
+
 geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_names=[], in_features=[], out_features=[],
                          in_nbr_points=0, in_nbr_line_strings=0, in_nbr_polygons=0, in_nbr_holes=0,
                          out_nbr_points=0, out_nbr_line_strings=0, out_nbr_polygons=0, out_nbr_holes=0,
-                         nbr_del_polygons=0, nbr_del_holes=0 )
-
-
+                         nbr_del_polygons=0, nbr_del_holes=0)
 
 # Read the command line arguments
 command = manage_arguments()
 
+# Extract the list of layers
+in_layer_names = [layer_name for layer_name in command.dlayer_dict.keys()]
+
 # Extract and load the layers of the input file
-GenUtil.read_in_file (command.in_file, geo_content)
+GenUtil.read_in_file(command.in_file, geo_content, in_layer_names)
 
 # Set the diameter for each layer
 tmp_dlayer_dict = {}
 for layer_name in geo_content.layer_names:
     if command.diameter is not None:
-        # The same diameter valie is applied to all the layers
+        # The same diameter value is applied to all the layers
         tmp_dlayer_dict[layer_name] = command.diameter
     else:
-        # There is a specific diameter by layer
-        if layer_name in command.dlayer_dict:
-            # Set the value as defined in the command line
-            tmp_dlayer_dict[layer_name] = command.dlayer_dict[layer_name]
-        else:
-            # The layer name was not specified in the command line; ignore the layer in the output file
-            tmp_dlayer_dict[layer_name] = -1
+        # There is a specific diameter for each layer
+        tmp_dlayer_dict[layer_name] = command.dlayer_dict[layer_name]
 
-
-#Reset the value of dlayer
+# Reset the value of dlayer
 command.dlayer_dict = tmp_dlayer_dict
 
-print ("-------")
+print("-------")
 print("Name of input file: {}".format(command.in_file))
 print("Name of output file: {}".format(command.out_file))
-print ("Number of layers read: {}".format(len(geo_content.schemas)))
-print ("Number of features read: {}".format(len(geo_content.in_features)))
-print ("-----")
+print("Number of layers read: {}".format(len(geo_content.schemas)))
+for layer_name, diameter in command.dlayer_dict.items():
+    print("   - Layer name: {} with diamater: {}".format(layer_name, diameter))
+print("Exclude polygon below minimum diameter: {}".format(str(command.exclude_polygon)))
+print("Exclude polygon interior (hole) below minimum diameter: {}".format(str(command.exclude_hole)))
+print("Number of features read: {}".format(len(geo_content.in_features)))
+print("-----")
 
 # Execute the Sherbend algorithm on the feature read
 sherbend = AlgoSherbend(command, geo_content)
 sherbend.process()
 
-# Copy the results in the output file
-GenUtil.write_out_file (command.out_file, geo_content)
+print("Number of polygons excluded: {}".format(geo_content.nbr_del_polygons))
+print("Number of holes excluded: {}".format(geo_content.nbr_del_holes))
+print("Number of point features written: {}".format(geo_content.out_nbr_points))
+print("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
+print("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
+print("Number of holes written: {}".format(geo_content.out_nbr_holes))
 
-print ("Number of polygons excluded: {}".format(geo_content.nbr_del_polygons))
-print ("Number of holes excluded: {}".format(geo_content.nbr_del_holes))
-print ("Number of point features written: {}".format(geo_content.out_nbr_points))
-print ("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
-print ("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
-print ("Number of holes written: {}".format(geo_content.out_nbr_holes))
+
+# Copy the results in the output file
+GenUtil.write_out_file(command.out_file, geo_content)
+

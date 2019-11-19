@@ -28,34 +28,12 @@ from shapely.prepared import prep
 from shapely import affinity
 from lib_geosim import GenUtil, SpatialContainer
 
-
-# Properties name
-_DIAMETER = "diameter"
-
-# Internal constant
-
-_ALGO = "Sherbend"
-
 # Internal constant ===> Should be modify with care...
-_AREA_CMP_INDEX = .75                   # Compactness index factor applied to the adjusted area
-_SIMILAR_BEND_ADJ_AREA_RATIO = .5       # Adjusted area ratio to detect similar bend; From [0..1] higher value mean 
-                                        # more similar bends are accepted
-_SIMILAR_BEND_BASE_RATIO = .5           # Base ratio to detect similar bend; From [0..1] Higher value mean more
-                                        # similar bends are accepted
-_SIMILAR_BEND_CMP_INDEX_RATIO = .6      # Compactness index ratio to detect similar bend; From [0..1] higher 
-                                        # value mean more similar bends are accepted
-_DEPTH_OFFSET_RATIO = 0.5               # When _BIG_BEND=True, it is the ratio by which the point in the
-                                        # middle is offset in direction of the bend peak
-_BIG_BEND_CMP_INDEX_RATIO = 0.6         # Compactness index ratio for a bend to be considered as a big bend
-                                        # candidate; [0..1] A higher value will allow more bend to be BIG_BEND  candidate
-_BIG_BEND_MAX_ADJ_AREA_RATIO = 0.6      # Minimal adjusted area ratio used to detect if a bend meets the minimum
-                                        # area value; [0..1] A higher value will allow more bend to be BIG_BEND
-                                        # candidate
+_DIAMETER = "diameter"
+_AREA_CMP_INDEX = .75  # Compactness index factor applied to the adjusted area
 
 #Internal key word constants
-_BIG = "Big"
 _BURNED = "Burned"
-_SMALL = "Small"
 _SIMPLIFIED = 'Simplified'
 _NOT_SIMPLIFIED = 'NotSimplified'
 _UNSIMPLIFIABLE = 'Unsimplifiable'
@@ -76,10 +54,9 @@ class LineStringSb(LineString):
             self.__lst_coords = list(super().coords)
 
         # Declaration of the instance variable
-        self.sb_geom_type = self.geom_type # variable defined to avoid slower C calls with geom_type
-        self.sb_is_simplest = False # The line is not at its simplest form
-        self.sb_bends = [] # Holder for the bend of the line
-
+        self.sb_geom_type = self.geom_type  # variable defined to avoid slower C calls with geom_type
+        self.sb_is_simplest = False  # The line is not at its simplest form
+        self.sb_bends = []  # Holder for the bend of the line
 
     @property
     # Is the line string closed
@@ -88,7 +65,7 @@ class LineStringSb(LineString):
             return self._sb_is_closed
         except AttributeError:
             # A closed line need at least 4 vertex to be valid
-            if len(self.coords) >=4 and  GenUtil.distance(self.coords[0], self.coords[-1]) <= GenUtil.ZERO:
+            if len(self.coords) >= 4 and GenUtil.distance(self.coords[0], self.coords[-1]) <= GenUtil.ZERO:
                 self._sb_is_closed = True
             else:
                 self._sb_is_closed = False
@@ -101,7 +78,6 @@ class LineStringSb(LineString):
         else:
             return super().coords
 
-
     @coords.setter
     def coords(self, coords):
         LineString.coords.__set__(self, coords)
@@ -112,7 +88,6 @@ class LineStringSb(LineString):
             del self._vertex_orientation
         except AttributeError:
             pass
-
 
     @property
     def vertex_orientation(self):
@@ -137,9 +112,8 @@ class LineStringSb(LineString):
                 self._vertex_orientation = [orient] + self._vertex_orientation + [orient]
             return self._vertex_orientation
 
-
     def _remove_colinear_vertex(self):
-        """This method remove the colinear verxtex in the line string. Also handles closed line"""
+        """This method remove the co linear vertex in the line string. Also handles closed line"""
         if len(self.coords) <= 2:
             # Nothing to do with a line with 2 points
             pass
@@ -147,7 +121,7 @@ class LineStringSb(LineString):
             # Detect the position of the colinear vertex
             vertex_to_del = [i for i, orient in (enumerate(self.vertex_orientation)) if orient == 0]
             if len(vertex_to_del) >= 1:
-                # Delete the colinear vertex
+                # Delete the co linear vertex
                 lst_coords = list(self.coords)
                 for i in reversed(vertex_to_del):
                     del(lst_coords[i])
@@ -156,17 +130,15 @@ class LineStringSb(LineString):
                     lst_coords = lst_coords + [lst_coords[0]]
                 self.coords = lst_coords
 
-
     def _rotate_start_bend(self):
         """Rotate a closed line string so the start of the line is also the start of a clockwise bend
 
         To be done on closed line only"""
 
-        i = 0
         rotate = None
-        max = len(self.vertex_orientation)
-        for i in range(max):
-            j = (i+1)%max
+        max_v = len(self.vertex_orientation)
+        for i in range(max_v):
+            j = (i+1) % max_v
             if self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
                self.vertex_orientation[j] == GenUtil.ANTI_CLOCKWISE:
                 rotate = i
@@ -205,7 +177,7 @@ class LineStringSb(LineString):
             Sub Linestring"""
 
         lst_coords = self._extract_coords(i, j)
-        if len(lst_coords) >=2:
+        if len(lst_coords) >= 2:
             line = LineString(lst_coords)
         else:
             # create an empty line
@@ -213,17 +185,16 @@ class LineStringSb(LineString):
 
         return line
 
-
-    def _change_inflexion(self, i,j):
-        """Flag if there is an inflexion between the two vertice specidfied.
+    def _change_inflexion(self, i):
+        """Flag if there is an inflexion between at the specified vertices.
 
         There is inflexion when a change of orientation occurs from clock wise to anti clocwise or vice cersa"""
 
-        max = len(self.vertex_orientation)
-        if (self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and \
-            self.vertex_orientation[(i+1)%max] == GenUtil.CLOCKWISE) or \
-           (self.vertex_orientation[i] == GenUtil.CLOCKWISE and \
-            self.vertex_orientation[(i+1)%max] == GenUtil.ANTI_CLOCKWISE):
+        max_v = len(self.vertex_orientation)
+        if (self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and
+            self.vertex_orientation[(i+1) % max_v] == GenUtil.CLOCKWISE) or \
+           (self.vertex_orientation[i] == GenUtil.CLOCKWISE and
+            self.vertex_orientation[(i+1) % max_v] == GenUtil.ANTI_CLOCKWISE):
             inflexion = True
         else:
             inflexion = False
@@ -238,11 +209,10 @@ class LineStringSb(LineString):
             j = inflexions[k + 1][1]
             self.sb_bends.append(Bend(i, j, self._extract_coords(i, j)))
 
-
     def _create_bends(self):
         """Create the bends in the line"""
 
-        #Delete any actual bend information
+        # Delete any actual bend information
         self.sb_bends = []
 
         # Remove the colinear vertice in order to facilitate bend detection (moreover colinaer vertice are useless)
@@ -256,16 +226,16 @@ class LineStringSb(LineString):
             # The vertex_oriention list is considered a circular list
             for i in range(max):
                 j = (i + 1) % max
-                if self._change_inflexion(i,j):
-                    inflexions.append((i,j))
+                if self._change_inflexion(i):
+                    inflexions.append((i, j))
             # Create the bend from the inflexion point
-            if (inflexions):
+            if inflexions:
                 if len(inflexions) >= 3:
                     # If there is more than 23 inflexions we add another circular inflexion
                     i = inflexions[-1][0]
                     j = inflexions[0][1]
                     inflexions.append((i, j))
-                # Tranform the inflexion into bends
+                # Transform the inflexion into bends
                 self._add_bends(inflexions)
 
         else:
@@ -274,9 +244,9 @@ class LineStringSb(LineString):
                 # Special case there is only one bend to simplify
                 j = len(self.coords)-1
                 self.sb_bends.append(Bend(0, j, self._extract_coords(0, j)))
-            elif max >=4:
+            elif max >= 4:
                 for i in range(1, max-2):
-                    if self._change_inflexion(i, i+1):
+                    if self._change_inflexion(i):
                         inflexions.append((i, i+1))
                 # Add inflexion to add the first and last bend
                 inflexions = [(0, None)] + inflexions + [(None, max-1)]
@@ -285,22 +255,21 @@ class LineStringSb(LineString):
 
         return
 
-
-    def _sort_bends(self, diameter):
+    def _sort_bends(self):
         """Sort the bends from by order of min_adj_are"""
 
         lst_bends = []
-        for i,bend in enumerate(self.sb_bends):
+        for i, bend in enumerate(self.sb_bends):
             if bend.adj_area <= self.sb_min_adj_area:
                 # Only select the bend below the minimum adjusted area
                 lst_bends.append((i, bend.adj_area))
 
-        # Sort based of the adj_area from smalles to biggest
+        # Sort based of the adj_area from smallest to biggest
         lst_bends.sort(key=lambda tup: tup[1])  # sorts in place
 
         return lst_bends
 
-    def _offset_bend_ij(self,i, j):
+    def _offset_bend_ij(self, i, j):
         """"Offset the value of the different bend i,j because some of the vertice of the line were removed"""
 
         if i < j:
@@ -309,14 +278,13 @@ class LineStringSb(LineString):
             offset = j
         for bend in self.sb_bends:
             if bend.status == _NOT_SIMPLIFIED:
-                if (bend.i < bend.j):
+                if bend.i < bend.j:
                     if bend.i >= j:
                         bend.i -= offset
                         bend.j -= offset
                 else:
                     if bend.i >= j:
                         bend.i -= offset
-
 
     def _make_line_ccw(self):
         """Make sure the line is counter clockwise.
@@ -326,30 +294,27 @@ class LineStringSb(LineString):
         if self.sb_is_closed:
             tmp_ring = LinearRing(self.coords)
             if not tmp_ring.is_ccw:
-                #The linear ring is clockwise. Reverse the coordinates to make it ccw
+                # The linear ring is clockwise. Reverse the coordinates to make it ccw
                 self.coords = list(reversed(self.coords))
-
 
     def simplify(self, diameter, s_constraints=None):
         """Simplify the line by reducing each bend"""
 
-#        ray = diameter / 2.0
-#        self.sb_min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         nbr_bend_simplified = 0
 
         # Make sure the line is counter clockwise
         #
         self._make_line_ccw()
 
-        #Create the bend in the line
+        # Create the bend in the line
         self._create_bends()
 
         max_bends = len(self.sb_bends)
-        sorted_bends = self._sort_bends(diameter)
+        sorted_bends = self._sort_bends()
         if len(sorted_bends) == 0:
             # No more bend to simplify.  Line is at its simplest form
             self.sb_is_simplest = True
-        elif len(sorted_bends)>= 2:
+        elif len(sorted_bends) >= 2:
             # Make the biggest bend (last one) unsimplifiable
             ind_last = sorted_bends[-1][0]
             self.sb_bends[ind_last].status = _UNSIMPLIFIABLE
@@ -361,13 +326,13 @@ class LineStringSb(LineString):
                 ind_before = None
                 ind_after = None
                 if self.sb_is_closed:
-                    if (max_bends >=2):
-                        ind_before = (ind-1)%max_bends
-                        ind_after = (ind+1)% max_bends
+                    if max_bends >= 2:
+                        ind_before = (ind-1) % max_bends
+                        ind_after = (ind+1) % max_bends
                 else:
-                   if ind > 0:
+                    if ind > 0:
                         ind_before = ind-1
-                   if ind < max_bends-1:
+                    if ind < max_bends-1:
                         ind_after = ind+1
 
                 # Validate the spatial constraints
@@ -404,8 +369,10 @@ class LineStringSb(LineString):
                     self.coords = lst_coords
 
                     # Bend before and after must no be simplified in this pass maybe a next pass
-                    if ind_before is not None: self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
-                    if ind_after is not None: self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
+                    if ind_before is not None:
+                        self.sb_bends[ind_before].status = _UNSIMPLIFIABLE
+                    if ind_after is not None:
+                        self.sb_bends[ind_after].status = _UNSIMPLIFIABLE
 
                     self.sb_bends[ind].status = _SIMPLIFIED
                     nbr_bend_simplified += 1
@@ -437,7 +404,7 @@ class PointSb(Point):
 
     @coords.setter
     def coords(self, coords):
-        print ("Need to update the spatial container...")
+        print("Need to update the spatial container...")
         Point.coords.__set__(self, coords)
         if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
@@ -505,7 +472,7 @@ class SpatialConstraints(object):
         prepared_new_sub_line = prep(new_sub_line)
         in_conflict = False
         gen_crosses = filter(prepared_new_sub_line.intersects, features)
-        for element in gen_crosses:
+        for feature in gen_crosses:
             in_conflict = True
             self.nbr_err_crossing += 1
             break
@@ -519,7 +486,7 @@ class SpatialConstraints(object):
         prepared_pol = prep(pol)
         gen_contains = filter(prepared_pol.contains, features)
         in_conflict = False
-        for element in gen_contains:
+        for feature in gen_contains:
             in_conflict = True
             self.nbr_err_sidedness += 1
             break
@@ -545,9 +512,6 @@ class Bend(object):
         self.j = j  #  Index of the end of the bend coordinate
         self.status = _NOT_SIMPLIFIED  # Type of bend by default: UNTOUCHED
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
-        if len(bend_coords) <= 1:
-            k = 0
-
 
     @property
     def polygon(self):  # Polygon formed by the bendbbbbbbb
@@ -557,16 +521,15 @@ class Bend(object):
             self._polygon = Polygon(self.bend_coords)
             return self._polygon
 
-
     @property
     def area(self):  # Area formed by the bend
         try:
             return self._area
         except AttributeError:
             self._area = self.polygon.area
-            if self._area <= GenUtil.ZERO: self._area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area instead
+            if self._area <= GenUtil.ZERO:
+                self._area = GenUtil.ZERO  # In case of area=0 we assume almost 0 area instead
             return self._area
-
 
     @property
     def base(self):  # The length of the base of the bend
@@ -574,9 +537,9 @@ class Bend(object):
             return self._base
         except AttributeError:
             self._base = GenUtil.distance(self.bend_coords[0], self.bend_coords[-1])
-            if self._base <= GenUtil.ZERO: self._base = GenUtil.ZERO # Avois a case of division by zero
+            if self._base <= GenUtil.ZERO:
+                self._base = GenUtil.ZERO # Avois a case of division by zero
             return self._base
-
 
     @property
     def perimeter(self):  # The length of the base of the bend
@@ -586,7 +549,6 @@ class Bend(object):
             self._perimeter = self.polygon.length
             return self._perimeter
 
-
     @property
     def cmp_index(self):  # The compactness index of the bend
         try:
@@ -594,7 +556,6 @@ class Bend(object):
         except AttributeError:
             self._cmp_index = GenUtil.calculate_compactness_index(self.area, self.perimeter)
             return self._cmp_index
-
 
     @property
     def adj_area(self):  # The adjusted area of the bend
@@ -745,11 +706,9 @@ class AlgoSherbend(object):
 #        self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         self.nbr_bend_simplified = 0
 
-
     def calculate_min_adj_area(self, diameter):
 
         return  (_AREA_CMP_INDEX * math.pi * (diameter/2.0)**2.0)
-
 
     def _calculate_adj_area(self, coords):
 
@@ -758,7 +717,6 @@ class AlgoSherbend(object):
         adj_area = GenUtil.calculate_adjusted_area(pol.area, cmp_index)
 
         return adj_area
-
 
     def load_features(self, geo_content, command):
         """Load the points, line strings and polygons in the spatial container.
@@ -781,39 +739,42 @@ class AlgoSherbend(object):
         for feature in geo_content.in_features:
             if feature.geom_type == GenUtil.POLYGON:
 
-                # Only keep the polygon over the minimum adjusted area
                 diameter = command.dlayer_dict[feature.sb_layer_name]
-                adj_area = self._calculate_adj_area(feature.exterior.coords)
-                min_adj_area = self.calculate_min_adj_area(diameter)
-                if not command.exclude_polygon or adj_area > min_adj_area:
-                    # Deconstruct the Polygon into a list of LineString with supplementary information
-                    # needed to reconstruct the original Polygon
-                    ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, min_adj_area,
-                                               feature.sb_layer_name, feature.sb_properties)
-                    interiors = feature.interiors
-                    int_features = []
-                    # Extract the interiors as LineString
-                    for interior in interiors:
-                        adj_area = self._calculate_adj_area(interior.coords)
-                        if not command.exclude_hole or adj_area > min_adj_area:
-                            # Keep the interior over the minimal adjusted area
-                            interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, min_adj_area, None, None)
-                            int_features.append(interior)
-                        else:
-                            geo_content.nbr_del_holes += len(feature.interiors)
+                if diameter != -1:
+                    adj_area = self._calculate_adj_area(feature.exterior.coords)
+                    min_adj_area = self.calculate_min_adj_area(diameter)
+                    # Only keep the polygon over the minimum adjusted area
+                    if not command.exclude_polygon or adj_area > min_adj_area:
+                        # Deconstruct the Polygon into a list of LineString with supplementary information
+                        # needed to reconstruct the original Polygon
+                        ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, min_adj_area,
+                                                   feature.sb_layer_name, feature.sb_properties)
+                        interiors = feature.interiors
+                        int_features = []
+                        # Extract the interiors as LineString
+                        for interior in interiors:
+                            adj_area = self._calculate_adj_area(interior.coords)
+                            # Only keep the interior (hole) over the minimal adjusted area
+                            if not command.exclude_hole or adj_area > min_adj_area:
+                                interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, min_adj_area, None, None)
+                                int_features.append(interior)
+                            else:
+                                geo_content.nbr_del_holes += len(feature.interiors)
 
-                    # Add interior features needed for Polygon reconstruction
-                    ext_feature.sb_interiors = int_features
+                        # Add interior features needed for Polygon reconstruction
+                        ext_feature.sb_interiors = int_features
 
-
-                    # Add the exterior and the interior independently
-                    self.s_container.add_feature(ext_feature)  # Add the exterior
-                    self.s_container.add_features(int_features)  # Add the interiorS
+                        # Add the exterior and the interior independently
+                        self.s_container.add_feature(ext_feature)  # Add the exterior
+                        self.s_container.add_features(int_features)  # Add the interiorS
+                    else:
+                        # Do not add the feature (exterior and interiors ) in the spatial container
+                        # Update some stats
+                        geo_content.nbr_del_polygons += 1
+                        geo_content.nbr_del_holes += len(feature.interiors)
                 else:
-                    # Do not add the feature (exterior and interiors ) in the spatial container
-                    # Update some stats
-                    geo_content.nbr_del_polygons += 1
-                    geo_content.nbr_del_holes += len(feature.interiors)
+                    # Feature in a layer not processed
+                    pass
             else:
                 if feature.geom_type == GenUtil.POINT:
                     out_feature = PointSb(feature.coords, feature.sb_layer_name, feature.sb_properties)
@@ -821,7 +782,7 @@ class AlgoSherbend(object):
                     out_feature = LineStringSb(feature.coords, GenUtil.LINE_STRING, feature.sb_layer_name,
                                                feature.sb_properties)
                 else:
-                    raise Exception ("Invalide geometry type: {}".format(feature.geometry))
+                    raise Exception ("Invalid geometry type: {}".format(feature.geometry))
 
                 self.s_container.add_feature(out_feature)  # Add the feature
 
@@ -866,13 +827,11 @@ class AlgoSherbend(object):
                 break
 
         print('Total number of bend simplified: {}'.format(total_nbr_bend_simplified))
-        print ('Total number of simplicity error: {}'.format(s_constraints.nbr_err_simplicity))
+        print('Total number of simplicity error: {}'.format(s_constraints.nbr_err_simplicity))
         print('Total number of crossing error: {}'.format(s_constraints.nbr_err_crossing))
         print('Total number of sidedness error: {}'.format(s_constraints.nbr_err_sidedness))
 
-
         return total_nbr_bend_simplified
-
 
     def process(self):
         """Main routine for the Sherbend algorithm
@@ -881,7 +840,7 @@ class AlgoSherbend(object):
         It will iterate over the lines until there are no more bends to simplify.
 
         Keyword arguments:
-            none
+            None
 
         Return value:
             geo_content: dataclass containing the output information

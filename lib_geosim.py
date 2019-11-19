@@ -422,95 +422,95 @@ class SpatialContainer(object):
         self._features = {}  # Container to hold the features
         self._bbox_features = {}  # Container to hold the bounding boxes
 
-    def _is_bbox_the_same(self, feature, old_lst_bbox, new_lst_bbox):
-        """Checks if the bbox are the same
+    # def _is_bbox_the_same(self, feature, old_lst_bbox, new_lst_bbox):
+    #     """Checks if the bbox are the same
+    #
+    #     This method checks if the bounding needs to be updated. When there is only
+    #     one bbox in the old and new lst_bbox, we compare them and if they are the
+    #     same, the bbox are the same.  If in the new_lst_bbox there is more than
+    #     one bbox than we check that all the coordinates of the feature are contained
+    #     in the old_lst_bbox; if they are all in the old_lst_bbox the bbox are the same
+    #     otherwise the bbox are different
+    #
+    #     *Parameters:*
+    #         - feature: MA_* spatial feature to check
+    #         - old_lst_bbox: List of the bbox corresponding to the previous feature
+    #         - new_lst_bbox: List of the bbox corresponding to the updated feature
+    #     """
+    #
+    #     if (len(old_lst_bbox) == 1 == len(new_lst_bbox)):
+    #         # We just check that the bbox are the same
+    #         old_bbox = old_lst_bbox[0]
+    #         new_bbox = new_lst_bbox[0]
+    #         if (new_bbox[0] != old_bbox[0] or
+    #                 new_bbox[1] != old_bbox[1] or
+    #                 new_bbox[2] != old_bbox[2] or
+    #                 new_bbox[3] != old_bbox[3]):
+    #             is_the_same = False
+    #         else:
+    #             is_the_same = True
+    #     else:
+    #         if (len(new_lst_bbox) == 1):
+    #             # Because the new list of box contains only one box we consider it is always better
+    #             # to reduce the number of bbox so we consider them not the same
+    #             is_the_same = False
+    #         else:
+    #             # This the more complex case wehre we loop over each coordinates in order to check if allt he
+    #             # coordinate are contained in the old bbox if so we don't need to recreate the spatial index
+    #             if (feature.is_dual()):
+    #                 line_coords = feature.coords_dual
+    #             else:
+    #                 line_coords = list(feature.coords)
+    #             i_bbox = 0
+    #             len_old_bbox = len(old_lst_bbox)
+    #             xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
+    #             xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
+    #             try:
+    #                 for coord in line_coords:
+    #                     if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
+    #                         # Try to find the next bbox that contains the coordinate
+    #                         i_bbox += 1
+    #                         if (i_bbox < len_old_bbox):
+    #                             xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
+    #                             xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
+    #                             if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
+    #                                 # The coordinate is outside all bounding boxes
+    #                                 raise Exception
+    #                 is_the_same = True
+    #             except Exception:
+    #                 is_the_same = False
+    #             except:
+    #                 raise ("Unknown error...")
+    #
+    #     return is_the_same
 
-        This method checks if the bounding needs to be updated. When there is only
-        one bbox in the old and new lst_bbox, we compare them and if they are the
-        same, the bbox are the same.  If in the new_lst_bbox there is more than
-        one bbox than we check that all the coordinates of the feature are contained
-        in the old_lst_bbox; if they are all in the old_lst_bbox the bbox are the same
-        otherwise the bbox are different
-
-        *Parameters:*
-            - feature: MA_* spatial feature to check
-            - old_lst_bbox: List of the bbox corresponding to the previous feature
-            - new_lst_bbox: List of the bbox corresponding to the updated feature
-        """
-
-        if (len(old_lst_bbox) == 1 == len(new_lst_bbox)):
-            # We just check that the bbox are the same
-            old_bbox = old_lst_bbox[0]
-            new_bbox = new_lst_bbox[0]
-            if (new_bbox[0] != old_bbox[0] or
-                    new_bbox[1] != old_bbox[1] or
-                    new_bbox[2] != old_bbox[2] or
-                    new_bbox[3] != old_bbox[3]):
-                is_the_same = False
-            else:
-                is_the_same = True
-        else:
-            if (len(new_lst_bbox) == 1):
-                # Because the new list of box contains only one box we consider it is always better
-                # to reduce the number of bbox so we consider them not the same
-                is_the_same = False
-            else:
-                # This the more complex case wehre we loop over each coordinates in order to check if allt he
-                # coordinate are contained in the old bbox if so we don't need to recreate the spatial index
-                if (feature.is_dual()):
-                    line_coords = feature.coords_dual
-                else:
-                    line_coords = list(feature.coords)
-                i_bbox = 0
-                len_old_bbox = len(old_lst_bbox)
-                xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
-                xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
-                try:
-                    for coord in line_coords:
-                        if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
-                            # Try to find the next bbox that contains the coordinate
-                            i_bbox += 1
-                            if (i_bbox < len_old_bbox):
-                                xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
-                                xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
-                                if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
-                                    # The coordinate is outside all bounding boxes
-                                    raise Exception
-                    is_the_same = True
-                except Exception:
-                    is_the_same = False
-                except:
-                    raise ("Unknown error...")
-
-        return is_the_same
-
-    def _adjust_bounding_box(self, bounds):
-        """Modify the bounds of a feature when the bounds of almost zero
-
-        *Parameters*:
-            - bounds: Tuple of a bounding box (xmin, ymin, xmax, ymax)
-
-        *Returns*:
-            - Tuple of a bounding box (xmin, ymin, xmax, ymax)
-
-        """
-
-        if (abs(bounds[2] - bounds[0]) < GenUtil.ZERO or abs(bounds[3] - bounds[1]) < GenUtil.ZERO):
-            if abs(bounds[2] - bounds[0]) >= GenUtil.ZERO:
-                xmin = bounds[0]
-                xmax = bounds[2]
-            else:
-                xmin = bounds[0] - GenUtil.ZERO
-                xmax = bounds[2] + GenUtil.ZERO
-        if abs(bounds[3] - bounds[1]) >= GenUtil.ZERO:
-            ymin = bounds[1]
-            ymax = bounds[3]
-        else:
-            ymin = bounds[1] - GenUtil.ZERO
-            ymax = bounds[3] + GenUtil.ZERO
-        bounds = (xmin, ymin, xmax, ymax)
-
-        return bounds
+    # def _adjust_bounding_box(self, bounds):
+    #     """Modify the bounds of a feature when the bounds of almost zero
+    #
+    #     *Parameters*:
+    #         - bounds: Tuple of a bounding box (xmin, ymin, xmax, ymax)
+    #
+    #     *Returns*:
+    #         - Tuple of a bounding box (xmin, ymin, xmax, ymax)
+    #
+    #     """
+    #
+    #     if abs(bounds[2] - bounds[0]) < GenUtil.ZERO or abs(bounds[3] - bounds[1]) < GenUtil.ZERO:
+    #         if abs(bounds[2] - bounds[0]) >= GenUtil.ZERO:
+    #             xmin = bounds[0]
+    #             xmax = bounds[2]
+    #         else:
+    #             xmin = bounds[0] - GenUtil.ZERO
+    #             xmax = bounds[2] + GenUtil.ZERO
+    #     if abs(bounds[3] - bounds[1]) >= GenUtil.ZERO:
+    #         ymin = bounds[1]
+    #         ymax = bounds[3]
+    #     else:
+    #         ymin = bounds[1] - GenUtil.ZERO
+    #         ymax = bounds[3] + GenUtil.ZERO
+    #     bounds = (xmin, ymin, xmax, ymax)
+    #
+    #     return bounds
 
     def _extract_bounding_box(self, feature):
         """Extract the bounding box of a features
@@ -643,7 +643,7 @@ class SpatialContainer(object):
                     feature._sb_sc_id in self._bbox_features):
 
                 try:
-                    # Retreive the bounding boxes of this feature
+                    # Retrieve the bounding boxes of this feature
                     bbox = self._bbox_features[feature._sb_sc_id]
                     # Delete the feature from the features and the bbox_features
                     del self._features[feature._sb_sc_id]
@@ -744,7 +744,7 @@ class SpatialContainer(object):
 #
 #         return keys
 
-    def get_features(self, bounds=None, filter=True, remove_features=[]):
+    def get_features(self, bounds=None, remove_features=[]):
         """Extract the features from the spatial container.
 
         According to the parameters the extraction can manage the extraction based on a bounding box using
