@@ -760,6 +760,15 @@ class SpatialContainer(object):
 
         """
 
+        tmp_remove_features = []
+        for feature in remove_features:
+            if issubclass(feature, (Point, LineString, Polygon)):
+                tmp_remove_features.append(feature._sc_id)
+            else:
+                tmp_remove_features.append(feature)
+
+        remove_features = tmp_remove_features
+
         # Extract the features by bounds if requested
         if (bounds != None):
             # Extract features by bounds

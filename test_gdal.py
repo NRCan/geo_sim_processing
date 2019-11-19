@@ -5,6 +5,19 @@ import math
 
 from shapely import affinity
 from shapely.ops import snap
+
+class Foo(object):
+    pass
+
+class SubFoo(object):
+    pass
+
+a = SubFoo()
+print (isinstance(41, int))
+
+0/0
+
+
 b = Point(0,0)
 c = LineString(((2,-2),(2,2)))
 a = c.project(b)
