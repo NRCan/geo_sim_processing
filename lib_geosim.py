@@ -12,7 +12,52 @@ import fiona
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.ops import linemerge
 from collections import OrderedDict
-#from algo_sherbend import LineStringSb, PointSb
+
+
+class LineStringSc(LineString):
+
+    """LineString specialization to be included in the SpatialContainer"""
+
+    def __init__(self, coords):
+        super().__init__(coords)
+        self._sc_id = None
+        self._sc_scontainer = None
+
+    @property
+    def coords(self):
+        return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        # Update the coord attribute in the parent class
+        super(LineString, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
+
+        if self._sc_scontainer != None:    # Is the feature is a spatial container
+            # The coordinate has changed so update the bounding box in the spatial container
+            self._sc_container.update_bbox(self)
+
+
+class PointSc(Point):
+
+    """LineString specialization to be included in the SpatialContainer"""
+
+    def __init__(self, coords):
+        super().__init__(coords)
+        self._sc_id = None
+        self._sc_scontainer = None
+
+    @property
+    def coords(self):
+        return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        print("Need to update the spatial container...")
+        super(Point, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
+
+        if self._sc_scontainer != None:  # Is the feature is a spatial container
+            # The coordinate has changed so update the bounding box in the spatial container
+            self._sc_container.update_bbox(self)
 
 
 class GenUtil:
@@ -24,7 +69,6 @@ class GenUtil:
     POLYGON = 'Polygon'
     POLYGON_EXTERIOR = 'PolygonExterior'
     POLYGON_INTERIOR = 'PolygonInterior'
-
 
     ANTI_CLOCKWISE = 1
     CLOCKWISE = -1
@@ -38,19 +82,18 @@ class GenUtil:
 
     @staticmethod
     def distance(p1, p2):
-        """Calculate the euclidian distance between 2 points
+        """Calculate the euclidean distance between 2 points
 
         *Parameters*:
             - p1: (x,y) tuple of the first coordinate
-            - p2: (x,y) typle of the second coordinate
+            - p2: (x,y) tuple of the second coordinate
 
         *Returns*:
             - Distance between the 2 points (real)
 
         """
 
-        return (math.sqrt((p2[0] - p1[0]) ** 2.0 + (p2[1] - p1[1]) ** 2.0))
-
+        return math.sqrt((p2[0] - p1[0]) ** 2.0 + (p2[1] - p1[1]) ** 2.0)
 
     @staticmethod
     def compute_angle (p1, p2, p3, type=DEGREE):
@@ -58,7 +101,7 @@ class GenUtil:
         Function to calculate angle between two vectors.
         """
 
-        return (GenUtil.angle_vector(p1, p2, p3, type))
+        return GenUtil.angle_vector(p1, p2, p3, type)
 
     @staticmethod
     def angle_vector(p1, p2, p3, type=DEGREE):
@@ -83,20 +126,21 @@ class GenUtil:
         dot_p = a[0] * b[0] + a[1] * b[1]
 
         # If P1 == P2 or P2 == P3 ===> angle is 180.
-        if (len_a * len_b != 0.0):
+        if len_a * len_b != 0.0:
             value = dot_p / (len_a * len_b)
-            if value >= 1.0:  value = 1.0
-            if value <= -1.0: value = -1.0
+            if value >= 1.0:
+                value = 1.0
+            if value <= -1.0:
+                value = -1.0
         else:
             value = -1.0
 
         theta = math.acos(value)
 
-        if (type == GenUtil.DEGREE):
+        if type == GenUtil.DEGREE:
             theta = math.degrees(theta)
 
         return theta
-
 
     @staticmethod
     def orientation(p0, p1, p2):
@@ -113,7 +157,7 @@ class GenUtil:
 
         """
 
-        orient =  ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
+        orient = ((p0[0] - p1[0]) * (p2[1] - p1[1])) - ((p2[0] - p1[0]) * (p0[1] - p1[1]))
 
         if orient > 0.:
             orient = 1
@@ -157,7 +201,6 @@ class GenUtil:
 
         return (x_out, y_out)
 
-
     @staticmethod
     def mid_point(p1, p2):
         """Return a point in the middle of the 2 points
@@ -175,7 +218,6 @@ class GenUtil:
 
         return (x, y)
 
-
     @staticmethod
     def calculate_compactness_index(area, perimeter):
         """Calculate the compactness index based of the perimeter and area
@@ -189,8 +231,7 @@ class GenUtil:
 
         """
 
-        return (4 * area * math.pi / (perimeter ** 2.0))
-
+        return 4 * area * math.pi / (perimeter ** 2.0)
 
     @staticmethod
     def build_bounding_box(tolerance, coord):
@@ -224,11 +265,10 @@ class GenUtil:
             flot: Adjusted area of the polygon
 
             """
-        return (area * (0.75 / cmp_index))
-
+        return area * (0.75 / cmp_index)
 
     @staticmethod
-    def read_in_file (in_file, geo_content, layer_in=None):
+    def read_in_file(in_file, geo_content, layer_in=None):
         """
         Read and load the vectors in the input file
 
@@ -276,9 +316,8 @@ class GenUtil:
                         geo_content.in_features.append(feature)
             src.close()
 
-
     @staticmethod
-    def write_out_file (out_file, geo_content):
+    def write_out_file(out_file, geo_content):
         """
         Write the vectors in the output file
 
@@ -324,9 +363,8 @@ class GenUtil:
 
             dest.close()
 
-
     @staticmethod
-    def write_out_file_append (out_file, geo_content):
+    def write_out_file_append(out_file, geo_content):
         """
         Write the vectors in the output file
 
@@ -339,7 +377,7 @@ class GenUtil:
 
         """
 
-        line_schema = landmarks_schema = { 'geometry': 'LineString',
+        line_schema = landmarks_schema = {'geometry': 'LineString',
                                            'properties': OrderedDict([])
                                          }
 
@@ -394,25 +432,15 @@ class SpatialContainer(object):
     """
 
     # Class variable that contains the Spatial Container Internal ID
-    _sb_sc_id = 0
+    _sc_id = 0
 
-    def __init__(self, line_opt_value=0):
+    def __init__(self):
         """Create an object of type SpatialContainer
 
         The init will create one container for the feature a dictionary and one
         container for the spatial index (Rtree)
 
-        *Parameters*:
-            - line_opt_value: Value of 0 or greater than 2.  The line optimizer value helps
-                              to optimize the search in the Rtree.  When very long LineString are
-                              used the bounding becomes very large and when a bounding box intersection
-                              is done all the long LineString are intersected.  When this parameter is used
-                              (value != 0), sub bounding boxes are calculated like if we were splitting
-                              the line in smaller lines where each sublines is conraining a maximum of
-                              line_opt_value coordinates.  So when this value is small more bounding boxes
-                              are created and the Rtree searches are finer and when the value is high
-                              less bounding boxes are created and the Rtree searches are coarser. This
-                              parameters applies to LineString features only.
+        *Parameters*: None
 
         *Returns*: *None*
 
@@ -422,67 +450,7 @@ class SpatialContainer(object):
         self._features = {}  # Container to hold the features
         self._bbox_features = {}  # Container to hold the bounding boxes
 
-    # def _is_bbox_the_same(self, feature, old_lst_bbox, new_lst_bbox):
-    #     """Checks if the bbox are the same
-    #
-    #     This method checks if the bounding needs to be updated. When there is only
-    #     one bbox in the old and new lst_bbox, we compare them and if they are the
-    #     same, the bbox are the same.  If in the new_lst_bbox there is more than
-    #     one bbox than we check that all the coordinates of the feature are contained
-    #     in the old_lst_bbox; if they are all in the old_lst_bbox the bbox are the same
-    #     otherwise the bbox are different
-    #
-    #     *Parameters:*
-    #         - feature: MA_* spatial feature to check
-    #         - old_lst_bbox: List of the bbox corresponding to the previous feature
-    #         - new_lst_bbox: List of the bbox corresponding to the updated feature
-    #     """
-    #
-    #     if (len(old_lst_bbox) == 1 == len(new_lst_bbox)):
-    #         # We just check that the bbox are the same
-    #         old_bbox = old_lst_bbox[0]
-    #         new_bbox = new_lst_bbox[0]
-    #         if (new_bbox[0] != old_bbox[0] or
-    #                 new_bbox[1] != old_bbox[1] or
-    #                 new_bbox[2] != old_bbox[2] or
-    #                 new_bbox[3] != old_bbox[3]):
-    #             is_the_same = False
-    #         else:
-    #             is_the_same = True
-    #     else:
-    #         if (len(new_lst_bbox) == 1):
-    #             # Because the new list of box contains only one box we consider it is always better
-    #             # to reduce the number of bbox so we consider them not the same
-    #             is_the_same = False
-    #         else:
-    #             # This the more complex case wehre we loop over each coordinates in order to check if allt he
-    #             # coordinate are contained in the old bbox if so we don't need to recreate the spatial index
-    #             if (feature.is_dual()):
-    #                 line_coords = feature.coords_dual
-    #             else:
-    #                 line_coords = list(feature.coords)
-    #             i_bbox = 0
-    #             len_old_bbox = len(old_lst_bbox)
-    #             xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
-    #             xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
-    #             try:
-    #                 for coord in line_coords:
-    #                     if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
-    #                         # Try to find the next bbox that contains the coordinate
-    #                         i_bbox += 1
-    #                         if (i_bbox < len_old_bbox):
-    #                             xmin, ymin = old_lst_bbox[i_bbox][0], old_lst_bbox[i_bbox][1]
-    #                             xmax, ymax = old_lst_bbox[i_bbox][2], old_lst_bbox[i_bbox][3]
-    #                             if (not (xmin <= coord[0] <= xmax and ymin <= coord[1] <= ymax)):
-    #                                 # The coordinate is outside all bounding boxes
-    #                                 raise Exception
-    #                 is_the_same = True
-    #             except Exception:
-    #                 is_the_same = False
-    #             except:
-    #                 raise ("Unknown error...")
-    #
-    #     return is_the_same
+
 
     # def _adjust_bounding_box(self, bounds):
     #     """Modify the bounds of a feature when the bounds of almost zero
@@ -762,17 +730,16 @@ class SpatialContainer(object):
 
         tmp_remove_features = []
         for feature in remove_features:
-            if issubclass(feature, (Point, LineString, Polygon)):
-                tmp_remove_features.append(feature._sc_id)
-            else:
+            if isinstance(feature, int):
                 tmp_remove_features.append(feature)
+            else:
+                tmp_remove_features.append(feature._sb_sc_id)
 
         remove_features = tmp_remove_features
 
         # Extract the features by bounds if requested
         if (bounds != None):
             # Extract features by bounds
-#            keys = self._get_keys_by_bounds(bounds, remove_features)
             keys = (key for key in self._r_tree.intersection(bounds) if key not in remove_features)
             features = (self._features[key] for key in keys if key in self._features)
         else:
@@ -1007,7 +974,6 @@ class ChordalAxis(object):
 #        e = LineString(((45,0),(60,0)))
 #        center_lines = [a,b,c,d,e]
 
-
         # Load the features in the spatial container (accelerate the search)
         s_container = SpatialContainer()
         for center_line in center_lines:
@@ -1037,11 +1003,11 @@ class ChordalAxis(object):
             keep_line = True
             if line.length <= noise:
                 # Only line below noise length are candidate to be removed
-                if (len(line.start_lines) == 0 and len(line.end_lines) == 0):
+                if len(line.start_lines) == 0 and len(line.end_lines) == 0:
                     # Isolated line . Nothing to do
                     pass
                 else:
-                    if (len(line.start_lines) != 0):
+                    if len(line.start_lines) != 0:
                         tmp_lines = line.start_lines
                     else:
                         tmp_lines = line.end_lines
@@ -1065,7 +1031,6 @@ class ChordalAxis(object):
         return center_lines
 
 
-
 class _Triangle(LineString):
     """Calculates the
     """
@@ -1077,7 +1042,7 @@ class _Triangle(LineString):
     perimeters = None
 
     def __init__(self, lst_coords):
-        if (len(lst_coords) == 4):
+        if len(lst_coords) == 4:
             LineString.__init__(self, lst_coords)
             self.sb_geom_type = GenUtil.LINE_STRING
             self._nbr_internal = None  #
@@ -1106,7 +1071,7 @@ class _Triangle(LineString):
             p1 = coords[(i) % 3]
             p2 = coords[(i + 1) % 3]
             angle = GenUtil.compute_angle(p0, p1, p2)
-            if (angle > 90.):
+            if angle > 90.:
                 # There is only angle greater than 90 in a triangle so break after
                 acute_angle = i
                 break
@@ -1131,10 +1096,9 @@ class _Triangle(LineString):
         """
 
         for i, side_type in enumerate(self._side_type):
-            if (side_type == _Triangle.SUPERIMPOSED):
+            if side_type == _Triangle.SUPERIMPOSED:
                 superimposed = i
 
-        coords = list(self.coords)
         p0_base = self.coords[superimposed % 3]
         p1_base = self.coords[(superimposed + 1) % 3]
         p_summit = self.coords[(superimposed + 2) % 3]
@@ -1249,22 +1213,22 @@ class _Triangle(LineString):
                     external_sides.append(i)
 
             # Process each case depending on the number of internal side of the triangle
-            if (nbr_internal == 0):
+            if nbr_internal == 0:
                 # Degenerated polygon with one triangle no skeleton line added
                 pass
 
-            if (nbr_internal == 1):
+            if nbr_internal == 1:
                 # Terminal triangle no skeleton line added
                 pass
 
-            if (nbr_internal == 2):
+            if nbr_internal == 2:
                 # Sleeve triangle skeleton added between the mid point of each chord
                 internal_side0 = internal_sides[0]
                 internal_side1 = internal_sides[1]
                 self._centre_lines.append(LineString([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
                 self._mid_triangle = GenUtil.mid_point(mid_side_points[internal_side0], mid_side_points[internal_side1])
 
-            if (nbr_internal == 3):
+            if nbr_internal == 3:
                 # Junction triangle skeleton added.
                 obtuse_angle = self._get_obtuse_angle()
                 if (obtuse_angle is None):
@@ -1305,9 +1269,7 @@ class _Triangle(LineString):
             self._nbr_internal = 0
             coords = list(self.coords)
             for i in range(3):
-#                p0 = coords[i]
-#                p1 = coords[i + 1]
-                if (_Triangle.line_segments.is_line_segment_present(coords[i], coords[i+1])):
+                if _Triangle.line_segments.is_line_segment_present(coords[i], coords[i+1]):
                     self._side_type.append(_Triangle.SUPERIMPOSED)
                 else:
                     self._side_type.append(_Triangle.INTERNAL)
@@ -1337,7 +1299,7 @@ class _Triangle(LineString):
                 self._category = ChordalAxis.OTHER
             else:
                 nbr_internal = self.get_nbr_internal()
-                if (nbr_internal == 2 and self._is_acute_triangle()):
+                if nbr_internal == 2 and self._is_acute_triangle():
                     # The triangle is a sleeve triangle and is acute
                     # In this case the height of the triangle is also the width of the bottleneck
                     if self._height < minimal_width:
@@ -1347,11 +1309,12 @@ class _Triangle(LineString):
                         neighbour = False
                 else:
                     # Check through a spatial search if there are any neighbous
-                    (neighbour, self._width) = _Triangle.line_segments.check_chordal_axis(minimal_width / 2., self._mid_triangle)
+                    (neighbour, self._width) = _Triangle.line_segments.check_chordal_axis(minimal_width / 2.,
+                                                                                          self._mid_triangle)
                 if (neighbour):
                     extremity = False
                     for i, type in enumerate(self._side_type):
-                        if (type == _Triangle.INTERNAL):
+                        if type == _Triangle.INTERNAL:
                             coord0 = self.coords[i]
                             coord1 = self.coords[i + 1]
                             # Check if the triangle is located near the extremity of the polygon
@@ -1464,7 +1427,7 @@ class _LineSegments(object):
             # First pass find the closest line segment
             line_coords = list(line.coords)
             distance = GenUtil.distance_line_point(line_coords[0], line_coords[1], target_coord)
-            if (distance < min_distance_0):
+            if distance < min_distance_0:
                 min_distance_0 = distance
                 ref_line = line
 
@@ -1602,14 +1565,14 @@ class PerimeterDistance(object):
         b_box = GenUtil.build_bounding_box(self._search_tolerance, coord)
         points = list(self.s_cont_points.get_features(bounds=b_box))
         nbr_points = len(points)
-        if (nbr_points == 0):
+        if nbr_points == 0:
             # Nothing is found
             id_ring = -1
             id_coord = -1
             if (raise_exception):
                 raise Exception("Integrity problem at coordinate: (%f,%f)" % (coord[0], coord[1]))
         else:
-            if (nbr_points == 1):
+            if nbr_points == 1:
                 # There is only one point
                 point = points[0]
             else:
@@ -1617,7 +1580,7 @@ class PerimeterDistance(object):
                 min_dist = 1.0E+99
                 for p in points:
                     dist = GenUtil.distance(p.coords[0], coord)
-                    if (dist < min_dist):
+                    if dist < min_dist:
                         point = p
                         dist = min_dist
             id_ring = points[0].sb_id_ring
@@ -1660,13 +1623,13 @@ class PerimeterDistance(object):
                 # Loop to extract coordinate from last to first
                 start, end = id_coord1, id_coord0
                 i = start
-                while (i != end):
+                while i != end:
                     sub_coords2.append(lst_coords[i])
                     i = (i + 1) % nbr_coords
                 sub_coords2.append(lst_coords[i])
 
                 # Take the smallest list
-                if (len(sub_coords1) < len(sub_coords2)):
+                if len(sub_coords1) < len(sub_coords2):
                     sub_lst_coords = sub_coords1
                 else:
                     sub_lst_coords = sub_coords2
@@ -1701,16 +1664,16 @@ class PerimeterDistance(object):
         id_ring0, id_coord0 = self._get_points_info(coord0)
         id_ring1, id_coord1 = self._get_points_info(coord1)
 
-        if (id_ring0 != -1 and id_ring0 != -1):
+        if id_ring0 != -1 and id_ring0 != -1:
 
-            if (id_ring0 == id_ring1):
+            if id_ring0 == id_ring1:
                 # Coordinates are on the same ring
                 cumm_distance = self.lst_cumm_distance[id_ring0]
                 if ((id_coord0 < 0 or id_coord0 > len(cumm_distance)) or
                         (id_coord1 < 0 or id_coord1 > len(cumm_distance))):
                     raise Exception("Internal Error...")
 
-                if (id_coord0 < id_coord1):
+                if id_coord0 < id_coord1:
                     i, j = id_coord0, id_coord1
                 else:
                     i, j = id_coord1, id_coord0
@@ -1761,4 +1724,3 @@ class InternalError (GenException):
         """
 
         GenException.__init__(self, *param_names)
-

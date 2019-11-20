@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import List
 from lib_geosim import SpatialContainer, GenUtil
 from shapely.geometry import Point, LineString
-from shapely.ops import linemerge, snap
+from shapely.ops import linemerge
 
 FIRST = 0
 LAST = -1

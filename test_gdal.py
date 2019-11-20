@@ -9,11 +9,15 @@ from shapely.ops import snap
 class Foo(object):
     pass
 
-class SubFoo(object):
+class SubFoo(Foo):
     pass
 
 a = SubFoo()
-print (isinstance(41, int))
+
+print (type(a))
+print (a.__class__)
+print (issubclass(a.__class__, SubFoo))
+print (issubclass(a.__class__, Foo))
 
 0/0
 

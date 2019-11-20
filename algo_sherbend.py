@@ -80,7 +80,8 @@ class LineStringSb(LineString):
 
     @coords.setter
     def coords(self, coords):
-        LineString.coords.__set__(self, coords)
+        # Access the coord attribute in the parent class
+        super(LineStringSb, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
         if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
         # Delete variable that are now outdated. so they will be computed next time it will be accessed
@@ -466,7 +467,7 @@ class SpatialConstraints(object):
 
     def _check_crossing(self, line, new_sub_line):
 
-        features = self.s_container.get_features(new_sub_line.bounds, remove_features=(line._sb_sc_id,))
+        features = self.s_container.get_features(new_sub_line.bounds, remove_features=(line,))
 
         # Check that the new middle line does not cross any interior holes of the polygon
         prepared_new_sub_line = prep(new_sub_line)
@@ -481,7 +482,7 @@ class SpatialConstraints(object):
 
     def _check_sidedness(self, line, pol):
 
-        features = self.s_container.get_features(pol.bounds, remove_features=(line._sb_sc_id,))
+        features = self.s_container.get_features(pol.bounds, remove_features=(line,))
         # Check that the new middle line does not cross any interior holes of the polygon
         prepared_pol = prep(pol)
         gen_contains = filter(prepared_pol.contains, features)
