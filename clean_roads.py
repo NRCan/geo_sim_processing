@@ -43,10 +43,6 @@ class Topology(object):
 
         return linked_lines
 
-
-
-
-
     def orient_linked_lines(self, target=BOTH):
 
         line_lst_coord = list(self.line.coords)
@@ -98,33 +94,33 @@ def read_arguments():
     return command
 
 
-def build_topology1(center_lines, search_tolerance):
-
-
-    # Load the features in the spatial container (accelerate the search)
-    s_container = SpatialContainer()
-    for center_line in center_lines:
-        center_line.sb_geom_type = GenUtil.LINE_STRING
-        s_container.add_feature(center_line)
-
-    # Build topology. For each create list of connecting lines
-    for line in center_lines:
-        p_start = line.coords[0]
-        p_end = line.coords[-1]
-        b_box = GenUtil.build_bounding_box(search_tolerance, p_start)
-        lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-        line.start_lines = []
-        for line_b_box in lines_b_box:
-            if line.touches(line_b_box):
-                line.start_lines.append(line_b_box)
-        b_box = GenUtil.build_bounding_box(search_tolerance, p_end)
-        lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-        line.end_lines = []
-        for line_b_box in lines_b_box:
-            if line.touches(line_b_box):
-                line.end_lines.append(line_b_box)
-
-    return s_container
+# def build_topology1(center_lines, search_tolerance):
+#
+#
+#     # Load the features in the spatial container (accelerate the search)
+#     s_container = SpatialContainer()
+#     for center_line in center_lines:
+#         center_line.sb_geom_type = GenUtil.LINE_STRING
+#         s_container.add_feature(center_line)
+#
+#     # Build topology. For each create list of connecting lines
+#     for line in center_lines:
+#         p_start = line.coords[0]
+#         p_end = line.coords[-1]
+#         b_box = GenUtil.build_bounding_box(search_tolerance, p_start)
+#         lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+#         line.start_lines = []
+#         for line_b_box in lines_b_box:
+#             if line.touches(line_b_box):
+#                 line.start_lines.append(line_b_box)
+#         b_box = GenUtil.build_bounding_box(search_tolerance, p_end)
+#         lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+#         line.end_lines = []
+#         for line_b_box in lines_b_box:
+#             if line.touches(line_b_box):
+#                 line.end_lines.append(line_b_box)
+#
+#     return s_container
 
 
 
@@ -332,68 +328,68 @@ def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
     return max_mid_p01_p11
 
 
-def clean_y_junction_dummy(s_container, command, geo_content):
-    """Clean road junction that form forms a configuration in Y """
-
-    processed_y_junction = []  # create an empty set
-    # Loop over each line in the container
-    for y0_line in list(s_container.get_features()):
-
-        build_topology(s_container, y0_line)
-        y0_lst_coord = list(y0_line.coords)
-
-        # Process both the start and the end of the line
-        start_end_lines = [y0_line.start_lines] + [y0_line.end_lines]
-        for num, linked_lines in enumerate(start_end_lines):
-            if len(linked_lines) == 2:
-
-                y1_line = linked_lines[0][0]
-                y1_lst_coord = list(y1_line.coords)
-                y1_order = linked_lines[0][1]
-
-                y2_line = linked_lines[1][0]
-                y2_lst_coord = list(y2_line.coords)
-                y2_order = linked_lines[1][1]
-
-                current_y_junction = sorted((id(y0_line), id(y1_line), id(y2_line))) #
-                if current_y_junction not in processed_y_junction:
-
-                    processed_y_junction.append(current_y_junction)
-
-                    if is_edition_needed (y0_lst_coord, y1_lst_coord, y2_lst_coord):
-
-                        new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y1_lst_coord, command)
-
-                        if new_mid_coord is not None:
-
-                            # The Y crossing requirements are all met ===> edit the line now
-                            # Update the lines forming the Y crossing
-                            y0_lst_coord[0] = new_mid_coord
-                            y0_line.coords = y0_lst_coord
-                            s_container.update_spatial_index(y0_line)
-
-                            y1_lst_coord[0] = new_mid_coord
-                            y1_line.coords = y1_lst_coord
-                            s_container.update_spatial_index(y1_line)
-
-                            y2_lst_coord[0] = new_mid_coord
-                            y2_line.coords = y2_lst_coord
-                            s_container.update_spatial_index(y2_line)
-                            geo_content.nbr_yjunction += 1
-
-                        else:
-                            # No line met the basic requirements
-                            pass
-                    else:
-                        # No edition is needed this is not a Y crossing
-                        pass
-                else:
-                    # Junction already processed
-                    pass
-            else:
-                # Junction must be formes by exactly 3 lines
-                pass
-
+# def clean_y_junction_dummy(s_container, command, geo_content):
+#     """Clean road junction that form forms a configuration in Y """
+#
+#     processed_y_junction = []  # create an empty set
+#     # Loop over each line in the container
+#     for y0_line in list(s_container.get_features()):
+#
+#         build_topology(s_container, y0_line)
+#         y0_lst_coord = list(y0_line.coords)
+#
+#         # Process both the start and the end of the line
+#         start_end_lines = [y0_line.start_lines] + [y0_line.end_lines]
+#         for num, linked_lines in enumerate(start_end_lines):
+#             if len(linked_lines) == 2:
+#
+#                 y1_line = linked_lines[0][0]
+#                 y1_lst_coord = list(y1_line.coords)
+#                 y1_order = linked_lines[0][1]
+#
+#                 y2_line = linked_lines[1][0]
+#                 y2_lst_coord = list(y2_line.coords)
+#                 y2_order = linked_lines[1][1]
+#
+#                 current_y_junction = sorted((id(y0_line), id(y1_line), id(y2_line))) #
+#                 if current_y_junction not in processed_y_junction:
+#
+#                     processed_y_junction.append(current_y_junction)
+#
+#                     if is_edition_needed (y0_lst_coord, y1_lst_coord, y2_lst_coord):
+#
+#                         new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y1_lst_coord, command)
+#
+#                         if new_mid_coord is not None:
+#
+#                             # The Y crossing requirements are all met ===> edit the line now
+#                             # Update the lines forming the Y crossing
+#                             y0_lst_coord[0] = new_mid_coord
+#                             y0_line.coords = y0_lst_coord
+#                             s_container.update_spatial_index(y0_line)
+#
+#                             y1_lst_coord[0] = new_mid_coord
+#                             y1_line.coords = y1_lst_coord
+#                             s_container.update_spatial_index(y1_line)
+#
+#                             y2_lst_coord[0] = new_mid_coord
+#                             y2_line.coords = y2_lst_coord
+#                             s_container.update_spatial_index(y2_line)
+#                             geo_content.nbr_yjunction += 1
+#
+#                         else:
+#                             # No line met the basic requirements
+#                             pass
+#                     else:
+#                         # No edition is needed this is not a Y crossing
+#                         pass
+#                 else:
+#                     # Junction already processed
+#                     pass
+#             else:
+#                 # Junction must be formes by exactly 3 lines
+#                 pass
+#
 
 
 def clean_y_junction(s_container, command, geo_content):
@@ -472,7 +468,6 @@ def is_open_arm(s_container, line):
 
 def clean_dual_fork(s_container, command, geo_content):
 
-
     fork_lines = list(s_container.get_features())
     # Loop over each line in the list
 
@@ -526,7 +521,6 @@ def clean_dual_fork(s_container, command, geo_content):
             # Line already processed
             pass
 
-
 def clean_x_junction(s_container, command, geo_content):
     """Clean a road junction that should form 4 line crossing"""
 
@@ -546,7 +540,6 @@ def clean_x_junction(s_container, command, geo_content):
                     lst_coord = list(linked_line.coords)
                     lst_coord[0] = coord_point
                     linked_line.coords = lst_coord
-                    s_container.update_spatial_index(linked_line)
 
                 # Delete de x_line from the spatial container
                 s_container.del_feature(x_line)
@@ -671,13 +664,13 @@ def manage_cleaning(command, geo_content):
     geo_content.in_features=[]
 
     # Clean the noise type 2
-    if command.noise:
-        clean_noise_type_2(s_container, command, geo_content)
+#    if command.noise:
+#        clean_noise_type_2(s_container, command, geo_content)
 
     # Clean the noise type 1
-    if command.noise:
-        clean_noise(s_container, command, geo_content)
-        clean_noise(s_container, command, geo_content)
+#    if command.noise:
+#        clean_noise(s_container, command, geo_content)
+#        clean_noise(s_container, command, geo_content)
 
     # Clean junction in X form
     if command.xjunction >= 0:

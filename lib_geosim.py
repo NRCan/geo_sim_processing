@@ -63,22 +63,30 @@ class PolygonSc(Polygon):
 
     """Polygon specialization to be included in the SpatialContainer"""
 
-    def __init__(self, coords):
-        super().__init__(coords)
+    def __init__(self, exterior, interiors=None):
+        super().__init__(exterior, interiors)
         self._sc_id = None
         self._sc_scontainer = None
 
     @property
-    def coords(self):
-        return super().coords
+    def exterior(self):
+        return super().exterior
 
-    @coords.setter
-    def coords(self, coords):
-        Polygon.coords.__set__(self, coords)
+    @property
+    def interiors(self):
+        return super().interiors
+
+    @exterior.setter
+    def exterior(self, exterior):
+        super().exterior.__set__(self, exterior)
 
         if self._sc_scontainer != None:  # Is the feature is a spatial container
             # The coordinate has changed so update the bounding box in the spatial container
             self._sc_container.update_bbox(self)
+
+    @interiors.setter
+    def interiors(self, interiors):
+        Polygon.interiors.__set__(self, interiors)
 
 
 class GenUtil:
@@ -321,13 +329,13 @@ class GenUtil:
                 for in_feature in src:
                     geom = in_feature['geometry']
                     if geom['type'] == 'Point':
-                        feature = Point(geom['coordinates'])
+                        feature = PointSc(geom['coordinates'])
                     elif geom['type'] == 'LineString':
-                        feature = LineString(geom['coordinates'])
+                        feature = LineStringSc(geom['coordinates'])
                     elif geom['type'] == 'Polygon':
                         exterior = geom['coordinates'][0]
                         interiors = geom['coordinates'][1:]
-                        feature = Polygon(exterior, interiors)
+                        feature = PolygonSc(exterior, interiors)
                     else:
                         print("The following geometry type is unsupported: {}".format(geom['type']))
                         feature = None
@@ -471,6 +479,24 @@ class SpatialContainer(object):
         self._features = {}  # Container to hold the features
         self._bbox_features = {}  # Container to hold the bounding boxes
 
+    def adjust_bbox(self, bounds, delta = GenUtil.ZERO):
+        """Adjust the bounding box by increasing by a very small delta
+
+        Parameters:
+            bounds: Tuple forming the bounding box (xmin, ymin, wmax, ymax)
+
+        return value:
+            altered bounding box (xmin, ymin, wmax, ymax)"""
+
+        xmin, ymin, xmax, ymax = bounds
+
+        xmin -= delta
+        ymin -= delta
+        xmax += delta
+        ymax += delta
+
+        return (xmin, ymin, xmax, ymax)
+
     def add_feature(self, feature):
         """Adds a feature in the container and update the spatial index with the feature's bound
 
@@ -491,6 +517,9 @@ class SpatialContainer(object):
             raise GenException('Unsupported class: {}'.format(str(feature.__class__)))
 
         bounds = feature.bounds
+
+        # Adjust the bounding box
+        bounds = self.adjust_bbox(bounds)
 
         # Container unique internal counter
         SpatialContainer._sc_id += 1
@@ -533,15 +562,14 @@ class SpatialContainer(object):
             - feature: The feature to delete in the spatial container
 
         *Returns*:
-            - 0 if feature is deleted from the patial container
-            - 1 if feature was not included in the spatial container
+            None
 
         """
 
         ret_value = 0
 
         # Check if the feature has a container_key
-        if hasattr(feature, "_sb_sc_id"):
+        if hasattr(feature, "_sc_id"):
 
             if (feature._sc_id in self._features and
                     feature._sc_id in self._bbox_features):
@@ -554,8 +582,9 @@ class SpatialContainer(object):
                     del self._bbox_features[feature._sc_id]
                     # Delete the different bounds in RTree
                     self._r_tree.delete(feature._sc_id, bbox)
-                    # Delete the property _sc_id
-                    del feature._sc_id
+                    # Reset the property _sc_id and _sc_scontainer
+                    feature._sc_id = None
+                    feature._sc_scontainer = None
                 except:
                     raise InternalError("Internal corruption, problem with the container and/or the RTree")
             else:
@@ -614,9 +643,10 @@ class SpatialContainer(object):
             pass
         else:
             # The bounding box has changed
+            # Adjust the bounding box
+            new_bbox = self.adjust_bbox(new_bbox)
             # Delete The old bounding box in Rtree
-            self._r_tree.delete(feature._sc_id, old_bbox
-                                )
+            self._r_tree.delete(feature._sc_id, old_bbox)
             # Add the new bounding boxes in Rtree
             self._r_tree.add(feature._sc_id, new_bbox)
 
@@ -654,11 +684,19 @@ class SpatialContainer(object):
         if (bounds != None):
             # Extract features by bounds
             keys = (key for key in self._r_tree.intersection(bounds) if key not in remove_features)
-            features = (self._features[key] for key in keys if key in self._features)
+            features = [self._features[key] for key in keys if key in self._features]
         else:
-            features = (feature for feature in self._features.values() if feature not in remove_features)
+            features = [feature for feature in self._features.values() if feature not in remove_features]
 
-        return features
+        # The following code allows to delete feature while iterating over a get_features request
+        for feature in features:
+            if feature._sc_id is not None:
+                yield feature
+            else:
+                # If the feature has been deleted do not return it
+                pass
+
+        return
 
 
 class ChordalAxis(object):
