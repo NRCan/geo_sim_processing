@@ -30,11 +30,11 @@ class LineStringSc(LineString):
     @coords.setter
     def coords(self, coords):
         # Update the coord attribute in the parent class
-        super(LineString, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
+        LineString.coords.__set__(self, coords)
 
         if self._sc_scontainer != None:    # Is the feature is a spatial container
             # The coordinate has changed so update the bounding box in the spatial container
-            self._sc_container.update_bbox(self)
+            self._sc_scontainer.update_spatial_index(self)
 
 
 class PointSc(Point):
@@ -52,8 +52,29 @@ class PointSc(Point):
 
     @coords.setter
     def coords(self, coords):
-        print("Need to update the spatial container...")
-        super(Point, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
+        Point.coords.__set__(self, coords)
+
+        if self._sc_scontainer != None:  # Is the feature is a spatial container
+            # The coordinate has changed so update the bounding box in the spatial container
+            self._sc_container.update_bbox(self)
+
+
+class PolygonSc(Polygon):
+
+    """Polygon specialization to be included in the SpatialContainer"""
+
+    def __init__(self, coords):
+        super().__init__(coords)
+        self._sc_id = None
+        self._sc_scontainer = None
+
+    @property
+    def coords(self):
+        return super().coords
+
+    @coords.setter
+    def coords(self, coords):
+        Polygon.coords.__set__(self, coords)
 
         if self._sc_scontainer != None:  # Is the feature is a spatial container
             # The coordinate has changed so update the bounding box in the spatial container
@@ -450,84 +471,6 @@ class SpatialContainer(object):
         self._features = {}  # Container to hold the features
         self._bbox_features = {}  # Container to hold the bounding boxes
 
-
-
-    # def _adjust_bounding_box(self, bounds):
-    #     """Modify the bounds of a feature when the bounds of almost zero
-    #
-    #     *Parameters*:
-    #         - bounds: Tuple of a bounding box (xmin, ymin, xmax, ymax)
-    #
-    #     *Returns*:
-    #         - Tuple of a bounding box (xmin, ymin, xmax, ymax)
-    #
-    #     """
-    #
-    #     if abs(bounds[2] - bounds[0]) < GenUtil.ZERO or abs(bounds[3] - bounds[1]) < GenUtil.ZERO:
-    #         if abs(bounds[2] - bounds[0]) >= GenUtil.ZERO:
-    #             xmin = bounds[0]
-    #             xmax = bounds[2]
-    #         else:
-    #             xmin = bounds[0] - GenUtil.ZERO
-    #             xmax = bounds[2] + GenUtil.ZERO
-    #     if abs(bounds[3] - bounds[1]) >= GenUtil.ZERO:
-    #         ymin = bounds[1]
-    #         ymax = bounds[3]
-    #     else:
-    #         ymin = bounds[1] - GenUtil.ZERO
-    #         ymax = bounds[3] + GenUtil.ZERO
-    #     bounds = (xmin, ymin, xmax, ymax)
-    #
-    #     return bounds
-
-    def _extract_bounding_box(self, feature):
-        """Extract the bounding box of a features
-
-        If the feature is a LineString and the line optimizer is on; the line is splitted in
-        smaller fragment and a bounding box is computed for each small fragment.
-
-        *Parameters*:
-            - feature: Shapely feature (Point, LineString or Polygon
-
-        *Returns*:
-            - List of tuple of bounding boxes in the form of [(xmin,ymin,xmax,ymax),(...),...]
-              It will always contains at least one bounding box
-
-        """
-
-        bounds = feature.bounds
-        # if (isinstance(feature, MA_Point) or isinstance(feature, MA_Polygon)):
-        #     lst_bounds = [feature.bounds]
-        # else:
-        #     if (self._line_opt_value == 0):
-        #         # Line optimizer is diabled
-        #         lst_bounds = [feature.bounds]
-        #     else:
-        #         if (feature.is_dual()):
-        #             line_coords = feature.coords_dual
-        #         else:
-        #             line_coords = list(feature.coords)
-        #
-        #         max_coords = self._line_opt_value - 1
-        #         # Split the list of coordinates into a list of list of coordinates where each list of coordinates contains a
-        #         # maximum of max_coords. It also copy the last coordinate of one group as the first coordinate of the next group
-        #         split_coords = [line_coords[i:i+max_coords+1] for i in range(0, len(line_coords), max_coords)]
-        #         # If the last group contains only 1 coordinate (x,y) we delete it
-        #         if (len(split_coords[-1]) == 1):
-        #             del split_coords[-1]
-        #
-        #         # Calculates for each list of coordinates its bounding box in the form (xmin,ymin,xmax,ymax)
-        #         lst_min_max   =  [ map((lambda lst: (min(lst),max(lst)) ),zip(*coords)) for coords in split_coords]
-        #         lst_bounds    =  [ (min_max[0][0],min_max[1][0], min_max[0][1], min_max[1][1]) for min_max in lst_min_max ]
-        #
-        # if len(lst_bounds) == 1:
-        # Presently there is a little bug in RTree when the xmin and xmax or ymin and ymax are the same value
-        # The problem is resolved when we add a very small delta between the 2 values
-        # This bug is supposed to be solved in the next release. We're running now on 0.6
-        #    lst_bounds[0] = self._adjust_bounding_box (lst_bounds[0])
-
-        return bounds
-
     def add_feature(self, feature):
         """Adds a feature in the container and update the spatial index with the feature's bound
 
@@ -535,48 +478,41 @@ class SpatialContainer(object):
         MA_Polygon.
 
         *Parameters*:
-            - feature: A spatial feature derives from MA_Point, MA_LineString or MA_Polygon
+            - feature: A spatial feature derives from PointSc, LineStringSc
 
         *Returns*: *None*
 
         """
 
         # Check if the type is valid
-        if feature.geom_type == GenUtil.POINT or feature.geom_type == GenUtil.LINE_STRING:
+        if issubclass(feature.__class__, (PointSc, LineStringSc, PolygonSc)):
             pass
         else:
-            raise GenException('Unsupported feature type...')
+            raise GenException('Unsupported class: {}'.format(str(feature.__class__)))
 
-        # Check if the feature is already in a spatial container
-        if hasattr(feature, "_sb_sc_id"):
-            raise GenException('Feature is already in a spatial container')
-
-        bounds = self._extract_bounding_box(feature)
+        bounds = feature.bounds
 
         # Container unique internal counter
-        SpatialContainer._sb_sc_id += 1
+        SpatialContainer._sc_id += 1
 
         # Add the spatial id to the feature
-        feature._sb_sc_id = SpatialContainer._sb_sc_id
+        feature._sc_id = SpatialContainer._sc_id
+        feature._sc_scontainer = self
 
         # Add the feature in the feature container
-        self._features[feature._sb_sc_id] = feature
+        self._features[feature._sc_id] = feature
 
         # Add the bounding box in the bbox_container
-        self._bbox_features[feature._sb_sc_id] = bounds
-        self._r_tree.add(feature._sb_sc_id, bounds)
-
-        #       # Add the each boundfing box in the RTree
-        #       for bounds in lst_bounds:
-        #           self._r_tree.add(self._sci_id, bounds)
+        self._bbox_features[feature._sc_id] = bounds
+        self._r_tree.add(feature._sc_id, bounds)
 
         return
 
     def add_features(self, features):
-        """Adds a list of feature in the continer and update the spatial index with the feature's bound
+        """Adds a list of feature in the spatial container and
 
         *Parameters*:
-            - feature: A spatial feature derives from Point, LineString or Polygon
+            - feature: A spatial feature derived from Point, LineString or Polygon
 
         *Returns*: *None*
 
@@ -607,23 +543,23 @@ class SpatialContainer(object):
         # Check if the feature has a container_key
         if hasattr(feature, "_sb_sc_id"):
 
-            if (feature._sb_sc_id in self._features and
-                    feature._sb_sc_id in self._bbox_features):
+            if (feature._sc_id in self._features and
+                    feature._sc_id in self._bbox_features):
 
                 try:
                     # Retrieve the bounding boxes of this feature
-                    bbox = self._bbox_features[feature._sb_sc_id]
+                    bbox = self._bbox_features[feature._sc_id]
                     # Delete the feature from the features and the bbox_features
-                    del self._features[feature._sb_sc_id]
-                    del self._bbox_features[feature._sb_sc_id]
+                    del self._features[feature._sc_id]
+                    del self._bbox_features[feature._sc_id]
                     # Delete the different bounds in RTree
-                    self._r_tree.delete(feature._sb_sc_id, bbox)
-                    # Delete the property _sci_id
-                    del feature._sb_sc_id
+                    self._r_tree.delete(feature._sc_id, bbox)
+                    # Delete the property _sc_id
+                    del feature._sc_id
                 except:
                     raise InternalError("Internal corruption, problem with the container and/or the RTree")
             else:
-                raise InternalError("Internal corruption, key {} has disappear...".format(feature._sci_id))
+                raise InternalError("Internal corruption, key {} has disappear...".format(feature._sc_id))
 
         return ret_value
 
@@ -665,8 +601,8 @@ class SpatialContainer(object):
 
         """
 
-        old_bbox = self._bbox_features[feature._sb_sc_id]
-        new_bbox = self._extract_bounding_box(feature)
+        old_bbox = self._bbox_features[feature._sc_id]
+        new_bbox = feature.bounds
         old_x_min, old_y_min, old_x_max, old_y_max = old_bbox[0], old_bbox[1], old_bbox[2], old_bbox[3]
         new_x_min, new_y_min, new_x_max, new_y_max = new_bbox[0], new_bbox[1], new_bbox[2], new_bbox[3]
 
@@ -679,38 +615,15 @@ class SpatialContainer(object):
         else:
             # The bounding box has changed
             # Delete The old bounding box in Rtree
-            self._r_tree.delete(feature._sb_sc_id, old_bbox
+            self._r_tree.delete(feature._sc_id, old_bbox
                                 )
             # Add the new bounding boxes in Rtree
-            self._r_tree.add(feature._sb_sc_id, new_bbox)
+            self._r_tree.add(feature._sc_id, new_bbox)
 
             # Save the bounding boxes
-            self._bbox_features[feature._sb_sc_id] = new_bbox
+            self._bbox_features[feature._sc_id] = new_bbox
 
         return
-
-# #    def _get_keys_by_bounds(self, bounds, keys_to_remove=None):
-# #        """Extract keys in the container based on the value of a bounding box#
-# #
-# #        *Parameters*:
-# #            - bounds: Bounding box defined as a list: xmin, ymin, xmax, ymax
-# #            - keys_to_remove: List of keys to remove  removed from the list of key features returned
-#
-#         *Returns*:
-#             - List of keys contained in the bounding box
-#
-#         """
-#
-#         # Extract the keys from the RTree
-# #        keys = list(self._r_tree.intersection(bounds))
-#
-#         # Remove the keys which are in the keys to remove list
-# #        keys = list(set(keys) - set(keys_to_remove))
-#
-#         keys = (key for key in self._r_tree.intersection(bounds) if key not in keys_to_remove)
-#
-#
-#         return keys
 
     def get_features(self, bounds=None, remove_features=[]):
         """Extract the features from the spatial container.
@@ -733,7 +646,7 @@ class SpatialContainer(object):
             if isinstance(feature, int):
                 tmp_remove_features.append(feature)
             else:
-                tmp_remove_features.append(feature._sb_sc_id)
+                tmp_remove_features.append(feature._sc_id)
 
         remove_features = tmp_remove_features
 
@@ -777,8 +690,8 @@ class ChordalAxis(object):
         """Constructor of the class
 
         Parameters:
-            - polygon: MA_Polygon to process
-            - triangles: List of MA_LineString. The line represent the triangles of a Constriant Delanuay Triangulation (CDT)
+            - polygon: PolygonSc to process
+            - triangles: List of LineString. The line represent the triangles of a Constriant Delanuay Triangulation (CDT)
                          Each triangle is composed of 4 non colinear vertice
             - minimal_width: Float used to prune the skeleton outputted by the Chordal Axis Transform and to identify
                              bottleneck triangles
@@ -802,7 +715,7 @@ class ChordalAxis(object):
         """Process a polygon to create the object property line_segments and perimeter_distance
 
         Parameters:
-          - polygon: MA_Polygon to process
+          - PolygonSc to process
 
         Return value: None
         """
@@ -822,7 +735,7 @@ class ChordalAxis(object):
         """Load the triangles
 
         Parameters:
-            - List of MA_LineString.  Each MA_LineString is composed of 4 non colinear vertice forming a triangle
+            - List of LineString.  Each LineString is composed of 4 non colinear vertice forming a triangle
 
         Return value: None
         """
@@ -872,7 +785,7 @@ class ChordalAxis(object):
                         # The side/skeleton must be pruned
                         lst_sub_coords = self.perimeter_distance.get_sub_perimeter(p0, p1)
                         # Creation of a polygon with the vertice included in the perimeter
-                        extremity_polygon = Polygon(lst_sub_coords)
+                        extremity_polygon = PolygonSc(lst_sub_coords)
                         centroid_coord = triangle.get_centroid()  # Centroid of the triangle in hand
                         centroid_point = Point(centroid_coord)
                         # Make sure that the perimeter polygon do not contain the triangle in hand
@@ -923,6 +836,12 @@ class ChordalAxis(object):
             center_lines = [merged_center_lines]
         else:
             center_lines = [center_line for center_line in merged_center_lines]
+
+        # Transform LineString into LineStringSc
+        tmp_center_lines = []
+        for center_line in center_lines:
+            tmp_center_lines.append(LineStringSc(center_line.coords))
+        center_lines = tmp_center_lines
 
         if noise > 0.:
             center_lines = self._remove_noise(center_lines, noise)
@@ -985,13 +904,13 @@ class ChordalAxis(object):
             p_start = line.coords[0]
             p_end = line.coords[-1]
             b_box = GenUtil.build_bounding_box(self._search_tolerance, p_start)
-            lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+            lines_b_box = s_container.get_features(b_box, remove_features=[line])
             line.start_lines = []
             for line_b_box in lines_b_box:
                 if line.touches(line_b_box):
                     line.start_lines.append(line)
             b_box = GenUtil.build_bounding_box(self._search_tolerance, p_end)
-            lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+            lines_b_box = s_container.get_features(b_box, remove_features=[line])
             line.end_lines = []
             for line_b_box in lines_b_box:
                 if line.touches(line_b_box):
@@ -1031,7 +950,7 @@ class ChordalAxis(object):
         return center_lines
 
 
-class _Triangle(LineString):
+class _Triangle(LineStringSc):
     """Calculates the
     """
 
@@ -1043,7 +962,7 @@ class _Triangle(LineString):
 
     def __init__(self, lst_coords):
         if len(lst_coords) == 4:
-            LineString.__init__(self, lst_coords)
+            super().__init__(lst_coords)
             self.sb_geom_type = GenUtil.LINE_STRING
             self._nbr_internal = None  #
             self._centre_lines = None
@@ -1166,7 +1085,7 @@ class _Triangle(LineString):
         mid_p0_p1 = GenUtil.mid_point(p0, p1)
         mid_p1_p2 = GenUtil.mid_point(p1, p2)
 
-        centre_line = LineString([mid_p0_p1, mid_p1_p2])
+        centre_line = LineStringSc([mid_p0_p1, mid_p1_p2])
 
         self._centre_lines = [centre_line]
 
@@ -1225,7 +1144,7 @@ class _Triangle(LineString):
                 # Sleeve triangle skeleton added between the mid point of each chord
                 internal_side0 = internal_sides[0]
                 internal_side1 = internal_sides[1]
-                self._centre_lines.append(LineString([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
+                self._centre_lines.append(LineStringSc([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
                 self._mid_triangle = GenUtil.mid_point(mid_side_points[internal_side0], mid_side_points[internal_side1])
 
             if nbr_internal == 3:
@@ -1236,15 +1155,15 @@ class _Triangle(LineString):
                     centroid = self.get_centroid()
                     self._mid_triangle = centroid
                     for mid_side_point in mid_side_points:
-                        self._centre_lines.append(LineString([centroid, mid_side_point]))
+                        self._centre_lines.append(LineStringSc([centroid, mid_side_point]))
                 else:
                     # With an obtuse triangle the mid point is placed on the sided opposite to the obtuse angle
                     opposite_side = (obtuse_angle + 1) % 3
                     left_side = (opposite_side + 1) % 3
                     right_side = (opposite_side - 1) % 3
                     self._mid_triangle = mid_side_points[opposite_side]
-                    self._centre_lines.append(LineString([mid_side_points[opposite_side], mid_side_points[left_side]]))
-                    self._centre_lines.append(LineString([mid_side_points[opposite_side], mid_side_points[right_side]]))
+                    self._centre_lines.append(LineStringSc([mid_side_points[opposite_side], mid_side_points[left_side]]))
+                    self._centre_lines.append(LineStringSc([mid_side_points[opposite_side], mid_side_points[right_side]]))
         else:
             # Centre line was already calculated... nothing to do
             pass
@@ -1361,8 +1280,8 @@ class _LineSegments(object):
             for j in range(nbr_coord_ring - 1):
                 p0 = lst_coords[j]
                 p1 = lst_coords[j + 1]
-                line = LineString((lst_coords[j], lst_coords[j+1]))
-                line.sb_geom_type = GenUtil.LINE_STRING
+                line = LineStringSc((lst_coords[j], lst_coords[j+1]))
+#                line.sb_geom_type = GenUtil.LINE_STRING
                 #                line.ma_properties[_LineSegments.ID_RING] = id_ring
                 self._s_container.add_feature(line)
 
@@ -1478,7 +1397,7 @@ class PerimeterDistance(object):
         """Load the internal structure with the ring information
 
         Parameters:
-           - rings: List of closed MA_LineString of a polygon
+           - rings: List of closed LineStringSc of a polygon
            - search_tolerance: Search tolerance can vary depending on the dynamic of the data set from lat-lon to Lambert conformal
 
         Return value: None
@@ -1490,7 +1409,7 @@ class PerimeterDistance(object):
             if (isinstance(ring, LinearRing)):
                 pass
             else:
-                raise Exception("Can only work on LineString or MA_LineString")
+                raise Exception("Can only work on LineStringSc")
 
         self.lst_cumm_distance = []
         self.lst_lst_coords = []
@@ -1515,7 +1434,7 @@ class PerimeterDistance(object):
 
         nbr_coords = len(lst_coords)
         for i in range(1, nbr_coords):
-            point = Point(lst_coords[i])
+            point = PointSc(lst_coords[i])
             point.sb_geom_type = GenUtil.POINT
             point.sb_id_ring = id_ring
             point.sb_id_coord = i

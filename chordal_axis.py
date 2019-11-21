@@ -90,9 +90,6 @@ geo_content.in_features = None
 
 i = 0
 for key in polygon_dict.keys():
-    i += 1
-    if i == 1000:
-        break
     ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 0, 0.001)
     centre_lines = ca.get_skeletton(noise=10)
     # Store the chordal axis in the output

@@ -26,7 +26,7 @@ import math, sys
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.prepared import prep
 from shapely import affinity
-from lib_geosim import GenUtil, SpatialContainer
+from lib_geosim import GenUtil, PointSc, LineStringSc, SpatialContainer
 
 # Internal constant ===> Should be modify with care...
 _DIAMETER = "diameter"
@@ -39,7 +39,7 @@ _NOT_SIMPLIFIED = 'NotSimplified'
 _UNSIMPLIFIABLE = 'Unsimplifiable'
 
 
-class LineStringSb(LineString):
+class LineStringSb(LineStringSc):
 
     """LineString specialization for the SherBend algorithm"""
 
@@ -383,7 +383,7 @@ class LineStringSb(LineString):
         return nbr_bend_simplified
 
 
-class PointSb(Point):
+class PointSb(PointSc):
 
     def __init__(self, coords, layer_name, properties, fast_access=True):
         super().__init__(coords)
