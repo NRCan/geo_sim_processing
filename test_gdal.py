@@ -7,13 +7,12 @@ from shapely import affinity
 from shapely.ops import snap
 
 ext = [(0,0),(0,100),(100,100),(100,0), (0,0)]
-int = [[(10,10),(10,20),(20,20),(20,10),(10,10)]]
+int = [[(10,10),(10,20),(20,20),(20,10),(10,10)], [(50,50),(50,60),(60,60),(60,50),(50,50)]]
 ext1 = [(0,0),(0,100),(200,200),(100,0), (0,0)]
 int1 = [[(10,10),(10,20),(30,30),(20,10),(10,10)]]
 
 pol = PolygonSc(ext)
-pol1 = Polygon(ext)
-pol1.exterior.coords = ext1
+pol.exterior = ext1
 ext2 = pol1.exterior
 pol1.interiors.coords = int1
 ext1 = pol.exterior

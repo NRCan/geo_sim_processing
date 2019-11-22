@@ -78,15 +78,11 @@ class PolygonSc(Polygon):
 
     @exterior.setter
     def exterior(self, exterior):
-        super().exterior.__set__(self, exterior)
-
-        if self._sc_scontainer != None:  # Is the feature is a spatial container
-            # The coordinate has changed so update the bounding box in the spatial container
-            self._sc_container.update_bbox(self)
+        raise GeoSimException ("Cannot update the exterior coordinates of a polygon")
 
     @interiors.setter
     def interiors(self, interiors):
-        Polygon.interiors.__set__(self, interiors)
+        raise GeoSimException("Cannot update the interior coordinates of a polygon")
 
 
 class GenUtil:
@@ -1656,7 +1652,7 @@ class PerimeterDistance(object):
         return extremity
 
 
-class GenException (Exception):
+class GeoSimException (Exception):
     """
     This is the base exception class for genmetal algorithms
     """
@@ -1665,7 +1661,7 @@ class GenException (Exception):
         Exception.__init__(self, *arguments, **keywords)
 
 
-class InternalError (GenException):
+class InternalError (GeoSimException):
     """
     This exception is raised when an internal error as occurred
     """
@@ -1680,4 +1676,4 @@ class InternalError (GenException):
 
         """
 
-        GenException.__init__(self, *param_names)
+        GeoSimException.__init__(self, *param_names)

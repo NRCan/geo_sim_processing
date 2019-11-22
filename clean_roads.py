@@ -739,7 +739,7 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_
 command = read_arguments()
 
 
-GenUtil.read_in_file (command.in_file, geo_content, [command.input_layer])
+#GenUtil.read_in_file (command.in_file, geo_content, [command.input_layer])
 
 
 # test for Ycrossing
@@ -788,7 +788,7 @@ y = LineString(((60,0),(55,0)))
 z = LineString(((60,0),(65,-2)))
 zz = LineString(((65,2),(60,0)))
 
-#geo_content.in_features = lst_extend
+#eo_content.in_features = lst_extend
 
 #command = SpatialContainer()
 #command.yjunction = 5
