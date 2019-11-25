@@ -24,19 +24,18 @@ class Topology(object):
         self.end_linked_lines = []
 
         # Find the linked lines of the start of the line
-        self.start_linked_lines = self._extract_linked_lines (self.line.coords[0])
+        self.start_linked_lines = self._extract_linked_lines(self.line.coords[0])
 
         # Find the linked lines of the end of the line
         self.end_linked_lines = self._extract_linked_lines(self.line.coords[-1])
 
         return
 
-
     def _extract_linked_lines(self, coord):
 
         linked_lines = []
         b_box = GenUtil.build_bounding_box(self. search_tolerance, coord)
-        potential_lines = self.s_container.get_features(b_box, remove_features=[self.line._sb_sc_id])
+        potential_lines = self.s_container.get_features(b_box, remove_features=[self.line])
         for potential_line in potential_lines:
             if potential_line.distance(Point(coord)) <= GenUtil.ZERO:
                 linked_lines.append(potential_line)
@@ -47,15 +46,14 @@ class Topology(object):
 
         line_lst_coord = list(self.line.coords)
         if target == BOTH:
-            for (ind,linked_lines) in ((0, self.start_linked_lines), (-1, self.end_linked_lines)):
-                for i, linked_line in enumerate(linked_lines):
+            for (ind, linked_lines) in ((0, self.start_linked_lines), (-1, self.end_linked_lines)):
+                for linked_line in linked_lines:
                     lst_linked_line_coord = list(linked_line.coords)
                     if Point(line_lst_coord[ind]).distance(Point(lst_linked_line_coord[0])) > GenUtil.ZERO:
                         lst_linked_line_coord.reverse()
                         linked_line.coords = lst_linked_line_coord
         else:
-            raise Exception ("Only value BOTH is accepted for 'target' parameter")
-
+            raise GeoSimException("Only value BOTH is accepted for 'target' parameter")
 
     def reverse(self):
 
@@ -90,9 +88,7 @@ def read_arguments():
     if not os.path.isfile(command.in_file):
         raise Exception('Input file is missing: {}'.format(command.in_file))
 
-
     return command
-
 
 # def build_topology1(center_lines, search_tolerance):
 #
@@ -121,39 +117,33 @@ def read_arguments():
 #                 line.end_lines.append(line_b_box)
 #
 #     return s_container
-
-
-
-
-
-def build_topology(s_container, line):
-    """Extract the topology for a line and a position (first or last)"""
-
-    line.start_lines=[]
-    line.end_lines=[]
-    for start_end,coord in enumerate((line.coords[0],line.coords[-1])):
-        b_box = GenUtil.build_bounding_box(GenUtil.ZERO, coord)
-        lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-        for line_b_box in lines_b_box:
-            if Point(coord).distance(Point(line_b_box.coords[0])) <= GenUtil.ZERO:
-                # The line is connected to the start of the other line
-                ind = 0
-            else:
-                if Point(coord).distance(Point(line_b_box.coords[-1])) <= GenUtil.ZERO:
-                    # The line is connected to the end of the other line
-                    ind = -1
-                else:
-                    break
-            if start_end == 0:
-                # Append to the start of the line
-                line.start_lines.append((line_b_box,ind))
-            else:
-                # Append to the end of the line
-                line.end_lines.append((line_b_box, ind))
-
+#
+# def build_topology(s_container, line):
+#     """Extract the topology for a line and a position (first or last)"""
+#
+#     line.start_lines=[]
+#     line.end_lines=[]
+#     for start_end,coord in enumerate((line.coords[0], line.coords[-1])):
+#         b_box = GenUtil.build_bounding_box(GenUtil.ZERO, coord)
+#         lines_b_box = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
+#         for line_b_box in lines_b_box:
+#             if Point(coord).distance(Point(line_b_box.coords[0])) <= GenUtil.ZERO:
+#                 # The line is connected to the start of the other line
+#                 ind = 0
+#             else:
+#                 if Point(coord).distance(Point(line_b_box.coords[-1])) <= GenUtil.ZERO:
+#                     # The line is connected to the end of the other line
+#                     ind = -1
+#                 else:
+#                     break
+#             if start_end == 0:
+#                 # Append to the start of the line
+#                 line.start_lines.append((line_b_box,ind))
+#             else:
+#                 # Append to the end of the line
+#                 line.end_lines.append((line_b_box, ind))
 
 def clean_noise_type_2(s_container, command, geo_content):
-
 
     delete_features = []
     lines = list(s_container.get_features())
@@ -209,9 +199,7 @@ def clean_noise_type_2(s_container, command, geo_content):
             pass
 
 
-
 def clean_noise(s_container, command, geo_content):
-
 
     delete_features = []
     lines = list(s_container.get_features())
@@ -250,7 +238,6 @@ def clean_noise(s_container, command, geo_content):
                             else:
                                 # The new line is touching something ===> No edtion
                                 pass
-
                         else:
                             # There must be 2 lines under the noise tolerance
                             pass
@@ -263,6 +250,7 @@ def clean_noise(s_container, command, geo_content):
         else:
             # Feature already processed
             pass
+
 
 def is_edition_needed(lst_coord_0, lst_coord_1, lst_coord_2):
 
@@ -283,11 +271,11 @@ def is_edition_needed(lst_coord_0, lst_coord_1, lst_coord_2):
     return edition_needed
 
 
-def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
+def calculate_mid_point(lst_coord_0, lst_coord_1, lst_coord_2):
 
-    lst_coord = [[[None],[None],[None]], [[None],[None],[None]], [[None],[None],[None]]]
-    for i, coords in enumerate([lst_coord_0, lst_coord_1, lst_coord_2]):
-        if len(coords)  <= 2:
+    lst_coord = [[[None], [None], [None]], [[None], [None], [None]], [[None], [None], [None]]]
+    for coords in ([lst_coord_0, lst_coord_1, lst_coord_2]):
+        if len(coords) <= 2:
             lst_coord[i][0] = coords[0]
             mid_point = LineString((coords[0], coords[1])).interpolate(.5, normalized=True)
             lst_coord[i][1] = (mid_point.x, mid_point.y)
@@ -311,7 +299,7 @@ def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
         p11 = lst_coord_b[1]
         p12 = lst_coord_b[2]
 
-        tmp_mid_p01_p11 = LineString((p01,p11)).interpolate(.5, normalized=True)
+        tmp_mid_p01_p11 = LineString((p01, p11)).interpolate(.5, normalized=True)
         mid_p01_p11 = (tmp_mid_p01_p11.x, tmp_mid_p01_p11.y)
         line_mid_p0 = LineString((mid_p01_p11, p0))
         length_y_junction = line_mid_p0.length
@@ -319,14 +307,13 @@ def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
         angle_mid_p01_p02 = GenUtil.compute_angle(mid_p01_p11, p01, p02, type=GenUtil.DEGREE)
         angle_mid_p11_p12 = GenUtil.compute_angle(mid_p01_p11, p11, p12, type=GenUtil.DEGREE)
 
-        if (length_y_junction <= command.yjunction):
+        if length_y_junction <= command.yjunction:
             sum_angles = angle_mid_p01_p02 + angle_mid_p11_p12
             if sum_angles > max_sum_angles:
                 max_sum_angles = sum_angles
                 max_mid_p01_p11 = mid_p01_p11
 
     return max_mid_p01_p11
-
 
 # def clean_y_junction_dummy(s_container, command, geo_content):
 #     """Clean road junction that form forms a configuration in Y """
@@ -391,13 +378,12 @@ def calculate_mid_point (lst_coord_0, lst_coord_1, lst_coord_2, command):
 #                 pass
 #
 
-
-def clean_y_junction(s_container, command, geo_content):
+def clean_y_junction(s_container, geo_content):
     """Clean road junction that form forms a configuration in Y """
 
     processed_y_junction = []  # create an empty set
     # Loop over each line in the container
-    for y0_line in list(s_container.get_features()):
+    for y0_line in s_container.get_features():
 
         y0_topology = Topology(s_container, y0_line)
         y0_topology.orient_linked_lines()
@@ -424,23 +410,20 @@ def clean_y_junction(s_container, command, geo_content):
 
                     if is_edition_needed(y0_lst_coord, y1_lst_coord, y2_lst_coord):
 
-                        new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y2_lst_coord, command)
+                        new_mid_coord = calculate_mid_point(y0_lst_coord, y1_lst_coord, y2_lst_coord)
 
                         if new_mid_coord is not None:
 
                             # The Y crossing requirements are all met ===> edit the line now
-                            # Update the line formiog the Y crossing
+                            # Update the line forming the Y crossing
                             y0_lst_coord[0] = new_mid_coord
                             y0_line.coords = y0_lst_coord
-                            s_container.update_spatial_index(y0_line)
 
                             y1_lst_coord[0] = new_mid_coord
                             y1_line.coords = y1_lst_coord
-                            s_container.update_spatial_index(y1_line)
 
                             y2_lst_coord[0] = new_mid_coord
                             y2_line.coords = y2_lst_coord
-                            s_container.update_spatial_index(y2_line)
                             geo_content.nbr_yjunction += 1
 
                         else:
@@ -466,67 +449,67 @@ def is_open_arm(s_container, line):
 
     return open_arm
 
-def clean_dual_fork(s_container, command, geo_content):
+# def clean_dual_fork(s_container, command, geo_content):
+#
+#     fork_lines = list(s_container.get_features())
+#     # Loop over each line in the list
+#
+#     processed_lines = []
+#     for fork_line in fork_lines:
+#
+#         if id(fork_line) not in processed_lines:
+#
+#             # Build the topology for the line
+#             build_topology(s_container, fork_line)
+#
+#             start_end_lines = [fork_line.start_lines]+[fork_line.end_lines]
+#             for num, linked_lines in enumerate(start_end_lines):
+#                 if len(linked_lines) == 2:
+#                     line0 = linked_lines[0][0]
+#                     line1 = linked_lines[1][0]
+#                     if line0.length <= command.noise and \
+#                        line1.length <= command.noise and \
+#                        is_open_arm(s_container, line0) and \
+#                        is_open_arm(s_container, line1):
+#                         lst_coord0 = list(line0.coords)
+#                         if linked_lines[0][1] == -1:
+#                             lst_coord0.reverse()
+#                         lst_coord1 = list(line1.coords)
+#                         if linked_lines[1][1] == -1:
+#                             lst_coord1.reverse()
+#
+#                         line = LineString((lst_coord0[-1], lst_coord1[-1]))
+#                         mid_point = line.interpolate(.5, normalized=True)
+#                         mid_coord = (mid_point.x, mid_point.y)
+#                         fork_line_coord = list(fork_line.coords)
+#                         if num == 0:
+#                             fork_line_coord = [mid_coord] + fork_line_coord
+#                         else:
+#                             fork_line_coord = fork_line_coord + [mid_coord]
+#
+#                         fork_line.coords = fork_line_coord
+#                         s_container.del_features ([line0, line1])
+#                         s_container.update_spatial_index(fork_line)
+#                         processed_lines.append(id(line0))
+#                         processed_lines.append(id(line1))
+#                         geo_content.nbr_noise += 2
+#
+#                     else:
+#                         # Line does not pass the requirements
+#                         pass
+#                 else:
+#                     # Line does not pass the requirements
+#                     pass
+#         else:
+#             # Line already processed
+#             pass
 
-    fork_lines = list(s_container.get_features())
-    # Loop over each line in the list
-
-    processed_lines = []
-    for fork_line in fork_lines:
-
-        if id(fork_line) not in processed_lines:
-
-            # Build the topology for the line
-            build_topology(s_container, fork_line)
-
-            start_end_lines = [fork_line.start_lines]+[fork_line.end_lines]
-            for num, linked_lines in enumerate(start_end_lines):
-                if len(linked_lines) == 2:
-                    line0 = linked_lines[0][0]
-                    line1 = linked_lines[1][0]
-                    if line0.length <= command.noise and \
-                       line1.length <= command.noise and \
-                       is_open_arm(s_container, line0) and \
-                       is_open_arm(s_container, line1):
-                        lst_coord0 = list(line0.coords)
-                        if linked_lines[0][1] == -1:
-                            lst_coord0.reverse()
-                        lst_coord1 = list(line1.coords)
-                        if linked_lines[1][1] == -1:
-                            lst_coord1.reverse()
-
-                        line = LineString((lst_coord0[-1], lst_coord1[-1]))
-                        mid_point = line.interpolate(.5, normalized=True)
-                        mid_coord = (mid_point.x, mid_point.y)
-                        fork_line_coord = list(fork_line.coords)
-                        if num == 0:
-                            fork_line_coord = [mid_coord] + fork_line_coord
-                        else:
-                            fork_line_coord = fork_line_coord + [mid_coord]
-
-                        fork_line.coords = fork_line_coord
-                        s_container.del_features ([line0, line1])
-                        s_container.update_spatial_index(fork_line)
-                        processed_lines.append(id(line0))
-                        processed_lines.append(id(line1))
-                        geo_content.nbr_noise += 2
-
-                    else:
-                        # Line does not pass the requirements
-                        pass
-                else:
-                    # Line does not pass the requirements
-                    pass
-        else:
-            # Line already processed
-            pass
 
 def clean_x_junction(s_container, command, geo_content):
     """Clean a road junction that should form 4 line crossing"""
 
-    x_lines = list(s_container.get_features())
     # Loop over each line in the container
-    for x_line in x_lines:
+    for x_line in s_container.get_features():
         # Only select line below the tolerance and linked to 2 other lines at each extremity
         if x_line.length <= command.xjunction:
             # Build the topology for the line
@@ -548,103 +531,82 @@ def clean_x_junction(s_container, command, geo_content):
 
 def join_lines(s_container, command, geo_content, tolerance):
 
-    lines = list(s_container.get_features())
 
     # Loop over each line in the list
-    processed_lines = []
-    for line in lines:
-        if id(line) not in processed_lines:
-            # Loop over the first and last vertice of the line
-            for ind in [FIRST, LAST]:
-                line_topology = Topology(s_container, line)
-                if ind == LAST:
-                    line_topology.reverse()
-                lst_coord_line = list(line.coords)
-                if len(line_topology.start_linked_lines) == 0:
-                    b_box = GenUtil.build_bounding_box(tolerance, lst_coord_line[0])
-                    potential_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-                    target_line = None
-                    for potential_line in potential_lines:
-                        for i in [FIRST, LAST]:
-                            lst_coord_potential = list(potential_line.coords)
-                            if Point(lst_coord_line[0]).distance(Point(lst_coord_potential[i])) <= tolerance:
-                                target_line = potential_line
-                                target_coord = lst_coord_potential[i]
+    for line in s_container.get_features():
+        # Loop over the first and last vertice of the line
+        for ind in [FIRST, LAST]:
+            line_topology = Topology(s_container, line)
+            if ind == LAST:
+                line_topology.reverse()
+            lst_coord_line = list(line.coords)
+            if len(line_topology.start_linked_lines) == 0:
+                b_box = GenUtil.build_bounding_box(tolerance, lst_coord_line[0])
+                potential_lines = s_container.get_features(b_box, remove_features=[line])
+                target_line = None
+                for potential_line in potential_lines:
+                    for i in [FIRST, LAST]:
+                        lst_coord_potential = list(potential_line.coords)
+                        if Point(lst_coord_line[0]).distance(Point(lst_coord_potential[i])) <= tolerance:
+                            target_line = potential_line
+                            target_coord = lst_coord_potential[i]
 
-                        if target_line:
-                            # We have a line to join with
-                            new_line = LineString((lst_coord_line[0], target_coord))
-                            merged_line = linemerge([line, new_line, target_line])
-                            if merged_line.geom_type == GenUtil.LINE_STRING:
-                                lst_merged_line_coord = list(merged_line.coords)
-                                line.coords = lst_merged_line_coord
-                                processed_lines.append(id(target_line))
-                                s_container.update_spatial_index(line)
-                                s_container.del_feature(target_line)
-                                print (target_coord)
-                                geo_content.nbr_join += 1
-                            else:
-                                # Possible problem with the merged line go to next line
-                                pass
+                    if target_line:
+                        # We have a line to join with
+                        new_line = LineString((lst_coord_line[0], target_coord))
+                        merged_line = linemerge([line, new_line, target_line])
+                        if merged_line.geom_type == GenUtil.LINE_STRING:
+                            lst_merged_line_coord = list(merged_line.coords)
+                            line.coords = lst_merged_line_coord
+                            s_container.del_feature(target_line)
+                            geo_content.nbr_join += 1
                         else:
-                            # No line to merged with
+                            # Possible problem with the merged line go to next line
                             pass
-                else:
-                    # Line is not open. Go to next line
-                    pass
-
-        else:
-            # Line already processed go to next line
-            pass
+                    else:
+                        # No line to merged with
+                        pass
+            else:
+                # Line is not open. Go to next line
+                pass
 
     return
 
-
-
 def extend_line(s_container, command, geo_content, tolerance):
 
-    lines = list(s_container.get_features())
-
     # Loop over each line in the list
-    processed_lines = []
-    for line in lines:
-        if id(line) not in processed_lines:
-            # Loop over the first and last vertice of the line
-            for ind in [FIRST, LAST]:
-                line_topology = Topology(s_container, line)
-                if ind == LAST:
-                    line_topology.reverse()
-                lst_coord_line = list(line.coords)
-                if len(line_topology.start_linked_lines) == 0:
-                    b_box = GenUtil.build_bounding_box(tolerance, lst_coord_line[0])
-                    potential_lines = s_container.get_features(b_box, remove_features=[line._sb_sc_id])
-                    new_coord = None
-                    distance_min = tolerance+ 1.
-                    for potential_line in potential_lines:
-                        linear_ref = potential_line.project(Point(lst_coord_line[0]))
-                        point_on_line = potential_line.interpolate(linear_ref)
-                        distance = Point(lst_coord_line[0]).distance(point_on_line)
-                        if distance <= tolerance:
-                            if distance_min > distance:
-                                distance_min = distance
-                                new_coord = (point_on_line.x, point_on_line.y)
+    for line in s_container.get_features():
+        # Loop over the first and last vertice of the line
+        for ind in [FIRST, LAST]:
+            line_topology = Topology(s_container, line)
+            if ind == LAST:
+                line_topology.reverse()
+            lst_coord_line = list(line.coords)
+            if len(line_topology.start_linked_lines) == 0:
+                b_box = GenUtil.build_bounding_box(tolerance, lst_coord_line[0])
+                potential_lines = s_container.get_features(b_box, remove_features=[line])
+                new_coord = None
+                distance_min = tolerance + 1.
+                for potential_line in potential_lines:
+                    linear_ref = potential_line.project(Point(lst_coord_line[0]))
+                    point_on_line = potential_line.interpolate(linear_ref)
+                    distance = Point(lst_coord_line[0]).distance(point_on_line)
+                    if distance <= tolerance:
+                        if distance_min > distance:
+                            distance_min = distance
+                            new_coord = (point_on_line.x, point_on_line.y)
 
-                        if new_coord:
-                            # We have a line to join with
-                            lst_new_coord_line = [new_coord] + lst_coord_line
-                            line.coords = lst_new_coord_line
-                            s_container.update_spatial_index(line)
-                            geo_content.nbr_extend += 1
-                        else:
-                            # No line to merged with
-                            pass
-                else:
-                    # Line is not open. Go to next line
-                    pass
-
-        else:
-            # Line already processed go to next line
-            pass
+                    if new_coord:
+                        # We have a line to join with
+                        lst_new_coord_line = [new_coord] + lst_coord_line
+                        line.coords = lst_new_coord_line
+                        geo_content.nbr_extend += 1
+                    else:
+                        # No line to merged with
+                        pass
+            else:
+                # Line is not open. Go to next line
+                pass
 
     return
 
@@ -661,7 +623,7 @@ def manage_cleaning(command, geo_content):
     s_container = SpatialContainer()
     s_container.add_features(geo_content.in_features)
     geo_content.in_nbr_line_strings = len(geo_content.in_features)
-    geo_content.in_features=[]
+    geo_content.in_features = []
 
     # Clean the noise type 2
 #    if command.noise:
@@ -673,18 +635,18 @@ def manage_cleaning(command, geo_content):
 #        clean_noise(s_container, command, geo_content)
 
     # Clean junction in X form
-    if command.xjunction >= 0:
-        clean_x_junction(s_container, command, geo_content)
+#    if command.xjunction >= 0:
+#        clean_x_junction(s_container, command, geo_content)
 
     # Clean junction in Y form
-    if command.yjunction >= 0:
-        clean_y_junction(s_container, command, geo_content)
+#    if command.yjunction >= 0:
+#        clean_y_junction(s_container, geo_content)
 
     # Join line
-    if command.join >= 0:
-        for i in range(command.iteration):
-            tolerance = command.join * (float(i + 1) / command.iteration)
-            join_lines(s_container, command, geo_content, tolerance)
+#    if command.join >= 0:
+#        for i in range(command.iteration):
+#            tolerance = command.join * (float(i + 1) / command.iteration)
+#            join_lines(s_container, command, geo_content, tolerance)
 
     # Extend line
     if command.extend >= 0:
@@ -729,6 +691,7 @@ class GeoContent:
     out_nbr_line_strings: 0
     bounds: List[object] = None
 
+
 geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_features=[],
                          nbr_xjunction=0, nbr_yjunction=0, nbr_join=0, nbr_noise=0, nbr_extend=0,
                          in_nbr_line_strings=0, out_nbr_line_strings=0, bounds=[])
@@ -736,25 +699,27 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_
 
 
 # Read the command line arguments
-command = read_arguments()
+#command = read_arguments()
 
 
 #GenUtil.read_in_file (command.in_file, geo_content, [command.input_layer])
 
 
 # test for Ycrossing
-a = LineString(((5,5),(5,10)))
-b = LineString(((0,4),(3,4),(5,5)))
-c = LineString(((5,5),(7,4),(10,4)))
-d = LineString(((5,10),(7,11), (10,11)))
-e = LineString(((0,11),(3,11),(5,10)))
+a = LineStringSc(((5,5),(5,10)))
+b = LineStringSc(((0,4),(3,4),(5,5)))
+c = LineStringSc(((5,5),(7,4),(10,4)))
+d = LineStringSc(((5,10),(7,11), (10,11)))
+e = LineStringSc(((0,11),(3,11),(5,10)))
+lst_y_junction = [a,b,c,d,e]
 
 # Test for X crossing
-f = LineString(((10,10), (10,15),(10,20)))
-g = LineString (((6,21),(8,21),(10,20)))
-h = LineString (((10,20),(12,21),(14,21)))
-i = LineString (((10,10), (8,9), (6,9)))
-j = LineString (((14,9),(12,9),(10,10)))
+f = LineStringSc(((10,10), (10,15),(10,20)))
+g = LineStringSc(((6,21),(8,21),(10,20)))
+h = LineStringSc(((10,20),(12,21),(14,21)))
+i = LineStringSc(((10,10), (8,9), (6,9)))
+j = LineStringSc(((14,9),(12,9),(10,10)))
+lst_x_junction = [f,g,h,i,j]
 
 # Test for noise type 1
 k = LineString (((10,0), (30,0)))
@@ -765,37 +730,37 @@ o = LineString (((10,0),(5,-3)))
 
 # Test for join
 
-p = LineString(((20,0),(30,0)))
-q = LineString(((32,1),(35,0)))
-r = LineString(((19,1),(10,0)))
-s = LineString(((10,0),(0,0)))
-t = LineString(((10,0),(10,10)))
+p = LineStringSc(((20,0),(30,0)))
+q = LineStringSc(((32,1),(35,0)))
+r = LineStringSc(((19,1),(10,0)))
+s = LineStringSc(((10,0),(0,0)))
+t = LineStringSc(((10,0),(10,10)))
 lst_join = [p,q,r,s,t]
 
 # Test for extend
-p = LineString(((5,0),(20,0)))
-q = LineString(((4,-4),(4,0),(4,4)))
-r = LineString(((21,-4),(21,0),(21,4)))
+p = LineStringSc(((5,0),(20,0)))
+q = LineStringSc(((4,-4),(4,0),(4,4)))
+r = LineStringSc(((21,-4),(21,0),(21,4)))
 lst_extend = [p,q,r]
 
-# Test noise tryp II
+# Test noise type  II
 
-u = LineString(((50,0),(0,0)))
-v = LineString(((50,0),(50,5)))
-w = LineString(((50,0),(55,0)))
-x = LineString(((55,-5),(55,0)))
-y = LineString(((60,0),(55,0)))
-z = LineString(((60,0),(65,-2)))
-zz = LineString(((65,2),(60,0)))
+u = LineStringSc(((50,0),(0,0)))
+v = LineStringSc(((50,0),(50,5)))
+w = LineStringSc(((50,0),(55,0)))
+x = LineStringSc(((55,-5),(55,0)))
+y = LineStringSc(((60,0),(55,0)))
+z = LineStringSc(((60,0),(65,-2)))
+zz = LineStringSc(((65,2),(60,0)))
 
-#eo_content.in_features = lst_extend
-
-#command = SpatialContainer()
-#command.yjunction = 5
-#command.xjunction = 10
-#command.extend = 3
-#command.iteration=5
-#command.noise = 7
+geo_content.in_features = lst_extend
+command = SpatialContainer()
+command.yjunction = 5
+command.xjunction = 10
+command.join = 40
+command.extend = 3
+command.iteration=5
+command.noise = 7
 
 manage_cleaning(command, geo_content)
 
