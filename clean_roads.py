@@ -4,7 +4,7 @@
 import argparse, os
 from dataclasses import dataclass
 from typing import List
-from lib_geosim import SpatialContainer, GenUtil
+from lib_geosim import SpatialContainer, GenUtil, LineStringSc
 from shapely.geometry import Point, LineString
 from shapely.ops import linemerge
 
@@ -201,54 +201,44 @@ def clean_noise_type_2(s_container, command, geo_content):
 
 def clean_noise(s_container, command, geo_content):
 
-    delete_features = []
     lines = list(s_container.get_features())
     for line in lines:
+        line_topology = Topology(s_container, line)
+        line_topology.orient_linked_lines()
 
-        if id(line) not in delete_features:
+        if line.length > command.noise or len(line_topology.start_linked_lines) >= 2:
+            for ind in [FIRST, LAST]:
+                if ind == LAST:
+                    line_topology.reverse()
+                linked_lines = line_topology.start_linked_lines
+                if len(linked_lines) == 2 and \
+                   is_open_arm(s_container, linked_lines[0]) and \
+                   is_open_arm(s_container, linked_lines[1]):
 
-            line_topology = Topology(s_container, line)
-            line_topology.orient_linked_lines()
-
-            if line.length > command.noise or len(line_topology.start_linked_lines) >= 2:
-                for ind in [FIRST, LAST]:
-                    if ind == LAST:
-                        line_topology.reverse()
-                    linked_lines = line_topology.start_linked_lines
-                    if len(linked_lines) == 2 and \
-                       is_open_arm(s_container, linked_lines[0]) and \
-                       is_open_arm(s_container, linked_lines[1]):
-
-                        if linked_lines[0].length <= command.noise and linked_lines[1].length <= command.noise:
-                            p = []
-                            for linked_line in linked_lines:
-                                p.append(linked_line.coords[-1])
-                            p_line = LineString((p[0], p[1]))
-                            if p_line.disjoint(line):
-                                new_point = p_line.interpolate(.5, normalized=True)
-                                lst_coords = list(line.coords)
-                                new_coord = [(new_point.x, new_point.y)]
-                                lst_coords = new_coord + lst_coords
-                                line.coords = lst_coords
-                                s_container.update_spatial_index(line)
-                                delete_features.append(id(linked_lines[0]))
-                                delete_features.append(id(linked_lines[1]))
-                                s_container.del_features(linked_lines)
-                                geo_content.nbr_noise += 2
-                            else:
-                                # The new line is touching something ===> No edtion
-                                pass
+                    if linked_lines[0].length <= command.noise and linked_lines[1].length <= command.noise:
+                        p = []
+                        for linked_line in linked_lines:
+                            p.append(linked_line.coords[-1])
+                        p_line = LineString((p[0], p[1]))
+                        if p_line.disjoint(line):
+                            new_point = p_line.interpolate(.5, normalized=True)
+                            lst_coords = list(line.coords)
+                            new_coord = [(new_point.x, new_point.y)]
+                            lst_coords = new_coord + lst_coords
+                            line.coords = lst_coords
+                            
+                            geo_content.nbr_noise += 2
                         else:
-                            # There must be 2 lines under the noise tolerance
+                            # The new line is touching something ===> No edtion
                             pass
                     else:
-                        # The line to edit must have an open arm (no links)
+                        # There must be 2 lines under the noise tolerance
                         pass
-            else:
-                # The line is not linked to other line
-                pass
+                else:
+                    # The line to edit must have an open arm (no links)
+                    pass
         else:
-            # Feature already processed
+            # The line is not linked to other line
             pass
 
 
@@ -630,9 +620,9 @@ def manage_cleaning(command, geo_content):
 #        clean_noise_type_2(s_container, command, geo_content)
 
     # Clean the noise type 1
-#    if command.noise:
-#        clean_noise(s_container, command, geo_content)
-#        clean_noise(s_container, command, geo_content)
+    if command.noise:
+        clean_noise(s_container, command, geo_content)
+        clean_noise(s_container, command, geo_content)
 
     # Clean junction in X form
 #    if command.xjunction >= 0:
@@ -722,11 +712,12 @@ j = LineStringSc(((14,9),(12,9),(10,10)))
 lst_x_junction = [f,g,h,i,j]
 
 # Test for noise type 1
-k = LineString (((10,0), (30,0)))
-l = LineString (((30,0),(35,3)))
-m = LineString (((30,0),(35,-3)))
-n = LineString (((5,3),(10,0)))
-o = LineString (((10,0),(5,-3)))
+k = LineStringSc(((10,0), (30,0)))
+l = LineStringSc(((30,0),(35,3)))
+m = LineStringSc(((30,0),(35,-3)))
+n = LineStringSc(((5,3),(10,0)))
+o = LineStringSc(((10,0),(5,-3)))
+lst_noise1 = [k,l,m,n,o]
 
 # Test for join
 
@@ -753,7 +744,7 @@ y = LineStringSc(((60,0),(55,0)))
 z = LineStringSc(((60,0),(65,-2)))
 zz = LineStringSc(((65,2),(60,0)))
 
-geo_content.in_features = lst_extend
+geo_content.in_features = lst_noise1
 command = SpatialContainer()
 command.yjunction = 5
 command.xjunction = 10
