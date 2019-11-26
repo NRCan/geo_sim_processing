@@ -8,7 +8,7 @@ from typing import List
 from shapely.geometry import Point, LineString, Polygon
 
 
-from lib_geosim import GenUtil, ChordalAxis
+from lib_geosim import GenUtil, ChordalAxis, LineStringSc
 
 
 def managae_arguments():
@@ -88,10 +88,30 @@ for in_feature in geo_content.in_features:
 
 geo_content.in_features = None
 
-i = 0
-for key in polygon_dict.keys():
-    ca = ChordalAxis(polygon_dict[key], triangle_dict[key], 0, 0.001)
-    centre_lines = ca.get_skeletton(noise=10)
+
+a = LineStringSc([(0,0), (1,1), (2,2), (0,0)])
+case0 = [a]
+
+a = LineStringSc([(0,0), (1,1), (2,0), (0,0)])
+b = LineStringSc([(1,1), (3,1), (2,0), (1,1)])
+case1 = [a,b]
+
+a = LineStringSc([(0,0), (1,1), (2,0), (0,0)])
+b = LineStringSc([(1,1), (3,1), (2,0), (1,1)])
+c = LineStringSc([(2,0), (3,1), (4,0), (2,0)])
+case2 = [a,b,c]
+
+a = LineStringSc([(0,0), (1,1), (2,0), (0,0)])
+b = LineStringSc([(1,1), (3,1), (2,0), (1,1)])
+c = LineStringSc([(2,0), (3,1), (4,0), (2,0)])
+d = LineStringSc([(1,1), (2,2), (3,1), (1,1)])
+case2 = [a,b,c,d]
+
+#triangle_dict = {1:case2}
+
+for key in triangle_dict.keys():
+    ca = ChordalAxis(triangle_dict[key], GenUtil.ZERO)
+    centre_lines = ca.get_skeletton()
     # Store the chordal axis in the output
     for centre_line in centre_lines:
         centre_line.sb_layer_name = command.skeleton

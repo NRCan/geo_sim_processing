@@ -720,7 +720,7 @@ class ChordalAxis(object):
     BOTTLENECK = 'bottleneck'
     OTHER = 'other'
 
-    def __init__(self, polygon, triangles, minimal_width, search_tolerance=GenUtil.ZERO):
+    def __init__(self, triangles, search_tolerance=GenUtil.ZERO):
         """Constructor of the class
 
         Parameters:
@@ -734,13 +734,12 @@ class ChordalAxis(object):
         Return value: None
         """
         self.s_cont_triangles = SpatialContainer()
-        self._minimal_width = minimal_width
         self._search_tolerance = search_tolerance
-        self._process_polygon(polygon)
+#        self._process_polygon(polygon)
         self._load_triangles(triangles)
 
-        _Triangle.line_segments = self.line_segments
-        _Triangle.perimeters = self.perimeter_distance
+#        _Triangle.line_segments = self.line_segments
+#        _Triangle.perimeters = self.perimeter_distance
 
         self._build_skeleton()
 #        self._prune_skeleton()
@@ -1155,7 +1154,7 @@ class _Triangle(LineStringSc):
             internal_sides = []  # List of the number of the internal side
             external_sides = []  # List of the number of the external side
 
-            nbr_internal = self.get_nbr_internal()
+            nbr_adjacent = self.get_nbr_adjacent()
 
             coords = list(self.coords)
             for i in range(3):
@@ -1166,22 +1165,22 @@ class _Triangle(LineStringSc):
                     external_sides.append(i)
 
             # Process each case depending on the number of internal side of the triangle
-            if nbr_internal == 0:
+            if nbr_adjacent == 0:
                 # Degenerated polygon with one triangle no skeleton line added
                 pass
 
-            if nbr_internal == 1:
+            if nbr_adjacent == 1:
                 # Terminal triangle no skeleton line added
                 pass
 
-            if nbr_internal == 2:
+            if nbr_adjacent == 2:
                 # Sleeve triangle skeleton added between the mid point of each chord
                 internal_side0 = internal_sides[0]
                 internal_side1 = internal_sides[1]
                 self._centre_lines.append(LineStringSc([mid_side_points[internal_side0], mid_side_points[internal_side1]]))
                 self._mid_triangle = GenUtil.mid_point(mid_side_points[internal_side0], mid_side_points[internal_side1])
 
-            if nbr_internal == 3:
+            if nbr_adjacent == 3:
                 # Junction triangle skeleton added.
                 obtuse_angle = self._get_obtuse_angle()
                 if (obtuse_angle is None):
@@ -1204,14 +1203,14 @@ class _Triangle(LineStringSc):
 
         return self._centre_lines
 
-    def get_nbr_internal(self):
-        """Extract the number of side of the triangle which are completely inside the polygon.
+    def get_nbr_adjacent(self):
+        """Extract the number of side of the triangle which are adjacent to another polygon.
 
         Three scenarios are possible 0, 1, 2 ou 3 sides completely inside the polygon:
-            0: The triangle is completely inside. This is called a Junction triangle
-            1: The Triangle as on side that lies on the polygon. This is called a Sleeve triangle
-            2: The Triangle has only one side completely inside the polygon. This is called a Terminal triangle.
-            3: Special case where the polygon has only 3 sides
+            3: The triangle is completely inside. This is called a Junction triangle
+            2: The Triangle as on side that lies on the polygon. This is called a Sleeve triangle
+            1: The Triangle has only one side completely inside the polygon. This is called a Terminal triangle.
+            0: Special case where the polygon has only 3 sides
 
         Return value:
             - Number of side completely inside the polygon. Value between 0 and 3.
@@ -1219,19 +1218,28 @@ class _Triangle(LineStringSc):
 
         if self._nbr_internal is None:
             self._side_type = []
-            self._nbr_internal = 0
+            self._nbr_adjacent = 0
             coords = list(self.coords)
             for i in range(3):
-                if _Triangle.line_segments.is_line_segment_present(coords[i], coords[i+1]):
+                tmp_line = LineString((coords[i], coords[i+1]))
+                mid_point = tmp_line.interpolate(.5, normalized=True)
+                bbox = GenUtil.build_bounding_box(GenUtil.ZERO, mid_point.bounds)
+                adjacents = list(self._sc_scontainer.get_features(bounds=bbox, remove_features=[self]))
+                tmp_superimposed = True
+                for adjacent in adjacents:
+                    if mid_point.distance(adjacent) <= GenUtil.ZERO:
+                        tmp_superimposed = False
+                        break
+                if tmp_superimposed:
                     self._side_type.append(_Triangle.SUPERIMPOSED)
                 else:
                     self._side_type.append(_Triangle.INTERNAL)
-                    self._nbr_internal += 1
+                    self._nbr_adjacent += 1
         else:
             # nbr_internal has already been calculated... nothing to do
             pass
 
-        return self._nbr_internal
+        return self._nbr_adjacent
 
     def get_category(self, minimal_width):
         """Determines if a triangle is a type bottleneck (to narrow) or a polygon other
