@@ -26,7 +26,7 @@ import math, sys
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.prepared import prep
 from shapely import affinity
-from lib_geosim import GenUtil, PointSc, LineStringSc, SpatialContainer
+from lib_geosim import GenUtil, PointSc, LineStringSc, SpatialContainer, GeoSimException
 
 # Internal constant ===> Should be modify with care...
 _DIAMETER = "diameter"
@@ -391,7 +391,7 @@ class PointSb(PointSc):
         self.sb_layer_name = layer_name
         self.sb_properties = properties
         self.sb_original_type = GenUtil.POINT
-        self.sb_geom_type = GenUtil.POINT  # For faster acces than calling C (geom_type)
+        self.sb_geom_type = GenUtil.POINT  # For faster access than calling C (geom_type)
         self._sb_fast_access = fast_access
         if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
@@ -738,54 +738,50 @@ class AlgoSherbend(object):
 
         # Load all the features in the spatial container
         for feature in geo_content.in_features:
-            if feature.geom_type == GenUtil.POLYGON:
+            diameter = command.dlayer_dict[feature.sb_layer_name]
+            min_adj_area = self.calculate_min_adj_area(diameter)
+            if feature.geom_type == GenUtil.POINT:
+                out_feature = PointSb(feature.coords, feature.sb_layer_name, feature.sb_properties)
+                # Add the feature
+                self.s_container.add_feature(out_feature)
+            elif feature.geom_type == GenUtil.LINE_STRING:
+                out_feature = out_feature = LineStringSb(feature.coords, GenUtil.LINE_STRING, min_adj_area, feature.sb_layer_name,
+                                                         feature.sb_properties)
+                # Add the feature
+                self.s_container.add_feature(out_feature)
+            elif feature.geom_type == GenUtil.POLYGON:
+                adj_area = self._calculate_adj_area(feature.exterior.coords)
+                # Only keep the polygon over the minimum adjusted area
+                if not command.exclude_polygon or adj_area > min_adj_area:
+                    # Deconstruct the Polygon into a list of LineString with supplementary information
+                    # needed to reconstruct the original Polygon
+                    ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, min_adj_area,
+                                               feature.sb_layer_name, feature.sb_properties)
+                    interiors = feature.interiors
+                    int_features = []
+                    # Extract the interiors as LineString
+                    for interior in interiors:
+                        adj_area = self._calculate_adj_area(interior.coords)
+                        # Only keep the interior (hole) over the minimal adjusted area
+                        if not command.exclude_hole or adj_area > min_adj_area:
+                            interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, min_adj_area, None, None)
+                            int_features.append(interior)
+                        else:
+                            geo_content.nbr_del_holes += len(feature.interiors)
 
-                diameter = command.dlayer_dict[feature.sb_layer_name]
-                if diameter != -1:
-                    adj_area = self._calculate_adj_area(feature.exterior.coords)
-                    min_adj_area = self.calculate_min_adj_area(diameter)
-                    # Only keep the polygon over the minimum adjusted area
-                    if not command.exclude_polygon or adj_area > min_adj_area:
-                        # Deconstruct the Polygon into a list of LineString with supplementary information
-                        # needed to reconstruct the original Polygon
-                        ext_feature = LineStringSb(feature.exterior.coords, GenUtil.POLYGON_EXTERIOR, min_adj_area,
-                                                   feature.sb_layer_name, feature.sb_properties)
-                        interiors = feature.interiors
-                        int_features = []
-                        # Extract the interiors as LineString
-                        for interior in interiors:
-                            adj_area = self._calculate_adj_area(interior.coords)
-                            # Only keep the interior (hole) over the minimal adjusted area
-                            if not command.exclude_hole or adj_area > min_adj_area:
-                                interior = LineStringSb(interior.coords, GenUtil.POLYGON_INTERIOR, min_adj_area, None, None)
-                                int_features.append(interior)
-                            else:
-                                geo_content.nbr_del_holes += len(feature.interiors)
+                    # Add interior features needed for Polygon reconstruction
+                    ext_feature.sb_interiors = int_features
 
-                        # Add interior features needed for Polygon reconstruction
-                        ext_feature.sb_interiors = int_features
-
-                        # Add the exterior and the interior independently
-                        self.s_container.add_feature(ext_feature)  # Add the exterior
-                        self.s_container.add_features(int_features)  # Add the interiorS
-                    else:
-                        # Do not add the feature (exterior and interiors ) in the spatial container
-                        # Update some stats
-                        geo_content.nbr_del_polygons += 1
-                        geo_content.nbr_del_holes += len(feature.interiors)
+                    # Add the exterior and the interior independently
+                    self.s_container.add_feature(ext_feature)  # Add the exterior
+                    self.s_container.add_features(int_features)  # Add the interiorS
                 else:
-                    # Feature in a layer not processed
-                    pass
+                    # Do not add the feature (exterior and interiors ) in the spatial container
+                    # Update some stats
+                    geo_content.nbr_del_polygons += 1
+                    geo_content.nbr_del_holes += len(feature.interiors)
             else:
-                if feature.geom_type == GenUtil.POINT:
-                    out_feature = PointSb(feature.coords, feature.sb_layer_name, feature.sb_properties)
-                elif feature.geom_type == GenUtil.LINE_STRING:
-                    out_feature = LineStringSb(feature.coords, GenUtil.LINE_STRING, feature.sb_layer_name,
-                                               feature.sb_properties)
-                else:
-                    raise Exception ("Invalid geometry type: {}".format(feature.geometry))
-
-                self.s_container.add_feature(out_feature)  # Add the feature
+                raise GeoSimException ("Invalid geometry type: {}".format(feature.geometry))
 
         return
 

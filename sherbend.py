@@ -18,6 +18,8 @@ def manage_arguments():
     parser.add_argument("out_file", help="output vector file simplified")
     parser.add_argument("-eh", "--exclude_hole", action='store_true', help="exclude holes (interior) below minimum adjusted area")
     parser.add_argument("-ep", "--exclude_polygon", action='store_true', help="exclude polygons below minimum adjusted area")
+    parser.add_argument("-pl", "--per_layer", action='store_true', help="evaluate topology per layer only (feature from different layers can overlap " +
+                                                                                "after simplification)")
 
     # Set exclusively mutual parameters
     group = parser.add_mutually_exclusive_group()
@@ -51,107 +53,6 @@ def manage_arguments():
         raise Exception('Output file is present: {}'.format(command.out_file))
 
     return command
-
-
-"""
-a = LinearRing(((0,0),(1,1),(2,0)))
-b = a.is_ccw
-a = LinearRing(((2,0),(1,1),(0,0)))
-b = a.is_ccw
-
-
-a = Polygon((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
-a = orient(Polygon(a.exterior.coords), GenUtil.ANTI_CLOCKWISE) # Orient line clockwiswe
-a = LineStringSb(a.exterior.coords)
-a.simplify(15)
-
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
-a.simplify(5)
-
-a = Polygon (( (1647625.889999593, 195454.0860011009),\
-(1647630.371999593, 195435.4470011005),\
-(1647640.775999592, 195439.1370011028),\
-(1647649.498999593, 195447.547001102),\
-(1647644.202999593, 195459.5080011021),\
-(1647638.619999593, 195469.246001103),\
-(1647618.486999592, 195492.9860011013),\
-(1647623.151999593, 195464.8150011022),\
-(1647625.889999593, 195454.0860011009)))
-a.simplify(1.5)
-
-a = LineStringSb(((0,0), (2,2)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,2)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,2), (4,0), (5,3), (6,0), (7,.1), (8,0)))
-a.simplify(5)
-
-# Closed star
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (2.5,1.5), (3,0), (0,0) ))
-a.simplify(5)
-
-# Closed star
-a = LineStringSb(((0,0), (0,3), (1.5,2.5), (3,3), (3,0), (0,0) ))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,1), (3,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,1)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (3,1), (4,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (1,1), (2,0), (0,0)))
-a.simplify(5)
-
-a = LineStringSb(((0,0), (0,2), (1,1), (2,2), (2,0), (0,0)))
-a.simplify(5)
-
-a = LineStringSb((((0,2), (1,1), (2,2), (2,0), (0,0), (0,2))))
-a.simplify(5)
-
-a = LineStringSb((((1,1), (2,2), (2,0), (0,0), (0,2), (1,1))))
-a.simplify(5)
-
-a = LineStringSb((((2,2), (2,0), (0,0), (0,2), (1,1), (2,2))))
-a.simplify(5)
-
-a = LineStringSb((((2,0), (0,0), (0,2), (1,1), (2,2), (2,0))))
-a.simplify(5)
-
-a = LineStringSb((( (0,0),(0,3),(1,2),(3,3),(3,0),(1,1),(0,0)) ))
-a.simplify(5)
-"""
-
-
-@dataclass
-class Command:
-    """Contains the parameters of the command.
-
-        Keyword arguments:
-        in_file -- name of the input file
-        out_file -- name of the output file
-        diameter -- diameter of the bend to simplify
-        rotate_coord -- flag to enable/disable the rotation of closed line
-        simplicity -- flag to enable/disable the test for OGC simple line constraint
-        adjacency -- flag to enable/disable the test for adjacency constraint
-        intersection -- flag to enable/disable the test for connection constraint
-        add_vertex -- flag to enable/disable to add new vertex during bend simplification
-        multi_bend -- flag to enable/disable the simplification of multi bends (more than one bend)
-        verbose -- flag to enable/disable the verbose mode
-
-        """
-#    in_file: str
-#    out_file: str
-#    diameter: float
-#    verbose: bool
 
 
 @dataclass
@@ -193,8 +94,12 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_nam
 # Read the command line arguments
 command = manage_arguments()
 
-# Extract the list of layers
-in_layer_names = [layer_name for layer_name in command.dlayer_dict.keys()]
+if command.dlayer:
+    # Extract the list of layers
+    in_layer_names = [layer_name for layer_name in command.dlayer_dict.keys()]
+else:
+    # Read all the layers in the file
+    in_layer_names = None
 
 # Extract and load the layers of the input file
 GenUtil.read_in_file(command.in_file, geo_content, in_layer_names)
@@ -212,6 +117,13 @@ for layer_name in geo_content.layer_names:
 # Reset the value of dlayer
 command.dlayer_dict = tmp_dlayer_dict
 
+# Only keep in the in features the ones where the diameter is not -1
+tmp_in_features = []
+for feature in geo_content.in_features:
+    if command.dlayer_dict[feature.sb_layer_name] != -1:
+        tmp_in_features.append(feature)
+geo_content.in_features = tmp_in_features
+
 print("-------")
 print("Name of input file: {}".format(command.in_file))
 print("Name of output file: {}".format(command.out_file))
@@ -224,16 +136,37 @@ print("Number of features read: {}".format(len(geo_content.in_features)))
 print("-----")
 
 # Execute the Sherbend algorithm on the feature read
-sherbend = AlgoSherbend(command, geo_content)
-sherbend.process()
+if command.per_layer:
+    # Process each layer independently (do not check topology between layer)
+    tmp_in_features = geo_content.in_features
+    tmp_out_features = []
+    for layer_name in command.dlayer_dict.keys():
+        geo_content.in_features = []
+        geo_content.out_features = []
+        for feature in tmp_in_features:
+            if feature.sb_layer_name == layer_name:
+                geo_content.in_features.append(feature)
 
+        # Process feature per layer in one pprocess
+        sherbend = AlgoSherbend(command, geo_content)
+        sherbend.process()
+        # Copy the feature in the temporary outut
+        for feature in geo_content.out_features:
+            tmp_out_features.append(feature)
+
+    geo_content.out_features = tmp_out_features
+else:
+    # Process all layer in one pprocess (check topology between layer)
+    sherbend = AlgoSherbend(command, geo_content)
+    sherbend.process()
+
+# Print some processing stats
 print("Number of polygons excluded: {}".format(geo_content.nbr_del_polygons))
 print("Number of holes excluded: {}".format(geo_content.nbr_del_holes))
 print("Number of point features written: {}".format(geo_content.out_nbr_points))
 print("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
 print("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
 print("Number of holes written: {}".format(geo_content.out_nbr_holes))
-
 
 # Copy the results in the output file
 GenUtil.write_out_file(command.out_file, geo_content)
