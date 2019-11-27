@@ -1170,8 +1170,15 @@ class _Triangle(LineStringSc):
                 pass
 
             if nbr_adjacent == 1:
-                # Terminal triangle no skeleton line added
-                pass
+                # Terminal triangle add line from the extremity of the triangle up to mid opposite side
+                if internal_sides[0] == 0:
+                    coords_line = [coords[2], mid_side_points[0]]
+                if internal_sides[0] == 1:
+                    coords_line = [coords[0], mid_side_points[1]]
+                if internal_sides[0] == 2:
+                    coords_line = [coords[1], mid_side_points[2]]
+
+                self._centre_lines.append(LineStringSc(coords_line))
 
             if nbr_adjacent == 2:
                 # Sleeve triangle skeleton added between the mid point of each chord

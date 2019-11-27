@@ -253,7 +253,7 @@ def is_edition_needed(lst_coord_0, lst_coord_1, lst_coord_2):
 def calculate_mid_point(lst_coord_0, lst_coord_1, lst_coord_2):
 
     lst_coord = [[[None], [None], [None]], [[None], [None], [None]], [[None], [None], [None]]]
-    for coords in ([lst_coord_0, lst_coord_1, lst_coord_2]):
+    for i, coords in enumerate([lst_coord_0, lst_coord_1, lst_coord_2]):
         if len(coords) <= 2:
             lst_coord[i][0] = coords[0]
             mid_point = LineString((coords[0], coords[1])).interpolate(.5, normalized=True)
@@ -356,6 +356,7 @@ def calculate_mid_point(lst_coord_0, lst_coord_1, lst_coord_2):
 #                 # Junction must be formes by exactly 3 lines
 #                 pass
 #
+
 
 def clean_y_junction(s_container, geo_content):
     """Clean road junction that form forms a configuration in Y """
@@ -536,7 +537,10 @@ def join_lines(s_container, command, geo_content, tolerance):
                         if merged_line.geom_type == GenUtil.LINE_STRING:
                             lst_merged_line_coord = list(merged_line.coords)
                             line.coords = lst_merged_line_coord
-                            s_container.del_feature(target_line)
+                            try:
+                                s_container.del_feature(target_line)
+                            except Exception:
+                                pass
                             geo_content.nbr_join += 1
                         else:
                             # Possible problem with the merged line go to next line
@@ -604,6 +608,12 @@ def manage_cleaning(command, geo_content):
     geo_content.in_nbr_line_strings = len(geo_content.in_features)
     geo_content.in_features = []
 
+
+#    # Clean junction in Y form
+#    if command.yjunction >= 0:
+#        clean_y_junction(s_container, geo_content)
+
+
     # Clean the noise type 2
     if command.noise:
         clean_noise_type_2(s_container, command, geo_content)
@@ -614,18 +624,18 @@ def manage_cleaning(command, geo_content):
         clean_noise_type_1(s_container, command, geo_content)
 
     # Clean junction in X form
-#    if command.xjunction >= 0:
-#        clean_x_junction(s_container, command, geo_content)
+    if command.xjunction >= 0:
+        clean_x_junction(s_container, command, geo_content)
 
     # Clean junction in Y form
-#    if command.yjunction >= 0:
-#        clean_y_junction(s_container, geo_content)
+    if command.yjunction >= 0:
+        clean_y_junction(s_container, geo_content)
 
     # Join line
-#    if command.join >= 0:
-#        for i in range(command.iteration):
-#            tolerance = command.join * (float(i + 1) / command.iteration)
-#            join_lines(s_container, command, geo_content, tolerance)
+    if command.join >= 0:
+        for i in range(command.iteration):
+            tolerance = command.join * (float(i + 1) / command.iteration)
+            join_lines(s_container, command, geo_content, tolerance)
 
     # Extend line
     if command.extend >= 0:

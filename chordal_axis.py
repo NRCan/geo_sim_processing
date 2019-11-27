@@ -17,7 +17,7 @@ def managae_arguments():
     # Setting the parameters of the command line
     parser = argparse.ArgumentParser()
     parser.add_argument("in_file", help="input vector file")
-    parser.add_argument("-p", "--polygon", type=str, help="input layer name containing the polygon")
+#    parser.add_argument("-p", "--polygon", type=str, help="input layer name containing the polygon")
     parser.add_argument("-t", "--tesselation", type=str, help="input layer name containing the result of the tesselation (triangle)")
     parser.add_argument("-a", "--attribute", type=str, help="name of attribute linking the triangle to the polygon")
     parser.add_argument("-s", "--skeleton", type=str, help="name of output skeleton layer (centre line)")
@@ -53,7 +53,6 @@ class GeoContent:
     driver: None
     schemas: dict
     in_nbr_triangles: 0
-    in_nbr_polygons: 0
     in_features: List[object]
     out_features: List[object]
     out_nbr_points: 0
@@ -62,7 +61,7 @@ class GeoContent:
     bounds: List[object] = None
 
 geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_features=[],
-                         in_nbr_triangles=0, in_nbr_polygons=0, bounds=[], out_nbr_points=0,
+                         in_nbr_triangles=0, bounds=[], out_nbr_points=0,
                          out_nbr_line_strings=0, out_nbr_polygons=0)
 
 
@@ -71,23 +70,19 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, in_features=[], out_
 command = managae_arguments()
 
 # Extract and load the layers of the input file
-layers = [command.polygon, command.tesselation]
+layers = [command.tesselation]
 GenUtil.read_in_file (command.in_file, geo_content, layers)
 
-polygon_dict = {}
 triangle_dict = {}
 for in_feature in geo_content.in_features:
     key = in_feature.sb_properties[command.attribute]
-    if in_feature.sb_layer_name == command.polygon:
-        polygon_dict[key] = in_feature
+    if key in triangle_dict.keys():
+        triangle_dict[key].append(in_feature)
     else:
-        if key in triangle_dict.keys():
-            triangle_dict[key].append(in_feature)
-        else:
-            triangle_dict[key] = [in_feature]
+        triangle_dict[key] = [in_feature]
 
+# Reset in_features
 geo_content.in_features = None
-
 
 a = LineStringSc([(0,0), (1,1), (2,2), (0,0)])
 case0 = [a]
@@ -107,7 +102,7 @@ c = LineStringSc([(2,0), (3,1), (4,0), (2,0)])
 d = LineStringSc([(1,1), (2,2), (3,1), (1,1)])
 case2 = [a,b,c,d]
 
-#triangle_dict = {1:case2}
+#triangle_dict = {1:case1}
 
 for key in triangle_dict.keys():
     ca = ChordalAxis(triangle_dict[key], GenUtil.ZERO)
@@ -120,7 +115,6 @@ for key in triangle_dict.keys():
 
 print ("-------")
 print("Name of input file: {}".format(command.in_file))
-print("Name of input polygon layer: {}".format(command.polygon))
 print ("Name of input tesselation layer: {}".format(command.tesselation))
 print ("Nampe of output skeleton layer: {}".format(command.skeleton))
 print ("-----")
@@ -132,4 +126,3 @@ GenUtil.write_out_file_append (command.in_file, geo_content)
 
 print ("Number of point features written: {}".format(geo_content.out_nbr_points))
 print ("Number of line string features written: {}".format(geo_content.out_nbr_line_strings))
-print ("Number of polygon written: {}".format(geo_content.out_nbr_polygons))
