@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 # -=- encoding: utf-8 -=-
 
-#####################################################################################################################################
+
 
 """
     This algorithm CIT-S implements the Wang Generalization algotithm with constraint checking
@@ -19,7 +19,6 @@
 
 """
 
-#####################################################################################################################################
 
 import math, sys
 
@@ -29,19 +28,35 @@ from shapely import affinity
 from lib_geosim import GenUtil, PointSc, LineStringSc, SpatialContainer, GeoSimException
 
 # Internal constant ===> Should be modify with care...
-_DIAMETER = "diameter"
 _AREA_CMP_INDEX = .75  # Compactness index factor applied to the adjusted area
 
 #Internal key word constants
 _BURNED = "Burned"
+_DIAMETER = "diameter"
 _SIMPLIFIED = 'Simplified'
 _NOT_SIMPLIFIED = 'NotSimplified'
 _UNSIMPLIFIABLE = 'Unsimplifiable'
 
 
 class LineStringSb(LineStringSc):
+    """
+    A class to represent a LineString used by the SherBend algorithm
 
-    """LineString specialization for the SherBend algorithm"""
+    Attributes
+    ----------
+    coords : List
+        A list of coordinates (x,y)
+    original_type: str
+        The original type of the feature
+    min_adj_are : float
+        The minimal adjusted area below which the vends are deleted
+    properties : dict
+        The dictionary of the properties (attributes of the features)
+    fast_access : Boolean
+        A flag to indicate if we keep a copy od the coordinate in order to accelrate the access becase
+        the access to the C function is slow
+
+    """
 
     def __init__(self, coords, original_type, min_adj_area, layer_name, properties, fast_access=True):
         super().__init__(coords)
@@ -58,8 +73,8 @@ class LineStringSb(LineStringSc):
         self.sb_is_simplest = False  # The line is not at its simplest form
         self.sb_bends = []  # Holder for the bend of the line
 
-    @property
     # Is the line string closed
+    @property
     def sb_is_closed(self):
         try:
             return self._sb_is_closed
@@ -114,7 +129,17 @@ class LineStringSb(LineStringSc):
             return self._vertex_orientation
 
     def _remove_colinear_vertex(self):
-        """This method remove the co linear vertex in the line string. Also handles closed line"""
+        """This method remove the co linear vertex in the line string. Also handles closed line
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None
+        """
+
         if len(self.coords) <= 2:
             # Nothing to do with a line with 2 points
             pass
@@ -134,7 +159,17 @@ class LineStringSb(LineStringSc):
     def _rotate_start_bend(self):
         """Rotate a closed line string so the start of the line is also the start of a clockwise bend
 
-        To be done on closed line only"""
+        To be done on closed line only
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None
+
+        """
 
         rotate = None
         max_v = len(self.vertex_orientation)
@@ -159,10 +194,19 @@ class LineStringSb(LineStringSc):
     def _extract_coords(self, i,j):
         """Extract the coordinate between index [i,j]
 
-        Return
-            List of x,y coordinates
+        If j is lower than i act like a circular array and avoid duplication of first/last vertice
 
-        If j is lower than i act like a circular array and avoid duplication of first/last vertice"""
+        Parameters
+        ----------
+        i,j : int
+            Index used to extract a sub list
+
+        Return
+        ------
+        List
+            list of (x,y) coordinates
+
+        """
 
         if i <= j:
             lst_coords = self.coords[i:j+1]
@@ -171,25 +215,21 @@ class LineStringSb(LineStringSc):
 
         return lst_coords
 
-    def extract_sub_line_string(self, i, j):
-        """Extract a sub line string
-
-        Return
-            Sub Linestring"""
-
-        lst_coords = self._extract_coords(i, j)
-        if len(lst_coords) >= 2:
-            line = LineString(lst_coords)
-        else:
-            # create an empty line
-            line = LineString(None)
-
-        return line
-
     def _change_inflexion(self, i):
         """Flag if there is an inflexion between at the specified vertices.
 
-        There is inflexion when a change of orientation occurs from clock wise to anti clocwise or vice cersa"""
+        There is inflexion when a change of orientation occurs from clock wise to anti clocwise or vice cersa
+
+        Parameters
+        ----------
+        i : int
+            Index of for vertex orientation
+
+        Return
+        ------
+        bool
+            Flag indicating if an inflexion occurs or not
+        """
 
         max_v = len(self.vertex_orientation)
         if (self.vertex_orientation[i] == GenUtil.ANTI_CLOCKWISE and
@@ -203,7 +243,17 @@ class LineStringSb(LineStringSc):
         return inflexion
 
     def _add_bends(self, inflexions):
-        """Add then to the line from the inflexion list"""
+        """Add Bend to the line from the inflexion list
+
+        Parameters
+        ----------
+        inflexions : List
+            List of the inflexions in the list
+
+        Return
+        ------
+        None
+        """
 
         for k in range(len(inflexions) - 1):
             i = inflexions[k][0]
@@ -211,7 +261,16 @@ class LineStringSb(LineStringSc):
             self.sb_bends.append(Bend(i, j, self._extract_coords(i, j)))
 
     def _create_bends(self):
-        """Create the bends in the line"""
+        """Create the bends in the line
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None
+        """
 
         # Delete any actual bend information
         self.sb_bends = []
@@ -257,7 +316,16 @@ class LineStringSb(LineStringSc):
         return
 
     def _sort_bends(self):
-        """Sort the bends from by order of min_adj_are"""
+        """Sort the bends by order of ascending min_adj_are
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None
+        """
 
         lst_bends = []
         for i, bend in enumerate(self.sb_bends):
@@ -271,7 +339,19 @@ class LineStringSb(LineStringSc):
         return lst_bends
 
     def _offset_bend_ij(self, i, j):
-        """"Offset the value of the different bend i,j because some of the vertice of the line were removed"""
+        """"Offset the value of the different bend i,j because one or more vertice of the line were removed
+
+        Handle circular list when j < i
+
+        Parameters
+        ----------
+        i,j : int
+            Index in the line where the vertice were removed
+
+        Return
+        ------
+        None
+        """
 
         if i < j:
             offset = j-i-1
@@ -290,7 +370,15 @@ class LineStringSb(LineStringSc):
     def _make_line_ccw(self):
         """Make sure the line is counter clockwise.
 
-        Note: Only apply to closed line"""
+        Only apply to closed line
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None"""
 
         if self.sb_is_closed:
             tmp_ring = LinearRing(self.coords)
@@ -299,7 +387,16 @@ class LineStringSb(LineStringSc):
                 self.coords = list(reversed(self.coords))
 
     def simplify(self, diameter, s_constraints=None):
-        """Simplify the line by reducing each bend"""
+        """Simplify the line by reducing each bend
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ------
+        None
+        """
 
         nbr_bend_simplified = 0
 
@@ -384,6 +481,19 @@ class LineStringSb(LineStringSc):
 
 
 class PointSb(PointSc):
+    """
+    A class to represent a Point used by the SherBend algorithm
+
+    Attributes
+    ----------
+    coords : tuple
+        A tuple (x,y) representing one coordinate
+    properties : dict
+        The dictionary of the properties (attributes of the features)
+    fast_access : Boolean
+        A flag to indicate if we keep a copy od the coordinate in order to accelrate the access becase
+        the access to the C function is slow
+    """
 
     def __init__(self, coords, layer_name, properties, fast_access=True):
         super().__init__(coords)
@@ -405,7 +515,6 @@ class PointSb(PointSc):
 
     @coords.setter
     def coords(self, coords):
-        print("Need to update the spatial container...")
         Point.coords.__set__(self, coords)
         if self._sb_fast_access:
             self.__lst_coords = list(super().coords)
@@ -413,7 +522,20 @@ class PointSb(PointSc):
 
 class SpatialConstraints(object):
     """
+    A class to represent validation of spatial constraints
+
+    Attributes
+    ----------
+    simplicity : bool
+        Flag indicating if simplicity constraint (self crossing) is validated
+    crossing : bool
+        Flag indicating if crossing constraint (intersection between feature) is validated
+    sidedness : bool
+        Flag indicating if sidedness constraint (relative adjacency) is validated
+    s_container : SpatialContainer
+        Object containing all the feature
     """
+
 
     def __init__(self, simplicity=True, crossing=True, sidedness=True, s_container=None):
         """Constructor for the SpatialConstraint class"""
@@ -427,7 +549,19 @@ class SpatialConstraints(object):
         self.nbr_err_sidedness = 0
 
     def check_constraints(self, line, bend):
-        """Validate the spatial constraint"""
+        """Validate the different spatial constraint
+
+        Parameters
+        ----------
+        line : LineStringSb
+            LineString to validate for spatial constraints
+        bend : Bend
+            Bend to validate for spatial constraints
+
+        Returns
+        -------
+            bool
+            Flag indicating if the spatial constrainst are valid or not"""
 
         in_conflict = False
 
@@ -445,13 +579,17 @@ class SpatialConstraints(object):
     def _check_simplicity(self, line, new_sub_line):
         """Check if the new sub line creates a self intersection in the line
 
-        Parameter:
-            line -- LineString to verify for self intersection
-            new_sub_line -- Replacement line string
+        Parameter
+        ---------
+        line : LineStringSb
+            LineString to validate for self intersection
+        new_sub_line : LineString
+            New LineString to validate for self intersection
 
-        Return
-            Boolean True if the line is simple or False otherwise
-
+        Returns
+        -------
+            Boolean
+                Flag indicating if the line is simple or not
         """
 
         # Create a very short line so that the line does not -touch the start and end line (increase performance)
@@ -466,6 +604,20 @@ class SpatialConstraints(object):
         return in_conflict
 
     def _check_crossing(self, line, new_sub_line):
+        """Check if the new sub line intersects other line
+
+            Parameter
+            ---------
+            line : LineStringSb
+                LineString to validate for intersection with other line
+            new_sub_line : LineString
+                New LineString to validate for intersection with other line
+
+            Returns
+            -------
+                Boolean
+                    Flag indicating if the line intersect with other line or not
+        """
 
         features = self.s_container.get_features(new_sub_line.bounds, remove_features=(line,))
 
@@ -481,6 +633,20 @@ class SpatialConstraints(object):
         return in_conflict
 
     def _check_sidedness(self, line, pol):
+        """Validate the line for adjacency constraints
+
+        Parameter
+        ---------
+        line : LineStringSb
+            LineString to validate for adjacency
+        new_sub_line : LineString
+            New Polygon to check for adjacency
+
+        Returns
+        -------
+            Boolean
+                Flag indicating if the line creates or not adjacency problem
+        """
 
         features = self.s_container.get_features(pol.bounds, remove_features=(line,))
         # Check that the new middle line does not cross any interior holes of the polygon
@@ -698,13 +864,9 @@ class AlgoSherbend(object):
         Return value:
             None
         """
-
-#        Algorithm.__init__(self)
         
         self.command = command
         self.geo_content = geo_content
-#        ray = command.diameter / 2.0
-#        self.min_adj_area = _AREA_CMP_INDEX * math.pi * ray ** 2.0
         self.nbr_bend_simplified = 0
 
     def calculate_min_adj_area(self, diameter):
