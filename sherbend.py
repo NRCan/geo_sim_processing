@@ -101,7 +101,7 @@ else:
     # Read all the layers in the file
     in_layer_names = None
 
-# Extract and load the layers of the input file
+# Read and load the layers of the input file
 GenUtil.read_in_file(command.in_file, geo_content, in_layer_names)
 
 # Set the diameter for each layer
