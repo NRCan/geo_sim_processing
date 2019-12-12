@@ -8,6 +8,7 @@ Features are tested for equality with the shapely method object.almost_equals
 Order of the feature in each geopackage does need not to be preserved
 """
 
+import fiona
 import sys
 from dataclasses import dataclass
 from typing import List
