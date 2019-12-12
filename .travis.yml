@@ -11,6 +11,8 @@ install:
   - conda config --prepend channels conda-forge
   - conda update -q conda
   - conda info -a
+  - conda create -n ci_env python=3.6 fiona obspy=1.1.1
+  - conda install -n ci_env shapely rtree
   - conda create -q -n ci_env python=3.6 shapely rtree conda create fiona obspy=1.1.1
   - source activate ci_env
 script:
