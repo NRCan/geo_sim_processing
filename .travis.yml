@@ -13,6 +13,6 @@ install:
   - conda info -a
   - conda create -q -n ci_env python=3.7 shapely rtree
   - source activate ci_env
-  - conda install fiona
+  - conda install -c conda-forge fiona
 script:
   - python test_sherbend.py ./data/test_topo_sim.gpkg ./data/test_topo_sim.gpkg 
