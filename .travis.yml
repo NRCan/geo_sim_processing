@@ -11,7 +11,7 @@ install:
   - conda config --prepend channels conda-forge
   - conda update -q conda
   - conda info -a
-  - conda create -q -n ci_env python=3.7 shapely rtree
+  - conda create -q -n ci_env python=3.6 shapely rtree
   - source activate ci_env
   - conda install -c conda-forge fiona
 script:
