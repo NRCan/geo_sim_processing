@@ -6,25 +6,17 @@ import math
 from shapely import affinity
 from shapely.ops import snap
 
-ext = [(0,0),(0,100),(100,100),(100,0), (0,0)]
-int = [[(10,10),(10,20),(20,20),(20,10),(10,10)], [(50,50),(50,60),(60,60),(60,50),(50,50)]]
-ext1 = [(0,0),(0,100),(200,200),(100,0), (0,0)]
-int1 = [[(10,10),(10,20),(30,30),(20,10),(10,10)]]
+from shapely.geometry import Point
+from shapely.strtree import STRtree
+points = []
+for i in range(10):
+    point = Point((i,i))
+    point._t = i*100
+    points.append(point)
+tree = STRtree(points)
+result = tree.query(Point(2,2).buffer(0.99))
 
-pol = PolygonSc(ext)
-pol.exterior = ext1
-ext2 = pol1.exterior
-pol1.interiors.coords = int1
-ext1 = pol.exterior
-pol.exterior = ext
-
-pol = PolygonSc(int, ext)
-ext1 = pol.exterior
-int1 = pol.interior
-pol.exterior = ext
-pol.interiors = int
-
-
+0/0
 
 
 class Foo(object):

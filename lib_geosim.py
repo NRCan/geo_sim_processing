@@ -7,7 +7,13 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 """
 
 import math
-from rtree import Rtree
+try:
+    from rtree import Rtree
+    lib_Rtree = True
+except :
+    # If Rtree is not installed
+    lib_Rtree = False
+    from shapely.strtree import STRtree
 import fiona
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.ops import linemerge
@@ -534,6 +540,266 @@ class SpatialContainer(object):
         return
 
     def add_features(self, features):
+        """Adds a list of feature in the spatial container and
+
+        *Parameters*:
+            - feature: A spatial feature derived from Point, LineString or Polygon
+
+        *Returns*: *None*
+
+        """
+
+        for feature in features:
+            self.add_feature(feature)
+
+        return
+
+    def del_feature(self, feature):
+        """Delete the feature in the spatial container and in the RTree.
+
+        If the feature is included in the spatial container the feature is deleted;
+        if the feature is not included in the spatial container... nothing happen...
+
+        *Parameters*:
+            - feature: The feature to delete in the spatial container
+
+        *Returns*:
+            None
+
+        """
+
+        ret_value = 0
+
+        # Check if the feature has a container_key
+        if hasattr(feature, "_sc_id"):
+
+            if (feature._sc_id in self._features and
+                    feature._sc_id in self._bbox_features):
+
+                try:
+                    # Retrieve the bounding boxes of this feature
+                    bbox = self._bbox_features[feature._sc_id]
+                    # Delete the feature from the features and the bbox_features
+                    del self._features[feature._sc_id]
+                    del self._bbox_features[feature._sc_id]
+                    # Delete the different bounds in RTree
+                    self._r_tree.delete(feature._sc_id, bbox)
+                    # Reset the property _sc_id and _sc_scontainer
+                    feature._sc_id = None
+                    feature._sc_scontainer = None
+                except:
+                    raise InternalError("Internal corruption, problem with the container and/or the RTree")
+            else:
+                raise InternalError("Internal corruption, key {} has disappear...".format(feature._sc_id))
+
+        return ret_value
+
+    def del_features(self, features):
+        """Delete a list of features in the spatial container
+
+        If the features are included in the spatial container the feature is deleted;
+        if the feature is not included in the spatial container... nothing happen...
+
+        *Parameters*:
+            - features: list of features to delete
+
+        *Returns*:
+            - List of value for each feature to delete.
+            - 0 if feature is deleted from the patial container
+            - 1 if feature was not included in the spatial container
+
+        Exception InternalError: If the key is not in one of the structure
+
+        """
+
+        ret_value = []
+
+        for feature in features:
+            ret_value.append(self.del_feature(feature))
+
+        return ret_value
+
+    def update_spatial_index(self, feature):
+        """Update the bounds of the feature in the spatial index
+
+        It will only modify the Rtree spatial index if the bounding
+        box of the feature is changed in comparison with the old one.
+
+        *Parameters*:
+            - feature: Feature containing the bounds to update
+
+        *Returns*: *None*
+
+        """
+
+        old_bbox = self._bbox_features[feature._sc_id]
+        new_bbox = feature.bounds
+        old_x_min, old_y_min, old_x_max, old_y_max = old_bbox[0], old_bbox[1], old_bbox[2], old_bbox[3]
+        new_x_min, new_y_min, new_x_max, new_y_max = new_bbox[0], new_bbox[1], new_bbox[2], new_bbox[3]
+
+        if old_x_min <= new_x_min and \
+           old_y_min <= new_y_min and \
+           old_x_max >= new_x_max and \
+           old_y_max >= new_y_max:
+            # Nothing to do new bounding box is completely included into the old one
+            pass
+        else:
+            # The bounding box has changed
+            # Adjust the bounding box
+            new_bbox = self.adjust_bbox(new_bbox)
+            # Delete The old bounding box in Rtree
+            self._r_tree.delete(feature._sc_id, old_bbox)
+            # Add the new bounding boxes in Rtree
+            self._r_tree.add(feature._sc_id, new_bbox)
+
+            # Save the bounding boxes
+            self._bbox_features[feature._sc_id] = new_bbox
+
+        return
+
+    def get_features(self, bounds=None, remove_features=[]):
+        """Extract the features from the spatial container.
+
+        According to the parameters the extraction can manage the extraction based on a bounding box using
+        the spatial index RTree, some filters to manage extraction based on properties and the possibility
+        to remove specific features based on a list of keys
+
+        *Parameters*:
+            - bounds: Bounding for the spatial extraction. *None* means all the features
+            - remove_keys: List of keys to be removed from the selection
+
+        *Returns*:
+            - List of features extracted from spatial container
+
+        """
+
+        tmp_remove_features = []
+        for feature in remove_features:
+            if isinstance(feature, int):
+                tmp_remove_features.append(feature)
+            else:
+                tmp_remove_features.append(feature._sc_id)
+
+        remove_features = tmp_remove_features
+
+        # Extract the features by bounds if requested
+        if (bounds != None):
+            # Extract features by bounds
+            keys = (key for key in self._r_tree.intersection(bounds) if key not in remove_features)
+            features = [self._features[key] for key in keys if key in self._features]
+        else:
+            features = [feature for feature in self._features.values() if feature not in remove_features]
+
+        # The following code allows to delete feature while iterating over a get_features request
+        for feature in features:
+            if feature._sc_id is not None:
+                yield feature
+            else:
+                # If the feature has been deleted do not return it
+                pass
+
+        return
+
+
+class SpatialContainerSTRtree(object):
+    """This class manages the spatial features and a spatial index for the STRtree.
+
+    The STRtree is a only using the STRtree of shapely and had the following limitations
+    compared to RTree:
+       - only able load features on time and no update or delete after
+
+    This class enables the management of spatial features by incorporation
+    transparently a spatial index.  The spatial index is an implementation
+    of the Rtree open source softawre.  The spatial container offers the following
+    main options:
+      - add features in the constainer and update the spatial index
+      - delete features in the container and update the spatial index
+      - update the coordinates of a feature and update the spatial index if needed
+      - make spatial queries by bounding box
+      - make attributes queries
+      - delete the container
+
+    """
+
+    # Class variable that contains the Spatial Container Internal ID
+    _sc_id = 0
+
+    def __init__(self):
+        """Create an object of type SpatialContainer
+
+        The init will create one container for the feature a dictionary and one
+        container for the spatial index (Rtree)
+
+        *Parameters*: None
+
+        *Returns*: *None*
+
+        """
+
+        self._r_tree = STRtree()  # Container for the Rtree
+        self._features = {}  # Container to hold the features
+        self._bbox_features = {}  # Container to hold the bounding boxes
+
+    def adjust_bbox(self, bounds, delta = GenUtil.ZERO):
+        """Adjust the bounding box by increasing by a very small delta
+
+        Parameters:
+            bounds: Tuple forming the bounding box (xmin, ymin, wmax, ymax)
+
+        return value:
+            altered bounding box (xmin, ymin, wmax, ymax)"""
+
+        xmin, ymin, xmax, ymax = bounds
+
+        xmin -= delta
+        ymin -= delta
+        xmax += delta
+        ymax += delta
+
+        return (xmin, ymin, xmax, ymax)
+
+    def add_features(self, features):
+        """Adds all the features in the container and update the spatial index with the feature's bound
+
+
+        *Parameters*:
+            - feature: A spatial feature derives from PointSc, LineStringSc
+
+        *Returns*: *None*
+
+        """
+
+        for feature in features:
+            # Check if the type is valid
+            if issubclass(feature.__class__, (PointSc, LineStringSc, PolygonSc)):
+                pass
+            else:
+                raise GenException('Unsupported class: {}'.format(str(feature.__class__)))
+
+            bounds = feature.bounds
+
+            # Adjust the bounding box
+            bounds = self.adjust_bbox(bounds)
+
+            # Container unique internal counter
+            SpatialContainer._sc_id += 1
+
+            # Add the spatial id to the feature
+            feature._sc_id = SpatialContainer._sc_id
+            feature._sc_scontainer = self
+
+            # Add the feature in the feature container
+            self._features[feature._sc_id] = feature
+
+            # Add the bounding box in the bbox_container
+            self._bbox_features[feature._sc_id] = bounds
+
+
+        self._r_tree.add(feature._sc_id, bounds)
+
+        return
+
+    def add_feature(self, features):
         """Adds a list of feature in the spatial container and
 
         *Parameters*:
