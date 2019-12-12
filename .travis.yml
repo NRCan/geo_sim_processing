@@ -11,7 +11,8 @@ install:
   - conda config --prepend channels conda-forge
   - conda update -q conda
   - conda info -a
-  - conda create -q -n ci_env python=3.7 fiona shapely rtree
+  - conda create -q -n ci_env python=3.7 shapely rtree
   - source activate ci_env
+  - conda install fiona
 script:
   - python test_sherbend.py ./data/test_topo_sim.gpkg ./data/test_topo_sim.gpkg 
