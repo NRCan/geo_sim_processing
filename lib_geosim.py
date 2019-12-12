@@ -8,11 +8,10 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 
 import math
 from rtree import Rtree
-import fiona
+from collections import OrderedDict
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.ops import linemerge
-from collections import OrderedDict
-
+import fiona
 
 class LineStringSc(LineString):
 
