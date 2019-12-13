@@ -8,6 +8,7 @@ Features are tested for equality with the shapely method object.almost_equals
 Order of the feature in each geopackage does need not to be preserved
 """
 
+import fiona
 import sys
 from dataclasses import dataclass
 from typing import List
@@ -79,11 +80,14 @@ geo_content_sc = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_
                             out_features=[],
                             in_nbr_points=0, in_nbr_line_strings=0, in_nbr_polygons=0, in_nbr_holes=0)
 
+print ("À lire: ", primary, " ",secondary)
 # Read and load the layers of the primary geopackage
 GenUtil.read_in_file(primary, geo_content_pr, None)
+print ("Fichier 1 lu")
 
 # Read and load the layers of the secondary geopackage
 GenUtil.read_in_file(secondary, geo_content_sc, None)
+print ("Fichier 2 lu")
 
 if __name__ == '__main__':
     unittest.main()

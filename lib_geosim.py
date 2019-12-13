@@ -7,6 +7,7 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 """
 
 import math
+<<<<<<< HEAD
 try:
     from rtree import Rtree
     lib_Rtree = True
@@ -15,10 +16,13 @@ except :
     lib_Rtree = False
     from shapely.strtree import STRtree
 import fiona
+=======
+from rtree import Rtree
+from collections import OrderedDict
+>>>>>>> 3eb57e0114271022ae29d66c2f697d120865c5bc
 from shapely.geometry import Point, LineString, LinearRing, Polygon
 from shapely.ops import linemerge
-from collections import OrderedDict
-
+import fiona
 
 class LineStringSc(LineString):
 
