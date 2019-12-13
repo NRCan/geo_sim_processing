@@ -12,6 +12,7 @@ install:
   - conda update -q conda
   - conda info -a
   - conda create -n ci_env python=3.6 fiona
+  - conda install "poppler<0.62"
   - source activate ci_env
   - python -c "import fiona"
   - conda install -n ci_env shapely rtree
