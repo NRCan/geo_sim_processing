@@ -7,7 +7,10 @@ General classes and utilities needed for the GENeralization MEta ALgorithm (GENM
 """
 
 import math
-<<<<<<< HEAD
+from shapely.geometry import Point, LineString, LinearRing, Polygon
+from shapely.ops import linemerge
+import fiona
+
 try:
     from rtree import Rtree
     lib_Rtree = True
@@ -15,14 +18,6 @@ except :
     # If Rtree is not installed
     lib_Rtree = False
     from shapely.strtree import STRtree
-import fiona
-=======
-from rtree import Rtree
-from collections import OrderedDict
->>>>>>> 3eb57e0114271022ae29d66c2f697d120865c5bc
-from shapely.geometry import Point, LineString, LinearRing, Polygon
-from shapely.ops import linemerge
-import fiona
 
 class LineStringSc(LineString):
 
@@ -708,20 +703,12 @@ class SpatialContainer(object):
 class SpatialContainerSTRtree(object):
     """This class manages the spatial features and a spatial index for the STRtree.
 
-    The STRtree is a only using the STRtree of shapely and had the following limitations
+    The STRtree is using the STRtree of shapely and has the following limitations
     compared to RTree:
-       - only able load features on time and no update or delete after
-
-    This class enables the management of spatial features by incorporation
-    transparently a spatial index.  The spatial index is an implementation
-    of the Rtree open source softawre.  The spatial container offers the following
-    main options:
-      - add features in the constainer and update the spatial index
-      - delete features in the container and update the spatial index
-      - update the coordinates of a feature and update the spatial index if needed
-      - make spatial queries by bounding box
-      - make attributes queries
-      - delete the container
+       - immutable rtree
+       - only able load features one time (all at the same time)
+       - no edit after
+       - edition is needed an exception is thrown
 
     """
 
@@ -740,9 +727,7 @@ class SpatialContainerSTRtree(object):
 
         """
 
-        self._r_tree = STRtree()  # Container for the Rtree
         self._features = {}  # Container to hold the features
-        self._bbox_features = {}  # Container to hold the bounding boxes
 
     def adjust_bbox(self, bounds, delta = GenUtil.ZERO):
         """Adjust the bounding box by increasing by a very small delta
@@ -773,12 +758,13 @@ class SpatialContainerSTRtree(object):
 
         """
 
+        tmp_features = []
         for feature in features:
             # Check if the type is valid
             if issubclass(feature.__class__, (PointSc, LineStringSc, PolygonSc)):
                 pass
             else:
-                raise GenException('Unsupported class: {}'.format(str(feature.__class__)))
+                raise GeoSimException('Unsupported class: {}'.format(str(feature.__class__)))
 
             bounds = feature.bounds
 
@@ -795,11 +781,14 @@ class SpatialContainerSTRtree(object):
             # Add the feature in the feature container
             self._features[feature._sc_id] = feature
 
-            # Add the bounding box in the bbox_container
-            self._bbox_features[feature._sc_id] = bounds
+            # Transform the feature as its corresponding bounding box... to simulate the Rtree class
+            xmin, ymin, xmax, ymax = bounds
+            tmp_feature = LineString(((xmin,ymin),(xmin,ymax),(xmax,ymax), (xmax,ymin), (xmin,ymin)))
+            tmp_feature._sc_id = feature._sc_id
+            tmp_features.append(tmp_feature)
 
-
-        self._r_tree.add(feature._sc_id, bounds)
+        # Load all the features at the same time in the shapely rtree
+        self._r_tree = STRtree(tmp_features)
 
         return
 
@@ -813,16 +802,12 @@ class SpatialContainerSTRtree(object):
 
         """
 
-        for feature in features:
-            self.add_feature(feature)
-
         return
 
     def del_feature(self, feature):
         """Delete the feature in the spatial container and in the RTree.
 
-        If the feature is included in the spatial container the feature is deleted;
-        if the feature is not included in the spatial container... nothing happen...
+        Raise exception cannot delete feature in shapely RTree
 
         *Parameters*:
             - feature: The feature to delete in the spatial container
@@ -832,54 +817,25 @@ class SpatialContainerSTRtree(object):
 
         """
 
-        ret_value = 0
+        raise GeoSimException("Cannot delete feature with shapely STRtree")
 
-        # Check if the feature has a container_key
-        if hasattr(feature, "_sc_id"):
-
-            if (feature._sc_id in self._features and
-                    feature._sc_id in self._bbox_features):
-
-                try:
-                    # Retrieve the bounding boxes of this feature
-                    bbox = self._bbox_features[feature._sc_id]
-                    # Delete the feature from the features and the bbox_features
-                    del self._features[feature._sc_id]
-                    del self._bbox_features[feature._sc_id]
-                    # Delete the different bounds in RTree
-                    self._r_tree.delete(feature._sc_id, bbox)
-                    # Reset the property _sc_id and _sc_scontainer
-                    feature._sc_id = None
-                    feature._sc_scontainer = None
-                except:
-                    raise InternalError("Internal corruption, problem with the container and/or the RTree")
-            else:
-                raise InternalError("Internal corruption, key {} has disappear...".format(feature._sc_id))
-
-        return ret_value
 
     def del_features(self, features):
         """Delete a list of features in the spatial container
 
-        If the features are included in the spatial container the feature is deleted;
-        if the feature is not included in the spatial container... nothing happen...
+        Raise exception cannot delete feature in shapely RTree
 
         *Parameters*:
             - features: list of features to delete
 
         *Returns*:
-            - List of value for each feature to delete.
-            - 0 if feature is deleted from the patial container
-            - 1 if feature was not included in the spatial container
+            Exception
 
         Exception InternalError: If the key is not in one of the structure
 
         """
 
-        ret_value = []
-
-        for feature in features:
-            ret_value.append(self.del_feature(feature))
+        raise GeoSimException("Cannot delete features with shapely STRtree")
 
         return ret_value
 
