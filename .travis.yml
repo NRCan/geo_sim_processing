@@ -12,8 +12,8 @@ install:
   - conda update -q conda
   - conda info -a
   - conda create -n ci_env python=3.6 fiona
+  - source activate ci_env
   - python -c "import fiona"
   - conda install -n ci_env shapely rtree
-  - source activate ci_env
 script:
   - python test_sherbend.py ./data/test_topo_sim.gpkg ./data/test_topo_sim.gpkg 
