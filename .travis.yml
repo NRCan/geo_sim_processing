@@ -5,6 +5,6 @@ install:
   - hash -r
   - pip install shapely
   - pip install fiona
-  - pip install 'Rtree==0.8.3'
+  - pip install Rtree
 script:
   - python test_sherbend.py ./data/test_topo_sim.gpkg ./data/test_topo_sim.gpkg 
