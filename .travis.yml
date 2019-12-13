@@ -6,6 +6,7 @@ install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
+  - pip install shapely
   - conda config --set always_yes yes
   - conda config --set changeps1 no
   - conda config --prepend channels conda-forge
