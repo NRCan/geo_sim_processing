@@ -9,15 +9,5 @@ install:
   - pip install shapely
   - pip install fiona
   - pip install 'Rtree==0.8.3'
-  - conda config --set always_yes yes
-  - conda config --set changeps1 no
-  - conda config --prepend channels conda-forge
-  - conda update -q conda
-  - conda info -a
-  - conda create -n ci_env python=3.6 fiona
-  - conda install "poppler<0.62"
-  - source activate ci_env
-  - python -c "import fiona"
-  - conda install -n ci_env shapely rtree
 script:
   - python test_sherbend.py ./data/test_topo_sim.gpkg ./data/test_topo_sim.gpkg 
