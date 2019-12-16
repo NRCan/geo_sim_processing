@@ -895,8 +895,7 @@ class AlgoSherbend(object):
             None
         """
 
-        # Create the spatial container that will receive all the spatial features
-        self.s_container = SpatialContainer()
+        features = []  # List of features to pass to the spatial container
 
         # Load all the features in the spatial container
         for feature in geo_content.in_features:
@@ -905,12 +904,12 @@ class AlgoSherbend(object):
             if feature.geom_type == GenUtil.POINT:
                 out_feature = PointSb(feature.coords, feature.sb_layer_name, feature.sb_properties)
                 # Add the feature
-                self.s_container.add_feature(out_feature)
+                features.append(out_feature)
             elif feature.geom_type == GenUtil.LINE_STRING:
                 out_feature = out_feature = LineStringSb(feature.coords, GenUtil.LINE_STRING, min_adj_area, feature.sb_layer_name,
                                                          feature.sb_properties)
                 # Add the feature
-                self.s_container.add_feature(out_feature)
+                features.append(out_feature)
             elif feature.geom_type == GenUtil.POLYGON:
                 adj_area = self._calculate_adj_area(feature.exterior.coords)
                 # Only keep the polygon over the minimum adjusted area
@@ -935,8 +934,8 @@ class AlgoSherbend(object):
                     ext_feature.sb_interiors = int_features
 
                     # Add the exterior and the interior independently
-                    self.s_container.add_feature(ext_feature)  # Add the exterior
-                    self.s_container.add_features(int_features)  # Add the interiorS
+                    features.append(ext_feature)  # Add the exterior
+                    features += int_features  # Add the interiors
                 else:
                     # Do not add the feature (exterior and interiors ) in the spatial container
                     # Update some stats
@@ -944,6 +943,10 @@ class AlgoSherbend(object):
                     geo_content.nbr_del_holes += len(feature.interiors)
             else:
                 raise GeoSimException ("Invalid geometry type: {}".format(feature.geometry))
+
+            # Create the spatial container that will receive all the spatial features
+            self.s_container = SpatialContainer()
+            self.s_container.add_features(features) # Load all the features
 
         return
 

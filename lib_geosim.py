@@ -728,6 +728,7 @@ class SpatialContainerSTRtree(object):
         """
 
         self._features = {}  # Container to hold the features
+        self._bbox_features = {}  # Container to hold the bounding boxes
 
     def adjust_bbox(self, bounds, delta = GenUtil.ZERO):
         """Adjust the bounding box by increasing by a very small delta
@@ -781,6 +782,9 @@ class SpatialContainerSTRtree(object):
             # Add the feature in the feature container
             self._features[feature._sc_id] = feature
 
+            # Add the bounding box in the bbox_container
+            self._bbox_features[feature._sc_id] = bounds
+
             # Transform the feature as its corresponding bounding box... to simulate the Rtree class
             xmin, ymin, xmax, ymax = bounds
             tmp_feature = LineString(((xmin,ymin),(xmin,ymax),(xmax,ymax), (xmax,ymin), (xmin,ymin)))
@@ -801,6 +805,8 @@ class SpatialContainerSTRtree(object):
         *Returns*: *None*
 
         """
+
+        raise GeoSimException("Cannot add feature with shapely STRtree")
 
         return
 
@@ -864,16 +870,8 @@ class SpatialContainerSTRtree(object):
             # Nothing to do new bounding box is completely included into the old one
             pass
         else:
-            # The bounding box has changed
-            # Adjust the bounding box
-            new_bbox = self.adjust_bbox(new_bbox)
-            # Delete The old bounding box in Rtree
-            self._r_tree.delete(feature._sc_id, old_bbox)
-            # Add the new bounding boxes in Rtree
-            self._r_tree.add(feature._sc_id, new_bbox)
-
-            # Save the bounding boxes
-            self._bbox_features[feature._sc_id] = new_bbox
+            # The bounding box has changed...
+            raise GeoSimException("Cannot change the bounding box of a feature with shapely STRtree")
 
         return
 
