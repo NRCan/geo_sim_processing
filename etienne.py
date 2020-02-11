@@ -10,7 +10,7 @@ import random as rd
 import matplotlib.pyplot as plt
 
 temps = 0
-L = 50
+L = 51
 n_pred0 = 10
 n_proie0 = 200
 reserves0 = 6.0
