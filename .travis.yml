@@ -18,6 +18,6 @@ script:
 # Remove file from previous execution
   - rm -f ./data/test_sherbend_out.gpkg
 # Create the new file
-  - pyhon sherbend.py -d 2.0 ./data/test_sherbend_in.gpkg ./data/test_sherbend_out.gpkg
+  - python sherbend.py -d 2.0 ./data/test_sherbend_in.gpkg ./data/test_sherbend_out.gpkg
 # Validate that the content is equal to the standard file
   - python test_sherbend.py ./data/test_sherbend_out.gpkg ./data/test_sherbend_out_standard.gpkg 
