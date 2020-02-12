@@ -10,7 +10,11 @@ which one to simplify as a cartographer would do to manually simplify a line.  C
 the maximum number of curves or bends (line definition) with the minimum number of vertices, Sherbend algorithm tries to remove unnecessary 
 curves based on a tolerance (curve diameter
 
-Requirements
+## Requirements  
+- Python 3.7 with the following libraries:
+    - Shapely
+    - Rtree
+    - fiona
 
 Installation on your workstation
 
