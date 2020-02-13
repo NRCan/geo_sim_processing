@@ -32,19 +32,17 @@ positional arguments:
   out_file              output vector file simplified
 
 optional arguments:
+     -d , --diameter          diameter of the minimum adjusted area bend to simplify (to remove)
+     
      -h, --help               show this help message and exit
   
-     -eh, --exclude_hole      exclude holes (interior) below minimum adjusted area
+     -eh, --exclude_hole      for polygon exclude (delete) polygon holes (interior) below the minimum adjusted area
   
-     -ep, --exclude_polygon   exclude polygons below minimum adjusted area
+     -ep, --exclude_polygon   for polygon exclude polygons exterior below the minimum adjusted area (delete also any interior if present
   
-     -pl, --per_layer         evaluate topology per layer only (feature from
-                              different layers can overlap after simplification)
-                          
-     -d , --diameter          diameter of the minimum adjusted area bend to simplify
+     -pl, --per_layer         evaluate topology per layer only (features from different layers can overlap after simplification)
                         
-     -dl, --dlayer            diameter of the minimum adjusted area bend to simplify
-                              per layer name (ex: -dl Road=5,Hydro=7.5)
+     -dl, --dlayer            diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
 
 ##How it works (Rule of thumb)
 
