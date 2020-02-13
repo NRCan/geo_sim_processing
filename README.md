@@ -25,32 +25,26 @@ Using conda, you can set and activate your python environment with the following
 
 ##Usage
 
-The following command is the simplest form to execute Sherbend
-
-usage: sherbend.py [-h] [-eh] [-ep] [-pl] [-d DIAMETER | -dl DLAYER]
-                   in_file out_file
+usage: sherbend.py [-h] [-eh] [-ep] [-pl] [-d DIAMETER | -dl DLAYER] in_file out_file
 
 positional arguments:
   in_file               input vector file to simplify
   out_file              output vector file simplified
 
 optional arguments:
-  -h, --help              show this help message and exit
+     -h, --help               show this help message and exit
   
-  -eh, --exclude_hole     exclude holes (interior) below minimum adjusted area
+     -eh, --exclude_hole      exclude holes (interior) below minimum adjusted area
   
-  -ep, --exclude_polygon  exclude polygons below minimum adjusted area
+     -ep, --exclude_polygon   exclude polygons below minimum adjusted area
   
-  -pl, --per_layer        evaluate topology per layer only (feature from
-  
-                          different layers can overlap after simplification)
+     -pl, --per_layer         evaluate topology per layer only (feature from
+                              different layers can overlap after simplification)
                           
-  -d DIAMETER, --diameter DIAMETER
-                        diameter of the minimum adjusted area bend to simplify
+     -d , --diameter          diameter of the minimum adjusted area bend to simplify
                         
-  -dl DLAYER, --dlayer DLAYER
-                        diameter of the minimum adjusted area bend to simplify
-                        per layer name (ex: -dl Road=5,Hydro=7.5)
+     -dl, --dlayer            diameter of the minimum adjusted area bend to simplify
+                              per layer name (ex: -dl Road=5,Hydro=7.5)
 
 ##How it works (Rule of thumb)
 
