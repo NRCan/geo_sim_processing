@@ -71,7 +71,7 @@ For each line and rings composing polygon Sherbend will detect the position of e
 Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the bends.
 
 * __Calculating adjusted area__
-For each bend Sherbend calculates the adjusted area of each bend with the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The copactness index is calculate with *4\*π\*A/p\*p* where *A* is the area and *p* is the perimeter of the bend in map unit. The compactness vary between \[0..1] with a circle having a value of 1 and an almost flat bend having a value of 0.
+For each bend Sherbend calculates the adjusted area of each bend with the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The copactness index is calculate with *4\*π\*A/(p\*p)* where *A* is the area and *p* is the perimeter of the bend in map unit. The compactness vary between \[0..1] with a circle having a value of 1 and an almost flat bend having a value of 0.  The parameter -d (ex.: -d 4) represent the diameter of a therotical circle that help  
 
 * __Validating topological relationship__
 
