@@ -48,15 +48,19 @@ Some example:
 
 python sherbend.py -d 3 in_file.gpkg out_file.gpkh
    
-   Simplify each feature of each layer of the input file (in_file.gpkg) with a diameter of 3 (in map unit) and create the output file out_file.gpkg
+   - Simplify each feature of each layer of the input file (in_file.gpkg) with a diameter of 3 (in map unit) and create the output file out_file.gpkg
    
 python sherbend.py -d 3 -pl in_file.gpkg out_file.gpkh
    
-   Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg but each layer are processed independently
+   - Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg but each layer are processed independently
    
 python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
 
-   Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg delete 
+   - Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg delete the polygon including all the interiors if the exterior is below the minimum adjusted area also delete the polygon interiors if the interior is below the minimum adjusted area
+   
+python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
+
+   - Simplify each feature of the Road, Lake and River layers of the input file with a diameter of 3 for the Road layer, 5 for the Lake layer  and do no simplify River layer but use them for topology constraint; finally create the output file out_file.gpkg
 
 ##How it works (Rule of thumb)
 
