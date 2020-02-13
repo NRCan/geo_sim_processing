@@ -35,12 +35,11 @@ positional arguments:
   out_file              output vector file simplified
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -eh, --exclude_hole   exclude holes (interior) below minimum adjusted area
-  -ep, --exclude_polygon
-                        exclude polygons below minimum adjusted area
-  -pl, --per_layer      evaluate topology per layer only (feature from
-                        different layers can overlap after simplification)
+  -h, --help              show this help message and exit
+  -eh, --exclude_hole     exclude holes (interior) below minimum adjusted area
+  -ep, --exclude_polygon  exclude polygons below minimum adjusted area
+  -pl, --per_layer        evaluate topology per layer only (feature from
+                          different layers can overlap after simplification)
   -d DIAMETER, --diameter DIAMETER
                         diameter of the minimum adjusted area bend to simplify
   -dl DLAYER, --dlayer DLAYER
