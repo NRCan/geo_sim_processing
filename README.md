@@ -36,15 +36,21 @@ positional arguments:
 
 optional arguments:
   -h, --help              show this help message and exit
+  
   -eh, --exclude_hole     exclude holes (interior) below minimum adjusted area
+  
   -ep, --exclude_polygon  exclude polygons below minimum adjusted area
+  
   -pl, --per_layer        evaluate topology per layer only (feature from
+  
                           different layers can overlap after simplification)
+                          
   -d DIAMETER, --diameter DIAMETER
                         diameter of the minimum adjusted area bend to simplify
+                        
   -dl DLAYER, --dlayer DLAYER
                         diameter of the minimum adjusted area bend to simplify
-                        per layer name (ex: -dl Road=5,Hydro=7.5
+                        per layer name (ex: -dl Road=5,Hydro=7.5)
 
 ##How it works (Rule of thumb)
 
