@@ -28,7 +28,7 @@ Using conda, you can set and activate your python environment with the following
 usage: sherbend.py [-h] [-eh] [-ep] [-pl] [-d DIAMETER | -dl DLAYER] in_file out_file
 
 positional arguments:
-  in_file               input vector file to simplify
+  in_file               input vector file to simplif
   out_file              output vector file simplified
 
 optional arguments:
@@ -42,7 +42,21 @@ optional arguments:
   
      -pl, --per_layer         evaluate topology per layer only (features from different layers can overlap after simplification)
                         
-     -dl, --dlayer            diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
+     -dl, --dlayer            specify the diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
+     
+Some example:
+
+python sherbend.py -d 3 in_file.gpkg out_file.gpkh
+   
+   Simplify each feature of each layer of the input file (in_file.gpkg) with a diameter of 3 (in map unit) and create the output file out_file.gpkg
+   
+python sherbend.py -d 3 -pl in_file.gpkg out_file.gpkh
+   
+   Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg but each layer are processed independently
+   
+python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
+
+   Simplify each feature of each layer of the input file with a diameter of 3 and create the output file out_file.gpkg delete 
 
 ##How it works (Rule of thumb)
 
