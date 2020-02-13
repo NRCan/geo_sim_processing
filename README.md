@@ -9,7 +9,7 @@ Sherbend is a geospatial line simplification tool (another...).  It's the implem
 - Python 3.7 with the following libraries:
     - Shapely
     - Rtree
-    - fiona
+    - Fiona
 
 ## Installation on your workstation
 Using conda, you can set and activate your python environment with the following commands: 
@@ -19,18 +19,40 @@ Using conda, you can set and activate your python environment with the following
     pip install fiona
     ```
     
-  Note on the installation
+  Note on the installation:
   - fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to installes shapely, rtree, fiona at the same time
-  - for Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer
+  - for Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip)
 
-Exucution and options
+##Usage
 
-How it works (Rule of thumb)
+The following command is the simplest form to execute Sherbend
 
-Topological relationships
+usage: sherbend.py [-h] [-eh] [-ep] [-pl] [-d DIAMETER | -dl DLAYER]
+                   in_file out_file
 
-Simplicity
+positional arguments:
+  in_file               input vector file to simplify
+  out_file              output vector file simplified
 
-Intersection
+optional arguments:
+  -h, --help            show this help message and exit
+  -eh, --exclude_hole   exclude holes (interior) below minimum adjusted area
+  -ep, --exclude_polygon
+                        exclude polygons below minimum adjusted area
+  -pl, --per_layer      evaluate topology per layer only (feature from
+                        different layers can overlap after simplification)
+  -d DIAMETER, --diameter DIAMETER
+                        diameter of the minimum adjusted area bend to simplify
+  -dl DLAYER, --dlayer DLAYER
+                        diameter of the minimum adjusted area bend to simplify
+                        per layer name (ex: -dl Road=5,Hydro=7.5
 
-Sidedness
+##How it works (Rule of thumb)
+
+##Topological relationships
+
+#Simplicity
+
+#Intersection
+
+#Sidedness
