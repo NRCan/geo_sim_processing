@@ -64,10 +64,20 @@ python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
 ##How it works (Rule of thumb)
 
+fff
+
 ##Topological relationships
 
-#Simplicity
+ffff
 
-#Intersection
+###Simplicity
 
-#Sidedness
+ddd
+
+###Intersection
+
+ddd
+
+###Sidedness
+
+ddd
