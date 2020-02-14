@@ -88,7 +88,7 @@ Sherbend will not permit bend simplification if the simplified bend creates a si
 
 Note: For all 3 topological relationships, for any given a line or polygon ring if one or more of its bend simplification create topological error these bend will not be simplified but all the bend that do not create topological errors will be simplified.
 
-![Figure2](/image/figure2.png)
+![Figure2](/image/figure1.png)
 
 ### Rule of thumb for the diameter
 Shebend will be used for line simplifying often in the context of map generalization. The big question will often be what diameter should we use?  A good starting point is the cartogrphic rule of thumb of the *.5mm on the map* which say that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line in order to acheive 1:50 000 on the map a diameter of 25 should be a good starting point... 
