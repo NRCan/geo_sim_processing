@@ -1,9 +1,8 @@
 # GeoSim
-Line simplification and generalization tool for python using shapely, rtree and fiona libraries. Reading and writing GeoPackage files.
 
 ## Introduction
 
-Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is the implementation of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wangand Jean-Clsaude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that it analyses for a each line its bends (line s) and decide which one to simplify trying to simulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon but of course points are unsimplifiable but used for topological relationship validation. Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
+Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wangand Jean-Clsaude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyses its bends and decide which one to simplify, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon (of course points are unsimplifiable but are used for topological relationship validation). Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
 
 ## Requirements  
 - Python 3.7 with the following libraries:
@@ -19,8 +18,8 @@ source activate YOUR_ENV
 pip install fiona
 ```
 Note on the installation:
-  - Fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to installes shapely, rtree, fiona at the same time
-  - For Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of windows installers.
+  - Fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to instal Shapely, Rtree, Fiona at the same time
+  - For Windows users, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of Windows installers.
 
 ## Usage
 
@@ -34,9 +33,9 @@ optional arguments:
 
      -d , --diameter          Diameter of the minimum adjusted area bend to simplify (to remove)     
      -h, --help               Show this help message and exit
-     -eh, --exclude_hole      Exclude (delete) polygon holes (interior) below the minimum adjusted area
-     -ep, --exclude_polygon   Exclude (delete) polygons exterior below the minimum adjusted area (delete also any interior if present)
-     -pl, --per_layer         Analyse topology per layer only (features from different layers can overlap after simplification)
+     -eh, --exclude_hole      Exclude (delete) polygon ring (interior holes) below the minimum adjusted area
+     -ep, --exclude_polygon   Exclude (delete) polygons exterior below the minimum adjusted area (delete also any interior holes if present)
+     -pl, --per_layer         Analyse topology per layer only which mean features from different layers can overlap after simplification
      -dl, --dlayer            Specify the diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
      
 Some example:
@@ -47,7 +46,7 @@ python sherbend.py -d 3 in_file.gpkg out\_file.gpkh
    
 python sherbend.py -d 3 -pl in\_file.gpkg out_file.gpkh
    
-   - Simplify each feature of each layer of the input file with a bend diameter of 3 and create the output file out_file.gpkg but each layer are processed independently
+   - Simplify each feature of each layer of the input file with a bend diameter of 3 and create the output file but each layer are processed independently
    
 python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
 
@@ -59,17 +58,17 @@ python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
 ## Comparison with other simplication tool
 
-Compared to the well known Douglas-Peucker, Sherbend algorithm will always try to remove unnecessary bends (line details) based on a bend diameter.  Where as Douglas-Peucker will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices. 
+Compared to the well known Douglas-Peucker algorithm, Sherbend algorithm will always try to remove unnecessary bends (line details) based on a bend diameter.  Douglas-Peucker on the other hand will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices.  both algorithm are complimentary because Sherbend will not remove unnecessary vertice.
 
 ## How it works
 
-Sherbend will simplify (generalize) line and polygon it also take into account point which are unsimplifiable but used when analysing topological relationships.
+Sherbend will simplify (generalize) line and polygon it also take into account point which are unsimplifiable but used when analysing topological relationships. The 3 main steps of the algorithm are: Detecting the bends, Determine the bendds to simplify and Validating the spatial relationships.
 
 * __Detecting bends__
 For each line and rings composing polygon Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of susequent vertices, with the inflections angles on all vertices being in opposite sign.
 Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the 3 bends forming each an area.
 
-* __Simplifying bends__
+* __Determine the bends to simplify__
 For each bend of a line or polygon ring Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend in map uni and *cmpi* the compactness index of the bend.  The compactness index is calculate using the following area: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend will value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.  Figure 1d represent the result with the middle bend of the line simplified.
 
 ![Figure1](/image/figure1.png)
