@@ -62,7 +62,7 @@ python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
    - Simplify each feature of the Road, Lake and River layers of the input file with a diameter of 3 for the Road layer, 5 for the Lake layer  and do no simplify for the River layer features but use them for topology constraints; finally create the output file out_file.gpkg
 
-##How it works
+## How it works
 
 Sherbend will simplify line and polygon it also take into account point which are unsimplifiable but used when analysing and validating topological relationships.
 
@@ -76,17 +76,20 @@ For each bend of a line or polygon ring Sherbend calculates an adjusted area usi
 * __Preserving topological relationship__
 Before any bend simplifcation, Sherbend will validate the following 3 topological relationship and if one the topological relationship is broken than the bend is not simplified.  This process preserve the existing topology within the geospatial features.
 
-###Simplicity
+### Simplicity
 Sherbend will not permit bend simplification if the simplified bend creates a self intersection in the line (figure x).  
 
 Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a self intersection these conflicting bends will not be simplified but all the other bends will be simplified.
 
-###Intersection
+### Intersection
 Sherbend will not permit bend simplification if the simplified bend creates an intersection between 2 features (figure x).  The features in conflict can be a line with a line or a line with a polygon ring.
 
-Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a intersection with one or more line or polygone ring, these conflicting bends will not be simplified but all the other bends will be simplified.
+Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a intersection with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
 
-###Sidedness
-Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features.
+### Sidedness
+Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure x).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.
+
+Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a sidedness error with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
+
 
 ### Rule of thimb
