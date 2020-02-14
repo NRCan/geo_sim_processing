@@ -78,20 +78,31 @@ Before any bend simplifcation, Sherbend will analayse the following 3 topologica
 ### Simplicity
 Sherbend will not simplify a bend, if the simplified bend creates a self intersection in the line (figure x).  
 
-Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a self intersection these conflicting bends will not be simplified but all the other bends will be simplified.
-
 ### Intersection
 Sherbend will not permit bend simplification if the simplified bend creates an intersection between 2 features (figure x).  The features in conflict can be a line with a line or a line with a polygon ring.
 
-Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a intersection with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
-
 ### Sidedness
-Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure x).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.
+Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure x).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.  The analysis of this topological relationship is particulary important when it comes to simplify polygon ring.  In order to prevent interior rings to "pop out" outside its exterior ring afiter the bend simplification (figure x).
 
-Note 1: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a sidedness error with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
-
-Note 2: The preservation of this topological relationship is particulary important when it comes to simplify polygon ring.  For example, it is important that when simplifying an exterior ring an interior ring does not pop out of the exterior ring (figure x)
+Note: For all 3 topological relationships, for any given a line or polygon ring if one or more of its bend simplification create topological error these bend will not be simplified but all the bend that do not create topological errors will be simplified.
 
 
 ### Rule of thumb for the diameter
 Shebend will be used for line simplifying often in the context of map generalization. The big question will often be what diameter should we use?  A good starting point is the cartogrphic rule of thumb of the *.5mm on the map* which say that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line in order to acheive 1:50 000 on the map a diameter of 25 should be a good starting point... 
+
+## Known issue with GeoPackage
+
+The following problem can occured when creating a GeoPackage, it's a know issue, the spatial index is not created for a specific layer.  The program still terminate with Exit Code 0.  You can create the spatial index after in QGIS.
+
+```
+ERROR 1: sqlite3_exec(CREATE VIRTUAL TABLE "rtree_line_geom" USING rtree(id, minx, maxx, miny, maxy)) failed: table "rtree_line_geom" already exists
+Traceback (most recent call last):
+  File "fiona/_err.pyx", line 201, in fiona._err.GDALErrCtxManager.__exit__
+fiona._err.CPLE_AppDefinedError: b'sqlite3_exec(CREATE VIRTUAL TABLE "rtree_line_geom" USING rtree(id, minx, maxx, miny, maxy)) failed: table "rtree_line_geom" already exists'
+Exception ignored in: 'fiona._shim.gdal_flush_cache'
+Traceback (most recent call last):
+  File "fiona/_err.pyx", line 201, in fiona._err.GDALErrCtxManager.__exit__
+fiona._err.CPLE_AppDefinedError: b'sqlite3_exec(CREATE VIRTUAL TABLE "rtree_line_geom" USING rtree(id, minx, maxx, miny, maxy)) failed: table "rtree_line_geom" already exists'
+
+Process finished with exit code 0
+```
