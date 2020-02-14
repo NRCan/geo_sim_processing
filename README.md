@@ -70,8 +70,8 @@ Sherbend will simplify line and polygon it also take into account point which ar
 For each line and rings composing polygon Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being as the part of a line which contains a number of susequent vertices, with the inflections angles on all vertices being in opposite sign.
 Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the bends.
 
-* __Calculating adjusted area__
-For each bend Sherbend calculates the adjusted area of each bend with the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The copactness index is calculate with *4\*π\*A/(p\*p)* where *A* is the area and *p* is the perimeter of the bend in map unit. The compactness vary between \[0..1] with a circle having a value of 1 and an almost flat bend having a value of 0.  The parameter -d (ex.: -d 4) represent the diameter of a therotical circle that help  
+* __Simplifying bends__
+For each bend of a line or polygon ring Sherbend calculates an adjusted area using the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The compactness index is calculate using *4\*π\*A/p\*\*2* where *A* is the area and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend having a value of 1 and an almost flat bend having a value of 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a therotical circle that permit to define the minimum adjusted area *\.75\*2\*r\*\*2/cmpi* where r is d/2.  Finally, each bend of a line that are below the minimum adjusted area are than replaced by a straight line
 
 * __Validating topological relationship__
 
