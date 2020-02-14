@@ -69,7 +69,7 @@ Sherbend will simplify (generalize) line and polygon it also take into account p
 For each line and rings composing polygon Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of susequent vertices, with the inflections angles on all vertices being in opposite sign.
 Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the bends.
 
-![figure 1]:(https://github.com/Dan-Eli/GeoSim/blob/master/image/figure1.png "figure1")
+![Figure1](/image/figure1.png)
 
 * __Simplifying bends__
 For each bend of a line or polygon ring Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend in map uni and *cmpi* the compactness index of the bend.  The compactness index is calculate using the following area: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend will value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.
@@ -88,6 +88,7 @@ Sherbend will not permit bend simplification if the simplified bend creates a si
 
 Note: For all 3 topological relationships, for any given a line or polygon ring if one or more of its bend simplification create topological error these bend will not be simplified but all the bend that do not create topological errors will be simplified.
 
+![Figure2](/image/figure2.png)
 
 ### Rule of thumb for the diameter
 Shebend will be used for line simplifying often in the context of map generalization. The big question will often be what diameter should we use?  A good starting point is the cartogrphic rule of thumb of the *.5mm on the map* which say that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line in order to acheive 1:50 000 on the map a diameter of 25 should be a good starting point... 
