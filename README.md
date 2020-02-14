@@ -28,20 +28,15 @@ Using conda, you can set and activate your python environment with the following
 usage: sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d DIAMETER | -dl DLAYER] in_file out_file
 
 positional arguments:
-  in_file               input vector file to simplif
-  out_file              output vector file simplified
+  in_file               Geopackage input vector file to simplify (GPKG)
+  out_file              Geopackage output vector file simplified (GPKG)
 
 optional arguments:
-     -d , --diameter          diameter of the minimum adjusted area bend to simplify (to remove)
-     
+     -d , --diameter          diameter of the minimum adjusted area bend to simplify (to remove)     
      -h, --help               show this help message and exit
-  
      -eh, --exclude_hole      for polygon exclude (delete) polygon holes (interior) below the minimum adjusted area
-  
      -ep, --exclude_polygon   for polygon exclude polygons exterior below the minimum adjusted area (delete also any interior if present
-  
      -pl, --per_layer         evaluate topology per layer only (features from different layers can overlap after simplification)
-                        
      -dl, --dlayer            specify the diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
      
 Some example:
