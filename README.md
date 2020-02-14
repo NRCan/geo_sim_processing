@@ -78,13 +78,13 @@ For each bend of a line or polygon ring Sherbend calculates an adjusted area val
 Before any bend simplifcation, Sherbend will analayse the following 3 topological relationship: simplicity, intersection and sidedness; if one of the topological relationship is not valid that particulatbend is not simplified.  This process preserve the existing relative topology between the geospatial features to simplify.  
 
 ### Simplicity
-Sherbend will not simplify a bend, if the simplified bend creates a self intersection in the line (figure x).  
+Sherbend will not simplify a bend, if the simplified bend creates a self intersection in the line (figure 2a).  
 
 ### Intersection
-Sherbend will not permit bend simplification if the simplified bend creates an intersection between 2 features (figure x).  The features in conflict can be a line with a line or a line with a polygon ring.
+Sherbend will not permit bend simplification if the simplified bend creates an intersection between 2 features (figure 2b).  The features in conflict can be a line with a line or a line with a polygon ring.
 
 ### Sidedness
-Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure x).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.  The analysis of this topological relationship is particulary important when it comes to simplify polygon ring.  In order to prevent interior rings to "pop out" outside its exterior ring afiter the bend simplification (figure x).
+Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure 2c and 2d).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.  The analysis of this topological relationship is particulary important when it comes to simplify polygon ring.  In order to prevent interior rings to "pop out" outside its exterior ring afiter the bend simplification (figure x).
 
 Note: For all 3 topological relationships, for any given a line or polygon ring if one or more of its bend simplification create topological error these bend will not be simplified but all the bend that do not create topological errors will be simplified.
 
