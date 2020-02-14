@@ -78,15 +78,15 @@ Before any bend simplifcation, Sherbend will validate the following 3 topologica
 
 ###Simplicity
 Sherbend will not permit bend simplification if the simplified bend creates a self intersection in the line (figure x).  
-Note: If a line or polygon ring contains 4 bend that can be simplified and one of the bend if simplified creates a self intersection the conflicting bend will not be simplified but all the other bend will be simplified.
+
+Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a self intersection these conflicting bends will not be simplified but all the other bends will be simplified.
 
 ###Intersection
+Sherbend will not permit bend simplification if the simplified bend creates an intersection between 2 features (figure x).  The features in conflict can be a line with a line or a line with a polygon ring.
 
-
-ddd
+Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a intersection with one or more line or polygone ring, these conflicting bends will not be simplified but all the other bends will be simplified.
 
 ###Sidedness
-
-ddd
+Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features.
 
 ### Rule of thimb
