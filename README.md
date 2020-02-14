@@ -1,9 +1,9 @@
 # GeoSim
-Line simplification tools for python using shapely and fiona libraries
+Line simplification and generalization tool for python using shapely, rtree and fiona libraries. Reading and writing GeoPackage files.
 
-Introduction
+## Introduction
 
-Sherbend is a geospatial line and polygon simplification tool.  Sherbend is the implementation of the algorithm from the papaer "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wand and Jean-Clsaude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this line simplification algorithm is that it analyses for a line each of it's curves and decide which one to simplify as a cartographer would do to manually simplify a line.  Compared to Douglas-Peucker this algorithm tries to preserve the maximum number of curves or bends (line definition) with the minimum number of vertices, Sherbend algorithm tries to remove unnecessar curves based on a tolerance (curve diameter
+Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is the implementation of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wangand Jean-Clsaude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that it analyses for a each line its bends (line s) and decide which one to simplify trying to simulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon but of course points are unsimplifiable but used for topological relationship validation. Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
 
 ## Requirements  
 - Python 3.7 with the following libraries:
@@ -20,8 +20,8 @@ Using conda, you can set and activate your python environment with the following
     ```
     
   Note on the installation:
-  - fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to installes shapely, rtree, fiona at the same time
-  - for Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip)
+  - Fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to installes shapely, rtree, fiona at the same time
+  - For Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site] (https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of windows installers.
 
 ##Usage
 
@@ -56,6 +56,10 @@ python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
 python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
    - Simplify each feature of the Road, Lake and River layers of the input file with a diameter of 3 for the Road layer, 5 for the Lake layer  and do no simplify for the River layer features but use them for topology constraints; finally create the output file out_file.gpkg
+
+## Comparison with other tool
+
+Compared to the well known Douglas-Peucker, Sherbend algorithm will alwaystry to remove unnecessary bends (line details) based on a bend diameter.  Whereas Douglas-Peucker will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices. 
 
 ## How it works
 
