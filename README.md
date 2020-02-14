@@ -89,7 +89,10 @@ Note: If a line or polygon ring contains more than one bend to be simplified and
 ### Sidedness
 Sherbend will not permit bend simplification if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure x).  The features in conflict can be a line with a point or a line with line or a line with a polygon ring.
 
-Note: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a sidedness error with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
+Note 1: If a line or polygon ring contains more than one bend to be simplified and one (or more) of these bends, if simplified creates a sidedness error with one or more feature, these conflicting bends will not be simplified but all the other bends will be simplified.
+
+Note 2: The preservation of this topological relationship is particulary important when it comes to simplify polygon ring.  For example, it is important that when simplifying an exterior ring an interior ring does not pop out of the exterior ring (figure x)
 
 
-### Rule of thimb
+### Rule of thumb for the diameter
+Shebend will be used for line simplifying often in the context of map generalization. The big question will often be what diameter should we use?  A good starting point is the cartogrphic rule of thumb of the *.5mm on the map* which say that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line in order to acheive 1:50 000 on the map a diameter of 25 should be a good starting point... 
