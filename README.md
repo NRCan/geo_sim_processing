@@ -71,24 +71,17 @@ For each line and rings composing polygon Sherbend will detect the position of e
 Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the bends.
 
 * __Simplifying bends__
-For each bend of a line or polygon ring Sherbend calculates an adjusted area using the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The compactness index is calculate using *4\*π\*A/p\*\*2* where *A* is the area and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend having a value of 1 and an almost flat bend having a value of 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a therotical circle that permit to define the minimum adjusted area *\.75\*2\*r\*\*2/cmpi* where r is d/2.  Finally, each bend of a line that are below the minimum adjusted area are than replaced by a straight line
+For each bend of a line or polygon ring Sherbend calculates an adjusted area using the following formula: *\.75\*A/cmpi* where *A* is the area in map unit of the bend and *cmpi* the compactness index of the bend.  The compactness index is calculate using *4\*π\*A/p\*\*2* where *A* is the area and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend having a value of 1 and an almost flat bend having a value of 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a therotical circle that permit to define the minimum adjusted area *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area are than replaced by a straight line
 
-* __Validating topological relationship__
-
-
-Bend simplificatin
-
-Topological 
-
-##Topological relationships
-
-ffff
+* __Preserving topological relationship__
+Before any bend simplifcation, Sherbend will validate the following 3 topological relationship and if one the topological relationship is broken than the bend is not simplified.  This process preserve the existing topology within the geospatial features.
 
 ###Simplicity
-
-ddd
+Sherbend will not permit bend simplification if the simplified bend creates a self intersection in the line (figure x).  
+Note: If a line or polygon ring contains 4 bend that can be simplified and one of the bend if simplified creates a self intersection the conflicting bend will not be simplified but all the other bend will be simplified.
 
 ###Intersection
+
 
 ddd
 
