@@ -21,7 +21,7 @@ Using conda, you can set and activate your python environment with the following
     
   Note on the installation:
   - Fiona needs to be installed separatly has there is a problem (wtih conda?) when you try to installes shapely, rtree, fiona at the same time
-  - For Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site] (https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of windows installers.
+  - For Windos users, do not forget that shapely, rtree and fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of windows installers.
 
 ##Usage
 
