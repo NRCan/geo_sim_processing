@@ -23,7 +23,7 @@ Note on the installation:
 
 ## Usage
 
-usage: sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d DIAMETER | -dl DLAYER] in_file out_file
+usage: python sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d DIAMETER | -dl DLAYER] in_file out_file
 
 positional arguments:
   in_file               Input Geopackage vector file to simplify (GPKG)
@@ -62,13 +62,13 @@ Compared to the well known Douglas-Peucker algorithm, Sherbend algorithm will al
 
 ## How it works
 
-Sherbend will simplify (generalize) line and polygon it also take into account point which are unsimplifiable but used when analysing topological relationships. The 3 main steps of the algorithm are: Detecting the bends, Determine the bendds to simplify and Validating the spatial relationships.
+Sherbend will simplify (generalize) line and polygon it also take into account point which are unsimplifiable and only used when analysing topological relationships. The 3 main steps of the algorithm are: Detecting the bends, Determining the bends to simplify and Preserving the topological (spatial) relationships.  These 3 steps are detailed below.
 
 * __Detecting bends__
 For each line and rings composing polygon Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of susequent vertices, with the inflections angles on all vertices being in opposite sign.
-Figure 1 a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the 3 bends forming each an area.
+Figure 1a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the 3 bends forming each an area.
 
-* __Determine the bends to simplify__
+* __Determining the bends to simplify__
 For each bend of a line or polygon ring Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend in map uni and *cmpi* the compactness index of the bend.  The compactness index is calculate using the following area: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] with a circular bend will value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.  Figure 1d represent the result with the middle bend of the line simplified.
 
 ![Figure1](/image/figure1.png)
