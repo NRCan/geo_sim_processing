@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyses its bends and decide which one to simplify, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon (of course points are unsimplifiable but are used for topological relationship validation). Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
+Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyses its bends (curves) and decide which one to simplify, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon (points are unsimplifiable but are used for topological relationship validation). Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
 
 ## Requirements  
 - Python 3.7 with the following libraries:
@@ -18,7 +18,7 @@ source activate YOUR_ENV   (for Linux and macos)
 activate YOUR_ENV          (for Windows)
 ```
 Note on the installation:
-  - For Windows users, it you are not using conda, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of Windows installers.
+  - For Windows users, it you are not using conda, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a long list of Windows installers.
 
 ## Usage
 
