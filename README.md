@@ -22,7 +22,7 @@ Note on the installation:
 
 ## Usage
 
-usage: python sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d DIAMETER | -dl DLAYER] in_file out_file
+usage: python sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d diameter | -dl dlayer] in_file out_file
 
 positional arguments:
     
