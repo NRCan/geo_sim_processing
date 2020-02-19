@@ -13,9 +13,9 @@ Sherbend is a geospatial simplification and generalization tool for lines and po
 ## Installation on your workstation
 Using conda, you can set and activate your python environment with the following commands:   
 ```
-conda create -p YOUR_PATH python=3.7 shapely rtree fiona
+conda create -p YOUR_ENV python=3.7 shapely rtree fiona
 source activate YOUR_ENV   (for Linux and macos)
-activate Your_ENV          (for Windows)
+activate YOUR_ENV          (for Windows)
 ```
 Note on the installation:
   - For Windows users, it you are not using conda, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a good list of Windows installers.
