@@ -69,9 +69,9 @@ For each line and rings composing the polygon features, Sherbend will detect the
 Figure 1a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the 3 bends forming each an area.
 
 * __Determining the bends to simplify__
-For each bend of a line or polygon ring, Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend (1) and *cmpi* the compactness index of the bend.  The compactness index is calculated using the following formula: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] where a circular bend will a value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.  Figure 1d represent the result with the middle bend of the line simplified.
+For each bend of a line or polygon ring, Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend *(1)* and *cmpi* the compactness index of the bend.  The compactness index is calculated using the following formula: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] where a circular bend will a value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.  Figure 1d represent the result with the middle bend of the line simplified.
 
-(1) The different calculus are always done in map unit: meters, feet, degrees...
+*(1)* The different calculus are always done in map unit: meters, feet, degrees...
 
 ![Figure1](/image/figure1.png)
 
