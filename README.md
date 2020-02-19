@@ -25,8 +25,9 @@ Note on the installation:
 usage: python sherbend.py \[-h] \[-eh] \[-ep] \[-pl] \[-d DIAMETER | -dl DLAYER] in_file out_file
 
 positional arguments:
-  in_file               Input Geopackage vector file to simplify (GPKG)
-  out_file              Output Geopackage vector file simplified (GPKG)
+    
+    in_file               Input Geopackage vector file to simplify (GPKG)
+    out_file              Output Geopackage vector file simplified (GPKG)
 
 optional arguments:
 
