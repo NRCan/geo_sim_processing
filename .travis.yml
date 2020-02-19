@@ -11,9 +11,9 @@ install:
   - conda config --prepend channels conda-forge
   - conda update -q conda
   - conda info -a
-  - conda create -n ci_env python=3.7 shapely rtree
+  - conda create -n ci_env python=3.7 shapely rtree fiona
   - source activate ci_env
-  - pip install fiona
+#  - pip install fiona
 script:
 # Remove file from previous execution
   - rm -f ./data/test_sherbend_out.gpkg
