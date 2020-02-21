@@ -104,6 +104,8 @@ case2 = [a,b,c,d]
 
 #triangle_dict = {1:case1}
 
+
+
 for key in triangle_dict.keys():
     ca = ChordalAxis(triangle_dict[key], GenUtil.ZERO)
     centre_lines = ca.get_skeletton()
