@@ -935,7 +935,7 @@ class ChordalAxis1(object):
             triangle_sc._sc_processed = False
             lst_triangles_sc.append(triangle_sc)
 
-            
+
 
 
 class ChordalAxis(object):
