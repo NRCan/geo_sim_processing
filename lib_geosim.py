@@ -918,27 +918,6 @@ class SpatialContainerSTRtree(object):
 
         return
 
-class ChordalAxis1(object):
-
-    def __init__(self, lst_triangles, search_tolerance=GenUtil.ZERO):
-
-        self.
-        self._load_triangles(lst_triangles)
-
-        self._build_triangle_clusters()
-
-
-    def _load_triangles(self, lst_triangles):
-
-        lst_triangles_sc = []
-        for triangle in lst_triangles:
-            triangle_sc = LineStringSc(triangle.coords)
-            triangle_sc._sc_processed = False
-            lst_triangles_sc.append(triangle_sc)
-
-
-
-
 class ChordalAxis(object):
     """This class is creating  a skeleton and identify bottleneck based on the Chordal Axis Transform CAT
 
