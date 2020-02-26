@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyses its bends (curves) and decide which one to simplify, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept as input point, line and polygon (points are unsimplifiable but are used for topological relationship validation). Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
+Sherbend is a geospatial simplification and generalization tool for lines and polygons.  Sherbend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyzes its bends (curves) and decides which one to simplify, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Sherbend will accept points, lines and polygons as input.  Even though points cannot be simplified, they are used for topological relationship validations. Sherbend can accept GeoPackage and Esri Shape file as input/ouput but not a mixed of both.
 
 ## Requirements  
 - Python 3.7 with the following libraries:
@@ -35,7 +35,7 @@ optional arguments:
      -h, --help               Show this help message and exit
      -eh, --exclude_hole      Exclude (delete) polygon rings (interior holes) below the minimum adjusted area
      -ep, --exclude_polygon   Exclude (delete) polygons exteriors below the minimum adjusted area (delete also any interior holes if present)
-     -pl, --per_layer         Analyse topology per layer only which mean features from different layers can overlap after simplification
+     -pl, --per_layer         Analyze topology per layer only; this means features from different layers can overlap after simplification
      -dl, --dlayer            Specify the diameter of the minimum adjusted area bend to simplify per layer name (ex: -dl Road=5,Hydro=7.5)
      
 Some example:
@@ -46,7 +46,7 @@ python sherbend.py -d 3 in_file.gpkg out\_file.gpkh
    
 python sherbend.py -d 3 -pl in\_file.gpkg out_file.gpkh
    
-   - Simplify each feature of each layer of the input file with a bend diameter below 3 and create the output file but each layer are processed independently
+   - Simplify each feature of each layer of the input file with a bend diameter below 3 and create the output file with each layer processed independently
    
 python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
 
@@ -54,49 +54,49 @@ python sherbend.py -d 3 -ep -eh in_file.gpkg out_file.gpkh
    
 python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
-   - Simplify each feature of the Road, Lake and River layers of the input file with a bend diameter below 3 for the Road layer, 5 for the Lake layer  and do not simplify the River layer features but use them for analysing the topology; finally create the output file
+   - Simplify each feature of the Road, Lake and River layers of the input file with a bend diameter below 3 for the Road layer, 5 for the Lake layer and do not simplify the River layer features but use them for analysing the topology; finally create the output file
 
 ## Comparison with other simplication tool
 
-Compared to the well known Douglas-Peucker algorithm, Sherbend will always try to remove (delete) unnecessary bends (line details) based on a bend diameter value.  Douglas-Peucker on the other hand will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices.  Both algorithm can be complimentary because as Sherbend will not remove unnecessary vertice in the case of very dense vertice on a line.
+Compared to the well known Douglas-Peucker algorithm, Sherbend will always try to remove (delete) unnecessary bends (line details) based on a bend diameter value.  Douglas-Peucker on the other hand will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices.  Both algorithms can be complementary because Sherbend will not remove unnecessary vertices in the case of very high densities of vertices on a line.
 
 ## How it works
 
-Sherbend will simplify (generalize) line and polygon it also take into account point which are unsimplifiable and only used when analysing topological relationships. sherbend contains the following three main steps: Detecting the bends, Determining the bends to simplify and Preserving the topological (spatial) relationships.  These 3 steps are detailed below.
+Sherbend will simplify (generalize) lines as well as polygons.  It will also take into account points, which are unsimplifiable, for analysis of topological relationships. Sherbend consists of three main steps: detect bends, determine which bends to simplify and preserve the topological (spatial) relationships.  These 3 steps are detailed below.
 
 * __Detecting bends__
-For each line and rings composing the polygon features, Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of susequent vertices, with the inflections angles on all vertices being in opposite sign.
-Figure 1a show a line, figure 1b the same line with inflexion sign on ech vertice, figure 1 c the same line with the position of the 3 bends forming each an area.
+For each line and ring composing polygon features, Sherbend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of subsequent vertices with the inflection angles on all vertices being in opposite sign.
+Figure 1a shows a line.  Figure 1b depicts the same line with inflexion signs on ech vertice.  Figure 1c shows the position of the 3 bends each forming an area.
 
 * __Determining the bends to simplify__
-For each bend of a line or polygon ring, Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend *(1)* and *cmpi* the compactness index of the bend.  The compactness index is calculated using the following formula: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index vary between \[0..1] where a circular bend will a value near 1 and an almost flat bend having a value near 0.  The Sherbend parameter -d (ex.: -d 4) represent the diameter of a theoritical circle that permit to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that are below the minimum adjusted area value are replaced by a straight line.  Figure 1d represent the result with the middle bend of the line simplified.
+For each bend of a line or polygon ring, Sherbend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend *(1)* and *cmpi* the compactness index of the bend.  The compactness index is computed using the following formula: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index varies between \[0..1].  The more circular the bend, the closer the index to 1.  Conversely, the flatter the bend, the closer the index to 0.  The Sherbend parameter -d (ex.: -d 4) represents the diameter of a theoretical circle to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that is below the minimum adjusted area value is replaced by a straight line.  Figure 1d shows the result with the middle bend of the line removed (simplified).
 
-*(1)* The different calculus are always done in map unit: meters, feet, degrees...
+*(1)* The computations are always done in map unit: meters, feet, degrees...
 
 ![Figure1](/image/figure1.png)
 
 * __Preserving topological relationship__
-Before any bend simplifcation, Sherbend will always analayse the following 3 topological relationship: simplicity, intersection and sidedness; if one of the topological relationship is not valid that particular bend is not simplified.  Thereby Sherbend preserve the existing relative topology between the geospatial features to simplify.  
+Before any bend simplifcation is applied, Sherbend will always analyze the following 3 topological relationships to ensure they are not affected by the simplification operation: simplicity, intersection and sidedness.  If simplification alters any of those relationships, then it is not performed.  Thereby Sherbend preserves the existing relative topology between the geospatial features to simplify.  
 
 ### Simplicity
-Sherbend will not simplify a bend, if the simplified bend creates a self intersection in the line (figure 2a).  
+Sherbend will not simplify a bend, if the simplified bend (dashed line in figure 2a) creates a self intersection.  
 
 ### Intersection
-Sherbend will not simplify a bend, if the simplified bend creates an intersection between 2 features (figure 2b).  The features in conflict can be a line with a line or a line with a polygon ring.
+Sherbend will not simplify a bend, if the simplified bend creates an intersection between 2 existing features (figure 2b).  Conflicting features can be a line with another line or a line with a polygon ring.
 
 ### Sidedness
-Sherbend will not simplifi a bend, if the simplified bend creates a sidedness or relative position error between 2 features. Like a building that change side in regards with a river after simplification (figure 2c and 2d).  The features in conflict can be a line with a point or a line with a line or a line with a polygon ring.  The preservation of this topological relationship is particulary important when it comes to simplify polygon ring.  In order to prevent interior rings to "pop out" its exterior ring afiter a bend simplification (figure 2d).
+Sherbend will not simplify a bend, if simplifying the bend creates a sidedness or relative position error between 2 features. Two examples of sidedness issues are shown in figures 2c and 2d.  The preservation of the sidedness topological relationship is particulary important when it comes to simplifying polygon rings.  In figure 2c, simplifying the polygon as shown (dashed line) would make what was an inner hole "pop out" and become external to the new polygon.  In figure 2d, simplifying the bend in the line segment (dashed line) would result in the point feature changing its location relative to the original line.  If for example the original line represents a river and the point represents a building, it would mean the building would find itself on the other side of the river after simplification.   Conflicting features can be a line with a point or a line with a line or a line with a polygon ring.
 
-Note: For all 3 topological relationships, for any given line or polygon ring if one or more of its bend simplification create a topological error these bend will not be simplified but all the other bends that do not create topological errors will be simplified.
+Note: For any given line or polygon ring, only those bends the simplification of which do not cause any topological issues as expressed above will be simplified.
 
 ![Figure2](/image/figure2.png)
 
 ### Rule of thumb for the diameter
-Sherbend can be used for line simplifying often in the context of line generalization. The big question will often be what diameter should we use?  A good starting point is the cartogrphic rule of thumb of the *.5mm on the map* which say that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line in order to acheive 1:50 000 on the map a diameter of 25m should be a good starting point... 
+Sherbend can be used for line simplifying often in the context of line generalization. The big question will often be what diameter should we use?  A good starting point is the cartographic rule of thumb -- the *.5mm on the map* -- which says that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line for representation at a scale of 1:50 000 for example a diameter of 25m should be a good starting point... 
 
 ## Known issue with GeoPackage
 
-The following problem can occured when using fiona libraries when creating GeoPackage, it's a know issue, where the spatial index is not created for a specific layer.  The program still terminate with Exit Code 0.  You can create the spatial index after in QGIS.
+The following problem can occur when using fiona libraries when creating GeoPackage.  It's a known issue, where the spatial index is not created for a specific layer.  The program still terminates with Exit Code 0 (meaning "success").  You can create the spatial index after in QGIS.
 
 ```
 ERROR 1: sqlite3_exec(CREATE VIRTUAL TABLE "rtree_line_geom" USING rtree(id, minx, maxx, miny, maxy)) failed: table "rtree_line_geom" already exists
