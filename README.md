@@ -56,9 +56,9 @@ python sherbend.py -dl Road=3,Lake=5,River=0 in_file.gpkg out_file.gpkh
 
    - Simplify each feature of the Road, Lake and River layers of the input file with a bend diameter below 3 for the Road layer, 5 for the Lake layer and do not simplify the River layer features but use them for analysing the topology; finally create the output file
 
-## Comparison with other simplication tool
+## Line Simplification versus Line Generalization
 
-Compared to the well known Douglas-Peucker algorithm, Sherbend will always try to remove (delete) unnecessary bends (line details) based on a bend diameter value.  Douglas-Peucker on the other hand will always try to preserve the maximum number of line details (line definition) with the minimum number of vertices.  Both algorithms can be complementary because Sherbend will not remove unnecessary vertices in the case of very high densities of vertices on a line.
+*Line Simplification* is the process of removing vertices in a line while trying to keep the maximum number of details within the line whereas *Line Generalization* is the process of removing meaningless (unwanted) details in a line usually for scaling down.  The well known Douglas-Peucker algorithm is a very good example of line simplification tool and Sherbend falls more in the category of line generalization tools. Keep in mind thay both algorithms can be complementary because Sherbend will not remove unnecessary vertices in the case of very high densities of vertices.  It may be a good idea to use Douglass Peucker before Sherbend in the case of very densed geometries.
 
 ## How it works
 
