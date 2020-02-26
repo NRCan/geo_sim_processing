@@ -918,7 +918,7 @@ class SpatialContainerSTRtree(object):
 
         return
 
-class ChordalAxis1(object):
+class ChordalAxis2(object):
 
     def __init__(self, lst_triangles, search_tolerance=GenUtil.ZERO):
 
