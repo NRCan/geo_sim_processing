@@ -936,9 +936,6 @@ class ChordalAxis2(object):
             triangle_sc._sc_processed = False
             lst_triangles_sc.append(triangle_sc)
 
-
-
-
 class ChordalAxis(object):
     """This class is creating  a skeleton and identify bottleneck based on the Chordal Axis Transform CAT
 
