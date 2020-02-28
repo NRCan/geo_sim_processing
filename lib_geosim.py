@@ -2,7 +2,7 @@
 # -=- encoding: utf-8 -=-
 
 """
-General classes and utilities needed for the GENeralization MEta ALgorithm (GENMTEAL) tool.
+General classes and utilities needed for the GENeralization MEta ALgorithm (GENMTEAL) tool..git 
 
 """
 
