@@ -922,7 +922,7 @@ class ChordalAxis2(object):
 
     def __init__(self, lst_triangles, search_tolerance=GenUtil.ZERO):
 
-        self.coco
+        self.coco123
         self._load_triangles(lst_triangles)
 
         self._build_triangle_clusters()
