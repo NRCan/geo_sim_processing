@@ -94,7 +94,7 @@ Note: For any given line or polygon ring, only those bends the simplification of
 ### Rule of thumb for the diameter
 Sherbend can be used for line simplifying often in the context of line generalization. The big question will often be what diameter should we use?  A good starting point is the cartographic rule of thumb -- the *.5mm on the map* -- which says that the minimumm distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line for representation at a scale of 1:50 000 for example a diameter of 25m should be a good starting point... 
 
-## Known issue with GeoPackage
+## Known issue with GeoPackage format
 
 The following problem can occur when using fiona libraries when creating GeoPackage.  It's a known issue, where the spatial index is not created for a specific layer.  The program still terminates with Exit Code 0 (meaning "success").  You can create the spatial index after in QGIS.
 
