@@ -18,7 +18,7 @@ source activate YOUR_ENV   (for Linux and macos)
 activate YOUR_ENV          (for Windows)
 ```
 Note on the installation:
-  - For Windows users, it you are not using conda, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a long list of Windows installers.
+  - For Windows users, if you are not using conda, do not forget that Shapely, Rtree and Fiona are all python wrapper of C libraries and need DLLs so use the appropriate installer (not just pip). This [site](https://www.lfd.uci.edu/~gohlke/pythonlibs/) contains a long list of Windows installers.
 
 ## Usage
 
