@@ -8,18 +8,37 @@ Features are tested for equality with the shapely method object.almost_equals
 Order of the feature in each geopackage does need not to be preserved
 """
 
-import fiona
-import sys
+from argparse import ArgumentParser
+from sys import argv
+from os import path
 from dataclasses import dataclass
 from typing import List
 from lib_geosim import GenUtil
 
-# Extract name of the file from the parameter line
-primary = sys.argv.pop()
-secondary= sys.argv.pop()
+parser = ArgumentParser()
+parser.add_argument("file_1", help="First file to check")
+parser.add_argument("file_2", help="Second file to check")
+parser.add_argument("-l1", "--layer_1", type=str, help="Layer name from the first file")
+parser.add_argument("-l2", "--layer_2", type=str, help="Layer name from the second file")
+
+# Read the command line parameter
+command = parser.parse_args()
+
+# Check that the input file exist. Exit if missing
+if not path.isfile(command.file_1):
+    raise Exception('First file is missing: {}'.format(command.file_1))
+
+# Check that the output file exist. Exit if present
+if not path.isfile(command.file_2):
+    raise Exception('Second file is missing: {}'.format(command.file_2))
+
+for i in range(len(argv)-1):
+    dummy = argv.pop()
+
 
 # It is important to import the unit test after we extract the arguments otherwise it will not work
 import unittest
+
 
 class TestFeatures(unittest.TestCase):
 
@@ -80,14 +99,13 @@ geo_content_sc = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_
                             out_features=[],
                             in_nbr_points=0, in_nbr_line_strings=0, in_nbr_polygons=0, in_nbr_holes=0)
 
-print ("À lire: ", primary, " ",secondary)
 # Read and load the layers of the primary geopackage
-GenUtil.read_in_file(primary, geo_content_pr, None)
-print ("Fichier 1 lu")
+GenUtil.read_in_file(command.file_1, geo_content_pr, layer_in=[command.layer_1])
+print("File#1 read: {0}".format(command.file_1) )
 
 # Read and load the layers of the secondary geopackage
-GenUtil.read_in_file(secondary, geo_content_sc, None)
-print ("Fichier 2 lu")
+GenUtil.read_in_file(command.file_2, geo_content_sc, layer_in=[command.layer_2])
+print("File#2 read: {0}".format(command.file_2) )
 
 if __name__ == '__main__':
     unittest.main()

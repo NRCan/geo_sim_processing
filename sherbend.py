@@ -1,8 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Algorithm implementing the Sherbend simplification algorithm """
 
-import argparse
-import sys, os
+from argparse import ArgumentParser
+from sys import exit
+from os import path
 from dataclasses import dataclass
 from typing import List
 from algo_sherbend import AlgoSherbend
@@ -10,10 +10,20 @@ from lib_geosim import GenUtil
 
 
 def manage_arguments():
-    """Read and manage the input arguments in the command line"""
+    """Extract the parameters of the line of command
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    command
+        Parameters of the command line
+    """
 
     # Setting the parameters of the command line
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument("in_file", help="input vector file to simplify")
     parser.add_argument("out_file", help="output vector file simplified")
     parser.add_argument("-eh", "--exclude_hole", action='store_true', help="exclude holes (interior) below minimum adjusted area")
@@ -40,16 +50,16 @@ def manage_arguments():
             try:
                 command.dlayer_dict[layer_tol[0]] = float(layer_tol[1])
             except Exception:
-                print('Error in the definition of the diameter per layer: "{}"'.format(command.dlayer))
+                print('Error in the definition of the diameter per layer (-dl or --dlayer): "{}"'.format(command.dlayer))
                 parser.print_help()
-                sys.exit(1)
+                exit(1)
 
     # Check that the input file exist. Exit if missing
-    if not os.path.isfile(command.in_file):
+    if not path.isfile(command.in_file):
         raise Exception('Input file is missing: {}'.format(command.in_file))
 
     # Check that the output file exist. Exit if present
-    if os.path.isfile(command.out_file):
+    if path.isfile(command.out_file):
         raise Exception('Output file is present: {}'.format(command.out_file))
 
     return command
@@ -95,10 +105,10 @@ geo_content = GeoContent(crs=None, driver=None, schemas={}, bounds=[], layer_nam
 command = manage_arguments()
 
 if command.dlayer:
-    # Extract the list of layers
+    # Extract the list of layers to read
     in_layer_names = [layer_name for layer_name in command.dlayer_dict.keys()]
 else:
-    # Read all the layers in the file
+    # Read all the layers in the input file
     in_layer_names = None
 
 # Read and load the layers of the input file
@@ -124,6 +134,8 @@ for feature in geo_content.in_features:
         tmp_in_features.append(feature)
 geo_content.in_features = tmp_in_features
 
+
+# Print statistics of the process
 print("-------")
 print("Name of input file: {}".format(command.in_file))
 print("Name of output file: {}".format(command.out_file))
@@ -147,7 +159,7 @@ if command.per_layer:
             if feature.sb_layer_name == layer_name:
                 geo_content.in_features.append(feature)
 
-        # Process feature per layer in one pprocess
+        # Process feature per layer in one process
         sherbend = AlgoSherbend(command, geo_content)
         sherbend.process()
         # Copy the feature in the temporary outut

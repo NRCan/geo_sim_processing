@@ -1,24 +1,15 @@
-#!/usr/local/bin/python
-# -=- encoding: utf-8 -=-
-
-
-
-"""
-    This algorithm CIT-S implements the Wang Generalization algotithm with constraint checking
+"""This algorithm implements the Wang Generalization algotithm with constraint checking
 
     This algorithm simplifies lines.  It detects for each line the bends.  It analyze the bend and
     remove the bends that are below a certain diameter. The point and lines that do not need 
     to be simplified are still used to enforce topology integrity between  those feature that need to be simplified
-    
-    Usage:
-        import spike
+
 
     Limits and constraints
         Always works better when the line to process meet the OGC simple line.
           
 
 """
-
 
 import math, sys
 
@@ -39,8 +30,7 @@ _UNSIMPLIFIABLE = 'Unsimplifiable'
 
 
 class LineStringSb(LineStringSc):
-    """
-    A class to represent a LineString used by the SherBend algorithm
+    """A class to represent a LineString used by the SherBend algorithm
 
     Attributes
     ----------
@@ -76,6 +66,18 @@ class LineStringSb(LineStringSc):
     # Is the line string closed
     @property
     def sb_is_closed(self):
+        """This method tests if a line is closed (first/last coordinates are the same)
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        bool
+            True: the line is closed or False the line is open
+        """
+
         try:
             return self._sb_is_closed
         except AttributeError:
@@ -88,6 +90,21 @@ class LineStringSb(LineStringSc):
 
     @property
     def coords(self):
+        """This method keeps a copy of the coordinate in a list.
+
+        This methods allows a faster acces than to always access the coordinates from the C call
+        of shapely. the drawback more memory space
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        list
+            Coordinate of the LineString
+        """
+
         if self._sb_fast_access:
             return self.__lst_coords
         else:
@@ -95,6 +112,18 @@ class LineStringSb(LineStringSc):
 
     @coords.setter
     def coords(self, coords):
+        """Set the coordinate of a LineString
+
+        Parameters
+        ----------
+        coords : list
+            List of x,y coordinates
+
+        Returns
+        -------
+        None
+        """
+
         # Access the coord attribute in the parent class
         super(LineStringSb, self.__class__).coords.fset(self, coords)  # Odd writing but it's needed...
         if self._sb_fast_access:
@@ -107,10 +136,22 @@ class LineStringSb(LineStringSc):
 
     @property
     def vertex_orientation(self):
-        """List containing the orientation at each vertex of the line.
+        """This method calculates the orientation of the vertex
+
+        List containing the orientation at each vertex of the line.
         -1: anti clockwise, +1 Clockwise; 0 Straight line
         For closed line the first and last vertice bear the same value
-        For open line the first and last value are None"""
+        For open line the first and last value are None
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+
         try:
             return self._vertex_orientation
         except AttributeError:
@@ -135,8 +176,8 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -165,8 +206,8 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
+        Returns
+        -------
         None
 
         """
@@ -201,8 +242,8 @@ class LineStringSb(LineStringSc):
         i,j : int
             Index used to extract a sub list
 
-        Return
-        ------
+        Returns
+        -------
         List
             list of (x,y) coordinates
 
@@ -225,8 +266,8 @@ class LineStringSb(LineStringSc):
         i : int
             Index of for vertex orientation
 
-        Return
-        ------
+        Returns
+        -------
         bool
             Flag indicating if an inflexion occurs or not
         """
@@ -250,8 +291,8 @@ class LineStringSb(LineStringSc):
         inflexions : List
             List of the inflexions in the list
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -267,8 +308,8 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -322,8 +363,8 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -348,8 +389,8 @@ class LineStringSb(LineStringSc):
         i,j : int
             Index in the line where the vertice were removed
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -376,9 +417,10 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
-        None"""
+        Returns
+        -------
+        None
+        """
 
         if self.sb_is_closed:
             tmp_ring = LinearRing(self.coords)
@@ -393,8 +435,8 @@ class LineStringSb(LineStringSc):
         ----------
         None
 
-        Return
-        ------
+        Returns
+        -------
         None
         """
 
@@ -662,17 +704,26 @@ class SpatialConstraints(object):
 
 
 class Bend(object):
-    """
-    This class defines attributes and operations for bends
+    """Class defining the attributes and operations for bend manipulation
 
     Attributes: None
     """
 
     def __init__(self, i, j, bend_coords):
-        """
-        Initialize Bend object
+        """Constructor of the class
 
+        Parameters
+        ----------
+        i : int
+            Index of the start of the bend in the list of coordinates
+        j : int
+            Index of the end of the bend in the list of coordinates
+        bend_coords : list
+            List of x,y coordinate of the bend
 
+        Returns
+        -------
+        None
         """
 
         self.i = i  # Index of the start of the bend coordinate
@@ -681,7 +732,19 @@ class Bend(object):
         self.bend_coords = bend_coords  # List of the coordinate forming the bend
 
     @property
-    def polygon(self):  # Polygon formed by the bendbbbbbbb
+    def polygon(self):  # Polygon formed by the bend
+        """Creates a polygon from the coordinates forming the bend
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Polygon
+            polygon formed by the coordinates
+        """
+
         try:
             return self._polygon
         except AttributeError:
@@ -689,7 +752,19 @@ class Bend(object):
             return self._polygon
 
     @property
-    def area(self):  # Area formed by the bend
+    def area(self):
+        """Constructor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        float
+            Area of the polygon
+        """
+
         try:
             return self._area
         except AttributeError:
@@ -699,7 +774,19 @@ class Bend(object):
             return self._area
 
     @property
-    def base(self):  # The length of the base of the bend
+    def base(self):
+        """Length of the base of the bend. Distance between the first and last coordinate
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Float
+            Length of the bend of the polygon
+        """
+
         try:
             return self._base
         except AttributeError:
@@ -709,7 +796,19 @@ class Bend(object):
             return self._base
 
     @property
-    def perimeter(self):  # The length of the base of the bend
+    def perimeter(self):
+        """Length of the perimeter of the bend (polygon)
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        float
+            Length of the perimeter
+        """
+
         try:
             return self._perimeter
         except AttributeError:
@@ -717,7 +816,18 @@ class Bend(object):
             return self._perimeter
 
     @property
-    def cmp_index(self):  # The compactness index of the bend
+    def cmp_index(self):
+        """Calculates the value of the compactness index
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        float
+            Value of the compactness index
+        """
         try:
             return self._cmp_index
         except AttributeError:
@@ -725,7 +835,19 @@ class Bend(object):
             return self._cmp_index
 
     @property
-    def adj_area(self):  # The adjusted area of the bend
+    def adj_area(self):
+        """Calculates the value of the compactness index of the polygon
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        float
+            Value of the compactness index
+        """
+
         try:
             return self._adj_area
         except AttributeError:
@@ -733,7 +855,19 @@ class Bend(object):
             return self._adj_area
 
     @property
-    def replacement_line(self):  # The adjusted area of the bend
+    def replacement_line(self):
+        """Calculates the replacement line of the bend
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        LineString
+            Replacement line for the bend
+        """
+
         try:
             return self._replacement_line
         except AttributeError:
@@ -855,14 +989,18 @@ class AlgoSherbend(object):
     """
 
     def __init__(self, command, geo_content):
-        """Initialize the attributes of an object of the class DPAlgorithm
+        """Constructor of the class
 
-        Keyword:
-            command: dataclass containing all the commands for the sherbend line reduction algorithm
-            geo_content: dataclass containing the geo information needed for the the sherbend line reduction algorithm
+        Parameters
+        ----------
+        command : DataClass
+            Contains all the commands for the Sherbend line simplification algorithm
+        geo_content: DataClass
+            Contains the geo information needed for the the sherbend line reduction algorithm
 
-        Return value:
-            None
+        Returns
+        -------
+        None
         """
         
         self.command = command
@@ -870,10 +1008,35 @@ class AlgoSherbend(object):
         self.nbr_bend_simplified = 0
 
     def calculate_min_adj_area(self, diameter):
+        """Calculates the minimum adjusted area of a band
+
+        Parameters
+        ----------
+        diameter : float
+            diameter used to calculate the minimum adjusted area
+
+        Returns
+        -------
+        float
+            Minimum adjusted area
+        """
 
         return  (_AREA_CMP_INDEX * math.pi * (diameter/2.0)**2.0)
 
     def _calculate_adj_area(self, coords):
+        """Calculates the adjusted area of a polygon
+
+        Parameters
+        ----------
+        coords : list
+            List of x,y coordinates defining a polygon
+
+        Returns
+        -------
+        float
+            Minimum adjusted area
+        """
+
 
         pol = Polygon(coords)
         cmp_index = GenUtil.calculate_compactness_index(pol.area, pol.length)
@@ -887,11 +1050,15 @@ class AlgoSherbend(object):
         The Polygons are deconstructued into a list LineString with clockwise orientation and extra added information
         needed for the reconstruction of the original Polygon
 
-        Args:
-            geo_content (dataClass): Contains all the input#output geo spatial information
-            command (object): Contains the parameters of the command line interface
+        Parameters
+        ----------
+        geo_content : DataClass
+            Contains all the input#output geo spatial information
+        command :ParserArgument
+            Contains the parameters of the command line interface
 
-        Return
+        Returns
+        -------
             None
         """
 
@@ -962,10 +1129,15 @@ class AlgoSherbend(object):
         coordinates into the Shapely structure.  This is why we updtade the shapely structure at the end 
         when the last bend of the line is processed
         
-        Parameters: None
+        Parameters
+        ----------
+        s_constraints : SpatialContraints
+            Spatal constraints to validate
             
-        Return value
-                int: Total number of bend simplified
+        Returns
+        -------
+        int
+            Total number of bend simplified
         """
 
         iter_nbr = 0
@@ -1001,11 +1173,14 @@ class AlgoSherbend(object):
         The algorithm will simplify the lines using the Sherbend algorithm. 
         It will iterate over the lines until there are no more bends to simplify.
 
-        Keyword arguments:
-            None
+        Parameters
+        ----------
+        None
 
-        Return value:
-            geo_content: dataclass containing the output information
+        Returns
+        -------
+        geo_content : DataClass
+            Contains the output information
 
         """
 

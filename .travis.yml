@@ -14,9 +14,24 @@ install:
   - conda create -n ci_env python=3.7 shapely rtree fiona
   - source activate ci_env
 script:
+# Test Sherbend
+# -------------
 # Remove file from previous execution
   - rm -f ./data/test_sherbend_out.gpkg
 # Create the new file
   - python sherbend.py -d 2.0 ./data/test_sherbend_in.gpkg ./data/test_sherbend_out.gpkg
 # Validate that the content is equal to the standard file
-  - python test_sherbend.py ./data/test_sherbend_out.gpkg ./data/test_sherbend_out_standard.gpkg 
+  - python test_sherbend.py ./data/test_sherbend_out.gpkg ./data/test_sherbend_out_standard.gpkg
+# Test Chordal Axis
+# -----------------
+# Remove unnecessary layers
+  - ogrinfo -sql "DROP TABLE Skeleton" ./data/test_chordal_axis.gpkg
+  - ogrinfo -sql "DROP TABLE SkeletonCorrected" ./data/test_chordal_axis.gpkg
+# Execute triangulation without correction to the skeleton
+  - python chordal_axis.py -t Triangles -s Skeleton ./data/test_chordal_axis.gpkg
+# Validate the result without correction
+  - python test_sherbend.py -l1 Skeleton -l2 Skeleton ./data/test_chordal_axis.gpkg ./data/test_chordal_axis_standard.gpkg
+# Execute triangulation without correction to the skeleton
+  - python chordal_axis.py -t Triangles -s SkeletonCorrected -c ./data/test_chordal_axis.gpkg
+# Validate the result with correction
+  - python test_sherbend.py -l1 Skeleton -l2 Skeleton ./data/test_chordal_axis.gpkg ./data/test_chordal_axis_standard.gpkg
