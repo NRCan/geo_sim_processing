@@ -1,0 +1,47 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=Geo Simplification (processing)
+qgisMinimumVersion=3.14
+description=This plugin contains different tools for generalization
+version=0.1
+author=Daniel Pilon
+email=daniel.pilon@canada.ca
+
+about=This plugin contains the following tool for line simplification: <p>- Chordal Axis</p> <p>- Reduce Bend</p> <p>- Topological Simplifier (D Peuker+)</p>
+
+tracker=http://bugs
+repository=http://repo
+# End of mandatory metadata
+
+# Recommended items:
+
+hasProcessingProvider=yes
+# Uncomment the following line and add your changelog:
+ changelog= 0.5.0 First release as a plugin
+
+# Tags are comma separated with spaces allowed
+tags=vector, topography, generalization
+
+homepage=http://homepage
+category=Analysis
+icon=logo.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+Category of the plugin: Raster, Vector, Database or Web
+# category=Vector
+
+# If the plugin can run on QGIS Server.
+server=False
+
