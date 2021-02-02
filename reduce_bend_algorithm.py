@@ -162,8 +162,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-
-    def processAlgorithm(self, instance, parameters, context, feedback):
+    def processAlgorithm(self, parameters, context, feedback):
         """
        
         """
@@ -173,7 +172,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
         source = self.parameterAsSource(parameters, "INPUT", context )
         exclude_hole = self.parameterAsBool(parameters, "EXCLUDE_HOLE", context)
         exclude_polygon = self.parameterAsBool(parameters, "EXCLUDE_POLYGON", context)
-        diameter_tol = self.parameterAsDouble(parameters, "DIAMETER", context)
+        diameter_tol = self.parameterAsDouble(parameters, "TOLERANCE", context)
         validate_structure = self.parameterAsBool(parameters, "VALIDATE_STRUCTURE", context)
         verbose = self.parameterAsBool(parameters, "VERBOSE", context)
 
