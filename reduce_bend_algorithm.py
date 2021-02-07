@@ -235,21 +235,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
         return {"OUTPUT": dest_id}
 
 
-
-
-
-
-
-#Remaining modifications to do (to place as issues):
-#  - put comment in the code
-#  - verify if progrssive erosion bring a plus (min_pass)
-#  - Add some comprehension list instead of for loop
-#  - edit line with a smooth line instead of a straight line (new parameter)
-#  - edit when create an acute angle could mesaure the average angle and use it at a floor (new parameter)
-#  - in the bend flagging process prioritize the bend that goes outside the polygon first (for polygon)
-#  - put some code to correct J-Bend
-#  - Do not delete the line segment in the spatial index as it is very expensive mark them as delete (feature id -1)
-#  - Put __slotss in RbFeature
+#--------------------------------------------------------
 
 
 # Define global constant
