@@ -1,15 +1,16 @@
 """
-Unit test for reduce_bend algorithm
+Unit test for ChordalAxis algorithm
 """
-#from qgis.analysis import *
-#from qgis._3d import Qgs3DAlgorithms
-
-
 
 import unittest
 from chordal_axis_algorithm import ChordalAxis, GenUtil
+from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
+                      QgsVectorLayer
+import processing
 from qgis.core import QgsApplication
-from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback
+from qgis._3d import Qgs3DAlgorithms
+
+
 
 def qgs_line_string_to_xy(qgs_line_string):
 
@@ -33,26 +34,32 @@ def plot_lines(qgs_line_string, qgs_new_line):
     plt.show()
 
 
-def build_and_launch(title, qgs_geoms, diameter_tol, del_pol=False, del_hole=False):
+def build_and_launch(title, qgs_geom_pol, correction=False):
 
     print(title)
-    qgs_features = []
-    feedback = QgsProcessingFeedback()
-    for qgs_geom in qgs_geoms:
-        qgs_feature = QgsFeature()
-        qgs_feature.setGeometry(qgs_geom)
-        qgs_features.append(qgs_feature)
+    vl = QgsVectorLayer("Polygon", "temporary_polygon", "memory")
+    pr = vl.dataProvider()
+    fet = QgsFeature()
+    fet.setId(1)
+    fet.setGeometry(qgs_geom_pol)
+    pr.addFeatures([fet])
 
-    rb_results = ReduceBend.reduce(qgs_features, diameter_tol, feedback, del_pol, del_hole, True)
-    log = feedback.textLog()
-    print (log)
-    qgs_features_out = rb_results.qgs_features_out
+    # update layer's extent when new features have been added
+    # because change of extent in provider is not propagated to the layer
+    vl.updateExtents()
 
-    qgs_geoms_out = []
-    for qgs_feature_out in qgs_features_out:
-        qgs_geoms_out.append(qgs_feature_out.geometry())
+    output = processing.run("3d:tessellate",
+                            {'INPUT': vl, 'OUTPUT': 'TEMPORARY_OUTPUT'})
 
-    return qgs_geoms_out
+    source = output['OUTPUT']
+    qgs_features = source.getFeatures()
+    qgs_feature = next(qgs_features)
+    ca = ChordalAxis(qgs_feature, GenUtil.ZERO)
+    if correction:
+        ca.correct_skeleton()
+    centre_lines = ca.get_skeleton()
+
+    return centre_lines
 
 def create_line(coords, ret_geom=True):
 
@@ -112,67 +119,130 @@ class Test(unittest.TestCase):
     Class allowing to test the algorithm
     """
 
-    """
-    def test_case00(self):
-        f = open("/home/daneli/test.txt", "r")
-        wkt = f.read()
-        geom = QgsGeometry()
-        geom1 = geom.fromWkt(wkt)
-#        pol = geom.constGet().clone()
-        title = "Test 01: 2 simple line segment, simple triangle  and one point"
-#        qgs_geom0 = create_line([(0,0),(30,0)])
-#        qgs_geom1 = create_polygon([(10,10),(15,20), (20,10), (10,10)], [])
-#        qgs_geom2 = create_point((0,100))
-        qgs_feature_out = build_and_launch(title,[geom1], 3)
-#        val0 = qgs_geom0.equals(qgs_feature_out[0])
-#        val1 = qgs_geom1.equals(qgs_feature_out[1])
-#        val2 = qgs_geom2.equals(qgs_feature_out[2])
-        self.assertTrue (True, title)
+    def test_case01(self):
+        title = "Test 01 - Triangle - No skeleton produced"
+        qgs_geom_pol = create_polygon([(0,0), (10,10), (20,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        self.assertTrue(len(centre_lines)==0, title)
 
-    """
-    def test_case000_3(self):
-        title = "Test 00: Empty file"
-        pol = create_polygon([(0,0), (10,0), (10,10), (0,10), (0,0)], [])
-        import processing
-#        from qgis.analysis import *
-#        from qgis._3d import *
-        import qgis.utils
-        import qgis.utils
+    def test_case02(self):
+        title = "Test 02 Small square - 2 triangles terminal without correction"
+        qgs_geom_pol = create_polygon([(0,0), (10,0), (10,10), (0,10), (0,0)], [])
 
-        for alg in QgsApplication.processingRegistry().algorithms():
-            print("{}:{} --> {}".format(alg.provider().name(), alg.name(), alg.displayName()))
-        output_1 = processing.run("3d:tessellate",
-                                  {'INPUT': pol, 'OUTPUT': 'TEMPORARY_OUTPUT'})
-
-        txt_geom = "MultiPolygonZ (((559397.56532425712794065 5539480.39943350851535797 0, 559402.70997757744044065 5539469.33357657492160797 0, 559411.65791458915919065 5539480.49940909445285797 0, 559397.56532425712794065 5539480.39943350851535797 0)),((559411.65791458915919065 5539480.49940909445285797 0, 559402.70997757744044065 5539469.33357657492160797 0, 559417.69444413017481565 5539469.00062979757785797 0, 559411.65791458915919065 5539480.49940909445285797 0)),((559411.65791458915919065 5539480.49940909445285797 0, 559417.69444413017481565 5539469.00062979757785797 0, 559418.08039994072169065 5539469.02193106710910797 0, 559411.65791458915919065 5539480.49940909445285797 0)),((559426.15767044853419065 5539481.46608389914035797 0, 559411.65791458915919065 5539480.49940909445285797 0, 559418.08039994072169065 5539469.02193106710910797 0, 559426.15767044853419065 5539481.46608389914035797 0)),((559418.08039994072169065 5539469.02193106710910797 0, 559424.97224564384669065 5539469.94081534445285797 0, 559426.15767044853419065 5539481.46608389914035797 0, 559418.08039994072169065 5539469.02193106710910797 0)),((559426.15767044853419065 5539481.46608389914035797 0, 559424.97224564384669065 5539469.94081534445285797 0, 559429.37440628837794065 5539468.34004630148410797 0, 559426.15767044853419065 5539481.46608389914035797 0)),((559428.60399002861231565 5539482.51448477804660797 0, 559426.15767044853419065 5539481.46608389914035797 0, 559429.37440628837794065 5539468.34004630148410797 0, 559428.60399002861231565 5539482.51448477804660797 0)),((559428.60399002861231565 5539482.51448477804660797 0, 559429.37440628837794065 5539468.34004630148410797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559428.60399002861231565 5539482.51448477804660797 0)),((559430.05711502861231565 5539484.61342276632785797 0, 559428.60399002861231565 5539482.51448477804660797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559430.05711502861231565 5539484.61342276632785797 0)),((559441.87690872978419065 5539483.64760245382785797 0, 559430.05711502861231565 5539484.61342276632785797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559441.87690872978419065 5539483.64760245382785797 0)),((559440.48582596611231565 5539485.96608389914035797 0, 559430.05711502861231565 5539484.61342276632785797 0, 559441.87690872978419065 5539483.64760245382785797 0, 559440.48582596611231565 5539485.96608389914035797 0)),((559430.99879593681544065 5539497.32625235617160797 0, 559430.05711502861231565 5539484.61342276632785797 0, 559440.48582596611231565 5539485.96608389914035797 0, 559430.99879593681544065 5539497.32625235617160797 0)),((559440.18873734306544065 5539500.42384757101535797 0, 559430.99879593681544065 5539497.32625235617160797 0, 559440.48582596611231565 5539485.96608389914035797 0, 559440.18873734306544065 5539500.42384757101535797 0)),((559430.83259720634669065 5539510.12337149679660797 0, 559430.99879593681544065 5539497.32625235617160797 0, 559440.18873734306544065 5539500.42384757101535797 0, 559430.83259720634669065 5539510.12337149679660797 0)),((559439.89164872001856565 5539514.88161124289035797 0, 559430.83259720634669065 5539510.12337149679660797 0, 559440.18873734306544065 5539500.42384757101535797 0, 559439.89164872001856565 5539514.88161124289035797 0)),((559441.87690872978419065 5539483.64760245382785797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559446.11232132744044065 5539482.49251212179660797 0, 559441.87690872978419065 5539483.64760245382785797 0)),((559446.11232132744044065 5539482.49251212179660797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559453.27732987236231565 5539470.53065909445285797 0, 559446.11232132744044065 5539482.49251212179660797 0)),((559446.11232132744044065 5539482.49251212179660797 0, 559453.27732987236231565 5539470.53065909445285797 0, 559460.78807205986231565 5539482.16267813742160797 0, 559446.11232132744044065 5539482.49251212179660797 0)),((559460.78807205986231565 5539482.16267813742160797 0, 559453.27732987236231565 5539470.53065909445285797 0, 559463.29835648369044065 5539471.01552237570285797 0, 559460.78807205986231565 5539482.16267813742160797 0)),((559440.05949539970606565 5539467.18544425070285797 0, 559443.25630326103419065 5539470.04579581320285797 0, 559429.37440628837794065 5539468.34004630148410797 0, 559440.05949539970606565 5539467.18544425070285797 0)),((559440.05949539970606565 5539467.18544425070285797 0, 559429.37440628837794065 5539468.34004630148410797 0, 559430.51341385673731565 5539467.20106925070285797 0, 559440.05949539970606565 5539467.18544425070285797 0)),((559440.05949539970606565 5539467.18544425070285797 0, 559430.51341385673731565 5539467.20106925070285797 0, 559440.52803177665919065 5539458.28340567648410797 0, 559440.05949539970606565 5539467.18544425070285797 0)),((559440.52803177665919065 5539458.28340567648410797 0, 559430.51341385673731565 5539467.20106925070285797 0, 559430.69905228447169065 5539452.90749014914035797 0, 559440.52803177665919065 5539458.28340567648410797 0)),((559440.52803177665919065 5539458.28340567648410797 0, 559430.69905228447169065 5539452.90749014914035797 0, 559440.99653763603419065 5539449.38136710226535797 0, 559440.52803177665919065 5539458.28340567648410797 0)),((559430.69905228447169065 5539452.90749014914035797 0, 559440.98625321220606565 5539448.98830069601535797 0, 559440.99653763603419065 5539449.38136710226535797 0, 559430.69905228447169065 5539452.90749014914035797 0)))"
-        qgs_geom = QgsGeometry()
-        qgs_geom = qgs_geom.fromWkt(txt_geom)
-        qgs_feature = QgsFeature()
-        qgs_feature.setGeometry(qgs_geom)
-        ca = ChordalAxis(qgs_feature, GenUtil.ZERO)
-        ca.correct_skeleton()
-        centre_lines = ca.get_skeleton()
-
-        val0 = True
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(0, 0), (5,5), (10,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
         self.assertTrue(val0, title)
 
+    def test_case03(self):
+        title = "Test 03 Small square - 2 triangles terminal with correction"
+        qgs_geom_pol = create_polygon([(0,0), (10,0), (10,10), (0,10), (0,0)], [])
+
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(0, 0), (5,5), (10,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        self.assertTrue(val0, title)
+
+    def test_case04(self):
+        title = "Test 04 Long rectangle - 2 triangles terminal and 2 sleeves without correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (10,10), (20,10), (20,0), (10,0), (0,0)], [])
+
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(0,0), (5,5), (10,5), (15,5), (20,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        self.assertTrue(val0, title)
+
+    def test_case05(self):
+        title = "Test 05 Long rectangle - 2 triangles terminal and 2 sleeves with correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (10,10), (20,10), (20,0), (10,0), (0,0)], [])
+
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=True)
+        qgs_geom0 = create_line([(0,0), (5,5), (10,5), (15,5), (20,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        self.assertTrue(val0, title)
+
+    def test_case06(self):
+        title = "Test 06 Long rectangle - with junction terminal without correction"
+        qgs_geom_pol = create_polygon( [(0, 0), (0, 10), (9, 10), (10, 11), (11, 10), (20, 10), (20, 0), (10, 0), (0, 0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(10,6.66666666666666696), (9.5,5), (4.5,5), (0,10)])
+        qgs_geom1 = create_line([(10,6.66666666666666696), (10,10), (10,11)])
+        qgs_geom2 = create_line([(10,6.66666666666666696), (10.5,5), (15.5,5), (20,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        val1 = qgs_geom1.equals(QgsGeometry(centre_lines[1].clone()))
+        val2 = qgs_geom2.equals(QgsGeometry(centre_lines[2].clone()))
+        self.assertTrue(val0 and val1 and val2, title)
+
+    def test_case07(self):
+        title = "Test 07 Long rectangle - with junction terminal with correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (9,10), (10,11), (11,10), (20,10), (20,0), (10,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=True)
+        qgs_geom0 = create_line([(0,10), (4.5,5), (9.5,5), (10.5,5), (15.5,5), (20,10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        self.assertTrue(val0, title)
+
+    def test_case08(self):
+        title = "Test 08 Narrow T Junction  without correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (25,10), (50,10), (50,0), (30,0), (30,-30), (20,-30), (20,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(0, 0), (10, 5), (22.5, 5), (25, 3.33333333333333348)])
+        qgs_geom1 = create_line([(20, -30), (25, -15), (25, 0), (25, 3.33333333333333348)])
+        qgs_geom2 = create_line([(25, 3.33333333333333348), (27.5, 5), (40, 5), (50, 0)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        val1 = qgs_geom1.equals(QgsGeometry(centre_lines[1].clone()))
+        val2 = qgs_geom2.equals(QgsGeometry(centre_lines[2].clone()))
+        self.assertTrue(val0 and val1 and val2, title)
+
+    def test_case09(self):
+        title = "Test 09 Narrow T Junction  with correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (25,10), (50,10), (50,0), (30,0), (30,-30), (20,-30), (20,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=True)
+        qgs_geom0 = create_line([(0, 0), (10, 5), (22.5, 5), (25, 5)])
+        qgs_geom1 = create_line([(20, -30), (25, -15), (25, 0), (25, 5)])
+        qgs_geom2 = create_line([(25, 5), (27.5, 5), (40, 5), (50, 0)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        val1 = qgs_geom1.equals(QgsGeometry(centre_lines[1].clone()))
+        val2 = qgs_geom2.equals(QgsGeometry(centre_lines[2].clone()))
+        self.assertTrue(val0 and val1 and val2, title)
+
+    def test_case10(self):
+        title = "Test 10 Narrow X Junction  without correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (20,10), (20,40),(30,40),(30,10), (50,10), (50,0), (30,0), (30,-30), (20,-30), (20,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=False)
+        qgs_geom0 = create_line([(0, 0), (10, 5), (20, 5), (23.33333333333333215, 3.33333333333333348)])
+        qgs_geom1 = create_line([(20, -30), (25, -15), (25, 0), (23.33333333333333215, 3.33333333333333348)])
+        qgs_geom2 = create_line([(23.33333333333333215, 3.33333333333333348), (25, 5), (26.66666666666666785, 6.66666666666666696)])
+        qgs_geom3 = create_line([(26.66666666666666785, 6.66666666666666696), (25, 10), (25, 25), (30, 40)])
+        qgs_geom4 = create_line([(26.66666666666666785, 6.66666666666666696), (30, 5), (40, 5), (50, 10)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        val1 = qgs_geom1.equals(QgsGeometry(centre_lines[1].clone()))
+        val2 = qgs_geom2.equals(QgsGeometry(centre_lines[2].clone()))
+        val3 = qgs_geom3.equals(QgsGeometry(centre_lines[3].clone()))
+        val4 = qgs_geom4.equals(QgsGeometry(centre_lines[4].clone()))
+        self.assertTrue(val0 and val1 and val2 and val3 and val4, title)
+
+    def test_case11(self):
+        title = "Test 11 Narrow X Junction  with correction"
+        qgs_geom_pol = create_polygon([(0,0), (0,10), (20,10), (20,40),(30,40),(30,10), (50,10), (50,0), (30,0), (30,-30), (20,-30), (20,0), (0,0)], [])
+        centre_lines = build_and_launch(title, qgs_geom_pol, correction=True)
+        qgs_geom0 = create_line([(0, 0), (10, 5), (20, 5), (25, 5)])
+        qgs_geom1 = create_line([(20, -30), (25, -15), (25, 0), (25, 5)])
+        qgs_geom2 = create_line([(25, 5), (30, 5), (40, 5), (50, 10)])
+        qgs_geom3 = create_line([(25, 5), (25, 10), (25, 25), (30, 40)])
+        val0 = qgs_geom0.equals(QgsGeometry(centre_lines[0].clone()))
+        val1 = qgs_geom1.equals(QgsGeometry(centre_lines[1].clone()))
+        val2 = qgs_geom2.equals(QgsGeometry(centre_lines[2].clone()))
+        val3 = qgs_geom3.equals(QgsGeometry(centre_lines[3].clone()))
+        self.assertTrue(val0 and val1 and val2 and val3, title)
 
 
-from qgis._3d import *
-from qgis.core import QgsApplication
+QgsApplication.processingRegistry().addProvider(Qgs3DAlgorithms(QgsApplication.processingRegistry()))
 QgsApplication.setPrefixPath("/usr/bin/qgis", False)
-
-# profile_folder = 'C:\\Users\\berge\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\test12'
 profile_folder = '.'
+
 # Create a reference to the QgsApplication.  Setting the second argument to False disables the GUI.
 app = QgsApplication([], False, profile_folder)
 
-# Load providers
+# Load providers and init QGIS
 app.initQgis()
-from processing.core.Processing import Processing
-import processing
-Processing.initialize()
-for alg in QgsApplication.processingRegistry().algorithms():
-    print("{}:{} --> {}".format(alg.provider().name(), alg.name(), alg.displayName()))
-output_1 = processing.run("3d:tessellate",
-                                  {'INPUT': None, 'OUTPUT': 'TEMPORARY_OUTPUT'})
+QgsApplication.processingRegistry().addProvider(Qgs3DAlgorithms(QgsApplication.processingRegistry()))

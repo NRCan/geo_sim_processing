@@ -1,37 +1,33 @@
+dist: focal
+#
 language: python
+#
 python:
-  - "3.7"
-install:
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh 
+  - "3.8"
+#
+install:  
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes
-  - conda config --set changeps1 no
-  - conda config --prepend channels conda-forge
+  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - hash -r 
+  - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  # Useful for debugging any issues with conda
   - conda info -a
-  - conda create -n ci_env python=3.7 shapely rtree fiona
-  - source activate ci_env
+
+  # Replace dep1 dep2 ... with your dependencies
+  - conda create --name qgis_316 python=3.8 qgis=3.16.3 --channel conda-forge
+#
 script:
-# Test Sherbend
-# -------------
-# Remove file from previous execution
-  - rm -f ./data/test_sherbend_out.gpkg
-# Create the new file
-  - python sherbend.py -d 2.0 ./data/test_sherbend_in.gpkg ./data/test_sherbend_out.gpkg
-# Validate that the content is equal to the standard file
-  - python test_sherbend.py ./data/test_sherbend_out.gpkg ./data/test_sherbend_out_standard.gpkg
-# Test Chordal Axis
-# -----------------
-# Remove unnecessary layers
-  - ogrinfo -sql "DROP TABLE Skeleton" ./data/test_chordal_axis.gpkg
-  - ogrinfo -sql "DROP TABLE SkeletonCorrected" ./data/test_chordal_axis.gpkg
-# Execute triangulation without correction to the skeleton
-  - python chordal_axis.py -t Triangles -s Skeleton ./data/test_chordal_axis.gpkg
-# Validate the result without correction
-  - python test_sherbend.py -l1 Skeleton -l2 Skeleton ./data/test_chordal_axis.gpkg ./data/test_chordal_axis_standard.gpkg
-# Execute triangulation without correction to the skeleton
-  - python chordal_axis.py -t Triangles -s SkeletonCorrected -c ./data/test_chordal_axis.gpkg
-# Validate the result with correction
-  - python test_sherbend.py -l1 Skeleton -l2 Skeleton ./data/test_chordal_axis.gpkg ./data/test_chordal_axis_standard.gpkg
+# Metric unittest
+#
+# Activate QGIS conda environment
+  - conda activate qgis_316
+#
+# Need to execute the metric with QT_QPA_PLATFORM=offscreen otherwise QGIS does not start
+# Execute unittest for reduce bend 
+  - QT_QPA_PLATFORM=offscreen python -m unittest reduce_bend_unittest.py
+#  
+# Execute unittest for chordal axis 
+  - QT_QPA_PLATFORM=offscreen python -m unittest chordal_axis_unittest.py
+

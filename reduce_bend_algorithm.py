@@ -162,6 +162,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+
     def processAlgorithm(self, parameters, context, feedback):
         """
        
@@ -717,7 +718,9 @@ class RbGeom:
                 self.is_simplest = True  # Zero length line (degenerated). Do not try to simplify
         else:
             # It's a polygon
-            if abs(qgs_geometry.sumUpArea()) > ReduceBend.ZERO_RELATIVE:
+            qgs_polygon = QgsPolygon(qgs_geometry.clone())  # Create QgsPolygon to calculate area
+            if qgs_polygon.area() > ReduceBend.ZERO_RELATIVE:
+            #if abs(qgs_geometry.sumUpArea()) > ReduceBend.ZERO_RELATIVE:
                 self.is_closed = True
                 self.need_pivot = True
             else:
@@ -1100,7 +1103,6 @@ class ReduceBend():
         for rb_feature in self.rb_features:
             rb_geoms += rb_feature.get_rb_geom()
 
-
         # Remove co-linear and duplicate nodes
         for rb_geom in rb_geoms:
             if rb_geom.qgs_geom.wkbType() == QgsWkbTypes.LineString:
@@ -1198,6 +1200,7 @@ class ReduceBend():
 
 
     def _manage_reduce_bend(self):
+        """g"""
 
         rb_geoms_done = []
         nbr_pass = 0
@@ -1245,15 +1248,8 @@ class ReduceBend():
 
 
     def delete_co_linear(self, rb_geom):
+
         # Delete co-linear vertice with angle of near 0 or 180 degrees
-#        qgs_line_string = rb_geom.qgs_geom.constGet()
-#        qgs_points = qgs_line_string.points()
-#        num_points = len(qgs_points)
-#        num_points_remaining = num_points
-#        if rb_geom.original_geom_type == QgsWkbTypes.LineString:
-#            min_remaining_points = 2  # Minimum number of vertice for a LineString
-#        else:
-#            min_remaining_points = 4  # Minimum number of vertice for a Polygon
         vertex_ids_to_del = []
         angles = rb_geom.get_angles()
         if rb_geom.is_closed and len(angles) >= 1:
@@ -1262,21 +1258,6 @@ class ReduceBend():
             if abs(angle - math.pi) <= ReduceBend.ZERO_ANGLE or abs(angle) <= ReduceBend.ZERO_ANGLE:
                 # Co-linear point or flat angle delete the current point
                 vertex_ids_to_del.append(i+1)
-#                num_points_remaining -= 1
-#        i = num_points - 2
-#        p1_x, p1_y = qgs_points[i].x(), qgs_points[i].y()
-#        p2_x, p2_y = qgs_points[i + 1].x(), qgs_points[i + 1].y()
-#        while i >= 1 and num_points_remaining >= min_remaining_points:
-#            p0_x, p0_y = qgs_points[i - 1].x(), qgs_points[i - 1].y()
-#            angle = QgsGeometryUtils.angleBetweenThreePoints(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y)
-#            if abs(angle - math.pi) <= ReduceBend.ZERO_ANGLE or abs(angle) <= ReduceBend.ZERO_ANGLE:
-#                # Co-linear point or flat angle delete the current point
-#                vertex_ids_to_del.append(i)
-#                num_points_remaining -= 1
-#
-#            i -= 1
-#            p2_x, p2_y = p1_x, p1_y
-#            p1_x, p1_y = p0_x, p0_y
 
         # Delete co-linerar vertex
         for vertex_id_to_del in reversed(vertex_ids_to_del):
@@ -1300,11 +1281,9 @@ class ReduceBend():
             del rb_geom.bends[0]  # Remove the first bend
             del rb_geom.bends[-1]  # Remove the last bend
 
-#        if rb_geom.is_closed:
-#            for bend in rb_geom.bends:
-#                if bend.direction == "OUT": bend.area *= .66
         lst_bends = [(bend.adj_area, i) for i, bend in enumerate(rb_geom.bends) if bend.area < min_adj_area]
         lst_bends.sort(key=lambda item: item[0])
+
 
         start = 0
         end = len(rb_geom.bends) - 1
@@ -1351,11 +1330,9 @@ class ReduceBend():
         if check_constraints:
             if qgs_geom_new_subline.length() >= ReduceBend.ZERO_RELATIVE:
                 qgs_geom_new_subline_trimmed = bend.get_new_subline_trimmed(rb_geom)
-#                qgs_geom_potentials = self.rb_collection.get_line_segments(rb_geom.id,
-#                                                                      qgs_geom_new_subline_trimmed.boundingBox())
+
                 for qgs_geom_potential in qgs_geoms_with_itself:
                     if qgs_geom_new_subline_trimmed.disjoint(qgs_geom_potential):
-                        #            if not qgs_geom_new_sub_trim_engine.disjoint(qgs_geom_potential.constGet()):
                         # Everything is OK
                         pass
                     else:
@@ -1372,9 +1349,7 @@ class ReduceBend():
 
         # Second: check that the new line does not intersect any other line or points
         if check_constraints:
-            qgs_rectangle = bend.qgs_geom_bend.boundingBox()
-            #        qgs_geom_engine_new_subline = QgsGeometry.createGeometryEngine(qgs_geom_new_subline.constGet())
-#            qgs_geom_potentials = self.rb_collection.get_features(qgs_rectangle, [rb_geom.id])
+#            qgs_rectangle = bend.qgs_geom_bend.boundingBox()
             for qgs_geom_potential in qgs_geoms_with_others:
                 if not qgs_geom_potential.disjoint(qgs_geom_new_subline):
                     #            if not qgs_geom_new_subline.disjoint(qgs_geom_potential):
@@ -1406,7 +1381,6 @@ class ReduceBend():
                 # Check spatial constraints
                 spatial_constraints = self.validate_spatial_constraints(ind, rb_geom)
                 if spatial_constraints:
-#                    v_ids_to_del = list(range(bend.i + 1, bend.j))  # List of the vertex id to delete
                     self.rb_collection.delete_vertex(rb_geom, bend.i+1, bend.j-1)
                     #                bend.reduce(rb_geom)
                     self.rb_results.nbr_bend_reduced += 1  # Global counter of bend reduced
@@ -1456,19 +1430,9 @@ class ReduceBend():
             orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE else orientation.insert(0, CLOCK_WISE)
             orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE else orientation.append(CLOCK_WISE)
 
-        #            if rb_geom.is_closed:
-#                # Copy the first orientation to the last position for the circularity
-#                orientation.append(orientation[0])
-#            else:
-#                orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE else orientation.insert(0, CLOCK_WISE)
-#                orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE else orientation.append(CLOCK_WISE)
-
         # Find the inflexion points in the line.
         inflexion = [i for i in range(0, len(orientation)-1) if orientation[i] != orientation[(i + 1)]]
         if len(inflexion) != 0:
-#            if rb_geom.is_closed:
-#                inflexion.append(inflexion[0])
-
             qgs_points = rb_geom.qgs_geom.constGet().points()
             for k in range(len(inflexion)-1):
                 i = inflexion[k]
@@ -1483,44 +1447,6 @@ class ReduceBend():
         # Set the direction of the bend inside or outside the polygon
         if rb_geom.is_closed:
             self.set_bend_direction(rb_geom)
-        #        if len(rb_geom.bends) == 0:
-#            # A line with no inflexion cannot be simplified more
-#            rb_geom.is_simplest = True
-
-#        if rb_geom.is_closed:
-#            # Process the line string as a closed line
-#            angle = QgsGeometryUtils.angleBetweenThreePoints(xy[-1][0],xy[-1][1],xy[0][0],xy[0][1],xy[1][0],xy[1][1])
-#            # Add a first orientation linking the start and end of the line (circular array)
-#            orientation.insert(0, CLOCK_WISE) if angle >= math.pi else orientation.insert(0, ANTI_CLOCK_WISE)
-#            # Find the inflexion points in the line.  Managing the circular array
-#            inflexion = [i for i in range(0, len(orientation)) if orientation[i] != orientation[(i+1)%len(orientation)]]
-#            for k in range(len(inflexion)):
-#                i = inflexion[k]
-#                j = inflexion[(k+1)%len(inflexion)]+1
-#                if i != j:
-#                    qgs_polygon = self.create_polygon(i, j, xy)
-#                    rb_geom.bends.append(Bend(i, j, qgs_polygon))
-#                else:
-#                    # Extemely rare case. Happen with special case polygon
-#                    pass
-
-#            if 2 <= len(rb_geom.bends) <= 4:
-#                del rb_geom.bends[-1]
-#                del rb_geom.bends[-1]
-#        else:
-#            # For open lines add a point at the start and one at the end (to facilitate )
-#            if len(orientation) >= 1:
-#                orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE else orientation.insert(0, CLOCK_WISE)
-#                orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE else orientation.append(CLOCK_WISE)
-
-#            # Find the inflexion points in the line
-#            inflexions = [i for i in range(0,len(orientation)-1) if orientation[i] != orientation[i+1]]
-
-#            for k in range(len(inflexions)-1):
-#                i = inflexions[k]
-#                j = inflexions[k+1]+1
-#                qgs_polygon = self.create_polygon(i, j, xy)
-#                rb_geom.bends.append(Bend(i, j, qgs_polygon))
 
         return len(rb_geom.bends)
 
