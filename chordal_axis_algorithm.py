@@ -196,18 +196,8 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
 
 
 
-# Element to be improved
-# ----------------------
-#
-# - in del_feature delete the feature in the spatial index (not a simulation of destruction)
-# - Raise QgsException not print statement when triangle are not correct
-# - Put the cancel Processing
-# - Set the progress bar
-# - Refactoring of the code for the correction of the chordal axis (code should easier to understand and maintain)
-# - Improve the chordal axis result by removing the hook at the end of some polygon
-# - Create small medium and high correction
-# - Input polygon and create the tesselation on the fly
-
+Chordal Axis Algorithm
+----------------------
 
 """
 General classes and utilities needed for ChordalAxis.
