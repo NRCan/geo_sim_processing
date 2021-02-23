@@ -6,6 +6,7 @@ import unittest
 from chordal_axis_algorithm import ChordalAxis, GenUtil
 from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
                       QgsVectorLayer
+from qgis.analysis import QgsNativeAlgorithms
 import processing
 from qgis.core import QgsApplication
 from qgis._3d import Qgs3DAlgorithms
@@ -47,14 +48,10 @@ def build_and_launch(title, qgs_geom_pol, correction=False):
     # update layer's extent when new features have been added
     # because change of extent in provider is not propagated to the layer
     vl.updateExtents()
+    feedback = QgsProcessingFeedback()
+    qgs_multi_triangles = ChordalAxis.tessellate_polygon(vl, feedback)
 
-    output = processing.run("3d:tessellate",
-                            {'INPUT': vl, 'OUTPUT': 'TEMPORARY_OUTPUT'})
-
-    source = output['OUTPUT']
-    qgs_features = source.getFeatures()
-    qgs_feature = next(qgs_features)
-    ca = ChordalAxis(qgs_feature, GenUtil.ZERO)
+    ca = ChordalAxis(qgs_multi_triangles[0], GenUtil.ZERO)
     if correction:
         ca.correct_skeleton()
     centre_lines = ca.get_skeleton()
@@ -246,3 +243,6 @@ app = QgsApplication([], False, profile_folder)
 # Load providers and init QGIS
 app.initQgis()
 QgsApplication.processingRegistry().addProvider(Qgs3DAlgorithms(QgsApplication.processingRegistry()))
+from processing.core.Processing import Processing
+Processing.initialize()
+QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())

@@ -6,7 +6,7 @@
 name=Geo Simplification (processing)
 qgisMinimumVersion=3.14
 description=This plugin contains different tools for generalization
-version=0.1
+version=0.5
 author=Daniel Pilon
 email=daniel.pilon@canada.ca
 
@@ -20,7 +20,15 @@ repository=http://repo
 
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
- changelog= 0.5.0 First release as a plugin
+changelog=
+    0.6.0 2021-02-15
+        - Chordal Axis now accept MultiPolygon and MultiLineString
+        - Chordal Axis will internally create the tessellation (triangles)
+        - Reduce Bend now accept MultiPolygon and MultiLineString
+        - Reduce Bend can reduce bend with wave or spiral form
+        - Simplify now accept MultiPolygon and MultiLineString
+    0.5.0 2021-01-27
+        - First release as a plugin
 
 # Tags are comma separated with spaces allowed
 tags=vector, topography, generalization

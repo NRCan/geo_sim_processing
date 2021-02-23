@@ -5,7 +5,9 @@ Unit test for reduce_bend algorithm
 import unittest
 from qgis.core import QgsApplication
 from reduce_bend_algorithm import ReduceBend
-from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback
+from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
+                      QgsVectorLayer, QgsWkbTypes, QgsPointXY
+from qgis.analysis import QgsNativeAlgorithms
 
 def qgs_line_string_to_xy(qgs_line_string):
 
@@ -29,7 +31,7 @@ def plot_lines(qgs_line_string, qgs_new_line):
     plt.show()
 
 
-def build_and_launch(title, qgs_geoms, diameter_tol, del_pol=False, del_hole=False):
+def build_and_launch(title, qgs_geoms, diameter_tol, del_pol=False, del_hole=False, smooth_line=False):
 
     print(title)
     qgs_features = []
@@ -39,7 +41,7 @@ def build_and_launch(title, qgs_geoms, diameter_tol, del_pol=False, del_hole=Fal
         qgs_feature.setGeometry(qgs_geom)
         qgs_features.append(qgs_feature)
 
-    rb_results = ReduceBend.reduce(qgs_features, diameter_tol, feedback, del_pol, del_hole, True)
+    rb_results = ReduceBend.reduce(qgs_features, diameter_tol, smooth_line, del_pol, del_hole, True, feedback)
     log = feedback.textLog()
     print (log)
     qgs_features_out = rb_results.qgs_features_out
@@ -260,7 +262,7 @@ class Test(unittest.TestCase):
 
     def test_case17(self):
         title = "Test 17: Polygon with line in bend"
-        coord = [(0, 0), (0, 20), (10, 20), (10, 21), (11, 21), (11, 20), (20, 20), (20, 0)]
+        coord = [(0, 0), (0, 20), (10, 20), (10, 21), (11, 21), (11, 20), (20, 20), (20, 0), (0,0)]
         qgs_geom0 = create_polygon(coord, [])
         qgs_geom1 = create_line([(10.1, 20.5), (10.2, 20.6), (10.3, 20.5)])
         qgs_feature_out = build_and_launch(title, [qgs_geom0, qgs_geom1], 3)
@@ -339,6 +341,78 @@ class Test(unittest.TestCase):
         val0 = qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
+    def test_case25(self):
+        title = "Test 25: A line with a bend with the form of a wave"
+        coord0 = [(0, 0), (50, 0), (50,2), (49,2), (49,1), (48,1), (48,3), (51,3), (51,0), (100,0)]
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 10, del_pol=True, del_hole=True)
+        coord0 = [(0, 0), (100, 0)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+    def test_case26(self):
+        title = "Test 26: A line with a smooth line replacing the bend"
+        tmp_coord = [(0, -25), (25,0), (25,1), (29,1), (29,0), (50,-25)]
+        tmp_coord_out = [(0, -25), (25, 0), (26.33333333333333215, 0.76980035891950094),
+                         (27.66666666666666785, 0.76980035891950094), (29, 0), (50, -25)]
+        coord0 = list(tmp_coord)
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3.9, del_pol=True, del_hole=True, smooth_line=True)
+        coord0_out = list(tmp_coord_out)
+        qgs_geom0 = create_line(coord0_out)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+        #
+        coord0 = list(tmp_coord)
+        coord0_out = list(tmp_coord_out)
+        coord0.reverse()
+        coord0_out.reverse()
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3.9, del_pol=True, del_hole=True, smooth_line=True)
+        qgs_geom0 = create_line(coord0_out)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+        for angle in [45., 90, 135, 180, 225, 270, 300]:
+            coord0 = list(tmp_coord)
+            qgs_geom0 = create_line(coord0)
+            qgs_geom0.rotate(angle, QgsPointXY(0,0))
+            qgs_geom0.translate(25,25)
+            qgs_feature_out = build_and_launch(title, [qgs_geom0], 3.9, del_pol=True, del_hole=True, smooth_line=True)
+            qgs_geom_out = qgs_feature_out[0]
+            qgs_geom_out.translate(-25, -25)
+            qgs_geom_out.rotate(-angle, QgsPointXY(0, 0))
+            grid = .0000000001
+            coord_ref = list(tmp_coord_out)
+            qgs_geom0 = create_line(coord_ref)
+            qgs_geom_grid_out = qgs_geom_out.snappedToGrid (grid,grid)
+            qgs_geom_grid_ref = qgs_geom0.snappedToGrid(grid,grid)
+            val0 = qgs_geom_grid_out.equals(qgs_geom_grid_ref)
+            self.assertTrue(val0, title)
+
+
+
+
+    def test_case27(self):
+        title = "Test 27: Normalization of in vector layer"
+        print (title)
+        vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
+        pr = vl.dataProvider()
+        fet = QgsFeature()
+        fet.setId(1)
+        qgs_line = QgsLineString((QgsPoint(0,0,0),QgsPoint(10,10,0),QgsPoint(20,20,0)))
+        qgs_geom = QgsGeometry(qgs_line.clone())
+        fet.setGeometry(qgs_geom)
+        pr.addFeatures([fet])
+        vl.updateExtents()
+        feedback = QgsProcessingFeedback()
+        qgs_features, geom_type = ReduceBend.normalize_in_vector_layer(vl, feedback)
+        val0 = len(qgs_features) == 1
+        qgs_geom = qgs_features[0].geometry()
+        val1 = qgs_geom.wkbType() == QgsWkbTypes.LineString
+        self.assertTrue(val0 and val1, title)
+
 
 # Supply path to qgis install location
 QgsApplication.setPrefixPath("/usr/bin/qgis", True)
@@ -348,5 +422,8 @@ QgsApplication.setPrefixPath("/usr/bin/qgis", True)
 # Create a reference to the QgsApplication.  Setting the second argument to False disables the GUI.
 app = QgsApplication([], False)
 
-# Load providers
+# Load providers and init QGIS
 app.initQgis()
+from processing.core.Processing import Processing
+Processing.initialize()
+QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())

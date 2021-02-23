@@ -13,6 +13,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterBoolean)
 import os
 import inspect
+import processing
 from qgis.PyQt.QtGui import QIcon
 
 class SimplifyAlgorithm(QgsProcessingAlgorithm):
@@ -95,38 +96,22 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         """
         # 'INPUT' is the recommended name for the main input
         # parameter.
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                'INPUT',
-                self.tr('Input vector layer'),
-                types=[QgsProcessing.TypeVectorAnyGeometry]
-            )
-        )
+        self.addParameter(QgsProcessingParameterFeatureSource('INPUT',
+                                                              self.tr('Input vector layer'),
+                                                              types=[QgsProcessing.TypeVectorAnyGeometry]))
 
-        self.addParameter(
-            QgsProcessingParameterDistance(
-                'TOLERANCE',
-                self.tr('Tolerance'),
-                defaultValue = 1.0,
-                # Make distance units match the INPUT layer units:
-                parentParameterName='INPUT'
-            )
-        )
+        self.addParameter(QgsProcessingParameterDistance('TOLERANCE',
+                                                         self.tr('Tolerance'),
+                                                         defaultValue = 1.0,
+                                                         # Make distance units match the INPUT layer units:
+                                                         parentParameterName='INPUT'))
 
-        self.addParameter(
-            QgsProcessingParameterBoolean(
-                'VERBOSE',
-                self.tr('Verbose'),
-                defaultValue=1.0
-            )
-        )
+        self.addParameter(QgsProcessingParameterBoolean('VERBOSE',
+                                                        self.tr('Verbose'),
+                                                        defaultValue=1.0))
 
-        self.addParameter(
-            QgsProcessingParameterFeatureSink(
-                'OUTPUT',
-                self.tr('Simplified')
-            )
-        )
+        self.addParameter(QgsProcessingParameterFeatureSink('OUTPUT',
+                                                            self.tr('Simplified')))
 
 
 
@@ -161,7 +146,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
 
         For more information: https://github.com/Dan-Eli/GeoSim
         """
-        source = self.parameterAsSource(parameters, "INPUT", context )
+        source = self.parameterAsVectorLayer(parameters, "INPUT", context)
         tolerance = self.parameterAsDouble(parameters,"TOLERANCE", context)
         verbose = self.parameterAsBool(parameters, "VERBOSE", context)
 
@@ -171,11 +156,18 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(parameters, "OUTPUT", context,
                                                    source.fields(),
                                                    source.wkbType(),
-                                                   source.sourceCrs()
-                                              )
+                                                   source.sourceCrs() )
 
-        # Validate input source type
-        if source.wkbType() not in [QgsWkbTypes.Polygon, QgsWkbTypes.LineString]:
+        # Execute MultiToSinglePart processing
+        feedback.pushInfo("Start normalizing input layer")
+        params = {'INPUT': source,
+                  'OUTPUT': 'memory:'}
+        result_ms = processing.run("native:multiparttosingleparts", params, feedback=feedback)
+        vector_layer_in = result_ms['OUTPUT']
+        feedback.pushInfo("End normalizing input layer")
+
+        # Validate input vector layer in type
+        if vector_layer_in.wkbType() not in [QgsWkbTypes.Polygon, QgsWkbTypes.LineString]:
             raise QgsProcessingException("Can only process: LineString and Polygon type layer")
 
         # Validate sink
@@ -186,9 +178,10 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         nbr_hole_del = 0
         nbr_feat_inv_correct = 0
         nbr_feat_inv_uncorrect = 0
-        total = 100.0 / source.featureCount() if source.featureCount() else 0
+        total = 100.0 / vector_layer_in.featureCount() if vector_layer_in.featureCount() else 0
         simplifier = QgsTopologyPreservingSimplifier(tolerance)
-        features = source.getFeatures()
+        features = vector_layer_in.getFeatures()
+        print ("Nbr features: ", vector_layer_in.featureCount())
         for i, feature in enumerate(features):
             geom = feature.geometry()
             s_geom = simplifier.simplify(geom)
@@ -199,7 +192,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
                 if s_geom.wkbType() == QgsWkbTypes.Polygon:
                     # Process the invalid geometry Polygon
                     s_geom_parts = s_geom.asPolygon() # Extract the outer and inner rings in a list
-                    # Recreate independantPolygon for each part
+                    # Recreate independant Polygon for each part
                     s_geom_pols = [QgsGeometry.fromPolygonXY([s_geom_part]) for s_geom_part in s_geom_parts ]
                     s_geom_pols.sort(key=polygon_area())  # Sort polygon by ascending area size
                     s_geom_outer = s_geom_pols.pop()  # extract the outer ring

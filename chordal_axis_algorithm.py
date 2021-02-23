@@ -17,10 +17,13 @@ from qgis.core import (QgsFields,
                        QgsProcessingParameterBoolean)
 from qgis.core import QgsPoint, QgsLineString, \
                       QgsSpatialIndex, QgsPolygon, QgsRectangle, \
-                      QgsMultiLineString
+                      QgsMultiLineString, QgsVectorLayer, QgsApplication
 import os
 import inspect
+import processing
+from qgis._3d import Qgs3DAlgorithms
 from qgis.PyQt.QtGui import QIcon
+
 
 class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
     """
@@ -128,43 +131,50 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                'TRIANGLES',
+                self.tr('Tessellation')
+            )
+        )
+
     def processAlgorithm(self, parameters, context, feedback):
         """
         """
 
         context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
 
-        source = self.parameterAsSource(parameters, "INPUT", context )
+        in_vector_layer = self.parameterAsVectorLayer(parameters, "INPUT", context)
         correction = self.parameterAsBool(parameters, "CORRECTION", context)
 
-        if source is None:
+        if in_vector_layer is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, "INPUT"))
 
         (sink, dest_id) = self.parameterAsSink(parameters, "OUTPUT", context,
                                                QgsFields(),
                                                QgsWkbTypes.LineString,
-                                               source.sourceCrs() )
+                                               in_vector_layer.sourceCrs() )
 
-        # Validate input source type
-        a = source.wkbType()
-        if source.wkbType() not in [QgsWkbTypes.MultiPolygon, QgsWkbTypes.MultiPolygonZ]:
-            raise QgsProcessingException("Can only process: MultiPolygon and MultiPolygonZ type layer")
+        (sink_t, dest_id_t) = self.parameterAsSink(parameters, "TRIANGLES", context,
+                                                   QgsFields(),
+                                                   QgsWkbTypes.MultiPolygon,
+                                                   in_vector_layer.sourceCrs())
 
         # Validate sink
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, "OUTPUT"))
+        if sink_t is None:
+            raise QgsProcessingException(self.invalidSinkError(parameters, "TRIANGLES"))
 
-        nbr_feature = 0
-        nbr_polygon = source.featureCount()
-        nbr_triangle = 0
+        nbr_polygon = in_vector_layer.featureCount()
         nbr_centre_line = 0
-        total = 100.0 / source.featureCount() if source.featureCount() else 0
-
-        features = source.getFeatures()
-        for i, feature in enumerate(features):
+        total = 100.0 / in_vector_layer.featureCount() if in_vector_layer.featureCount() else 0
+        qgs_multi_triangles = ChordalAxis.tessellate_polygon(in_vector_layer, feedback)  # Tessellate polygons
+        for i, qgs_multi_triangle in enumerate(qgs_multi_triangles):
+            sink_t.addFeature(qgs_multi_triangle, QgsFeatureSink.FastInsert)  # Add to Triangle sink
             # Call the chordal axis
             try:
-                ca = ChordalAxis(feature, GenUtil.ZERO)
+                ca = ChordalAxis(qgs_multi_triangle, GenUtil.ZERO)
                 if correction:
                     ca.correct_skeleton()
                 centre_lines = ca.get_skeleton()
@@ -172,13 +182,13 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
                 import traceback
                 traceback.print_exc()
 
-            # Load the centre line in the sink
+            # Load the centre line (skeleton) in the sink
             for line in centre_lines:
                 out_feature = QgsFeature()
                 geom_feature = QgsGeometry(line.clone())
                 out_feature.setGeometry(geom_feature)
-                sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
-                nbr_centre_line + 1
+                sink.addFeature(out_feature, QgsFeatureSink.FastInsert)  # Add to skeleton sink
+                nbr_centre_line += 1
 
             if feedback.isCanceled():
                 break
@@ -186,18 +196,17 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
             feedback.setProgress(int(i * total))
 
         # Push some output statistics
-        feedback.pushInfo("Number of polygons: {0}".format(nbr_polygon))
-        feedback.pushInfo("Number of triangles: {0}".format(nbr_triangle))
-        feedback.pushInfo("Number of centre_lines: {0}".format(nbr_centre_line))
+        feedback.pushInfo("Number of input polygons: {0}".format(nbr_polygon))
+        feedback.pushInfo("Number of centre lines: {0}".format(nbr_centre_line))
 
-        return {"OUTPUT": dest_id}
-
+        return {"OUTPUT": dest_id, "TRIANGLES": dest_id_t}
 
 
 
 
-Chordal Axis Algorithm
-----------------------
+
+#Chordal Axis Algorithm
+#----------------------
 
 """
 General classes and utilities needed for ChordalAxis.
@@ -475,6 +484,88 @@ class ChordalAxis(object):
 
     ANGLE_JUNCTION_T = 45.  # Delta used to test if 2 branches or contiguous
     SEARCH_TOLERANCE = None
+
+    @staticmethod
+    def tessellate_polygon(source, feedback):
+        """Method to tesellate a polygon
+
+        This method pre process the input source by doing the following task a
+         - execute "Multi to single part" processing in order to accept even multipolygon
+         - excecute "Drop  Z and M values" processing as they are not usefull
+         - Validate if the resulting layer is Polygom
+         - execute "Tessellate" processing to create the triangles
+         - excecute "Drop  Z and M values" processing as they are not usefull
+
+        :param source:
+        :return:
+        """
+
+        # Execute MultiToSinglePart processing
+        params = { 'INPUT': source,
+                   'OUTPUT': 'memory:' }
+        result_ms = processing.run("native:multiparttosingleparts", params, feedback=feedback)
+        ms_part_layer = result_ms['OUTPUT']
+
+        # Execute Drop Z M processing
+        params = {'INPUT': ms_part_layer,
+                  'DROP_M_VALUES': True,
+                  'DROP_Z_VALUES': True,
+                  'OUTPUT': 'memory:'}
+        result_drop_zm = processing.run("native:dropmzvalues", params, feedback=feedback)
+        drop_zm_layer = result_drop_zm['OUTPUT']
+
+        # Validate the resulting geometry is Polygon
+        if drop_zm_layer.wkbType() == QgsWkbTypes.Polygon:
+            source_crs = source.sourceCrs()
+            epsg_id = source_crs.authid()
+            if epsg_id is None or epsg_id == "":
+                uri_p = "Polygon"  # Should not happen... just in case...
+                uri_mp = "MultiPolygon"
+            else:
+                uri_p = "Polygon?" + epsg_id
+                uri_mp = "MultiPolygon?" + epsg_id
+            QgsApplication.processingRegistry().addProvider(Qgs3DAlgorithms(QgsApplication.processingRegistry()))
+
+            qgs_multi_triangles = []  # Contains the tessellated features
+           # Loop over each Polygon to create the tesselation (Triangles)
+            qgs_features = drop_zm_layer.getFeatures()
+            for qgs_feature in qgs_features:
+                # Process one feature at the time so it's possible to apply some correction if the tessellation crashes
+                single_feature_layer = QgsVectorLayer(uri_p, "temporary_polygon", "memory")
+                data_provider = single_feature_layer.dataProvider()
+                data_provider.addFeatures([qgs_feature])
+                single_feature_layer.updateExtents()
+                try:
+                    params = {'INPUT': single_feature_layer,
+                              'OUTPUT': 'memory:'}
+                    # Execute Tessellate processing to create the triangles
+                    result_tessellate = processing.run("3d:tessellate", params, feedback=feedback)
+                except Exception:
+                    # Code to be place here to try cleaning the feature when it crashes
+                    raise QgsProcessingException("Unable to tessellate feature: {}".format(qgs_feature.id()))
+
+                tessellate_layer = result_tessellate['OUTPUT']
+
+                qgs_features = tessellate_layer.getFeatures()
+                for qgs_feature in qgs_features:
+                    qgs_geom = qgs_feature.geometry()
+                    qgs_geoms = qgs_geom.coerceToType(QgsWkbTypes.MultiPolygon)  # Drop Z and M
+                    qgs_feature.setGeometry(qgs_geoms[0])
+                    qgs_multi_triangles.append(qgs_feature)
+        else:
+            # Unable to process this geometry
+            geom_type_str = QgsWkbTypes.geometryDisplayString(drop_zm_layer.geometryType())
+            raise QgsProcessingException ("Unable to process geometry: {}". format(geom_type_str))
+
+        return (qgs_multi_triangles)
+
+
+
+
+
+
+
+
 
     def __init__(self, in_feature, search_tolerance=GenUtil.ZERO):
         """Constructor

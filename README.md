@@ -74,7 +74,7 @@ Reduce Bend can be used for line simplifying often in the context of line genera
 
 # Chordal Axis
 
-ChordalAxis is a geospatial tool that takes triangles, usually the result of a constraint Delauny trianglulation and creates a skeleton (the center line).  ChordalAxis is an improvement of the algorithm based of the paper "Rectification of the Chordal Axis Transform and a New Criterion for Shape
+ChordalAxis is a geospatial tool that uses polygon to create triangles (usually the result of a constraint Delauny trianglulation) in order to extract a skeleton (the center line).  ChordalAxis is an improvement of the algorithm based of the paper "Rectification of the Chordal Axis Transform and a New Criterion for Shape
 Decomposition", Lakshman Prasad, 2005".
 
 ## Medial Axis Versus Chordal Axis
@@ -85,15 +85,17 @@ The skeleton (center line) is a linear feature representation of a polygonized f
 
 Chordal Axis is a processing script dicoverable in the QGIS Processing Tool Box under Geo Simplification
 
-**Input vector layer**:   Input vector feature to create the chordal axis (skeleton)
+**Input vector layer**:   Input polygon vector feature used to create the chordal axis (skeleton)
 
 **Correction**:           Flag to correct the skeleton for small centre line, T junction and X junction. Usefull in the case of long any narrow polygon. 
 
-**Output vector layer**:  Output vector feature for the skeleton
+**Output vector layer**:  Output line string vector feature for the skeleton
+
+**Output triangulation**: Output vector feature representing the result of the tessellation (QGIS 3d:tessellate)
 
  ## How it works
 
-A user will probably create the triangulation from a set of polygons using a constraints Delaunay triangulation tool.  Delaunay triangulation is known to describe polygons well and to  be very robust and stable.  The resulting triangles are the input for the Chordal Axis program.  The Chordal Axis alogorithm will analyze each triangle, determine its type based on the number of adjacent triangles and build the appropriate skeleton (centre line).  All triangles fall within one of the following four types: 1)  _isolated triangle_, when a triangle has no adjacent triangle; 2) _terminal triangle_, when a triangle has only one adjacent triangle; 3) _sleeve triangle_, when a triangle has 2 adjacent triangles; 4) _junction triangle_, when a triangle has 3 adjacent triangles.  Each of the four triangle types will produce a specific centre line.  For the _isolated triangle_, (Figure 3a) no center line (degenerated case) is created; for the _terminal triangle_ (Figure 3b) the mid point of the adjecent side is connected with the opposite angle; for _sleeve triangle_ (Figure 3c) the mid point of the two adajcent sides are connected; for the _junction triangle_ (Figure 3d) the mid points of each side are connected to the centre point of the triangle.  After centre line creation all the centre lines are merged together.  The Chordal Axis transform will preserve [Simplicity](#Simplicity) and [Intersection](#Intersection) topological relationships between the lines forming the skeleton and the outer and inner boundaries of the polygon.
+The processing plugin creates the triangulation from the input polygons using the constraints Delaunay triangulation tool (QGIS 3d:tessellate).  QGIS tessellate tool is known to describe polygons well and to  be very robust and stable.  The resulting triangles are the input for the Chordal Axis program.  The Chordal Axis alogorithm will analyze each triangle, determine its type based on the number of adjacent triangles and build the appropriate skeleton (centre line).  All triangles fall within one of the following four types: 1)  _isolated triangle_, when a triangle has no adjacent triangle; 2) _terminal triangle_, when a triangle has only one adjacent triangle; 3) _sleeve triangle_, when a triangle has 2 adjacent triangles; 4) _junction triangle_, when a triangle has 3 adjacent triangles.  Each of the four triangle types will produce a specific centre line.  For the _isolated triangle_, (Figure 3a) no center line (degenerated case) is created; for the _terminal triangle_ (Figure 3b) the mid point of the adjecent side is connected with the opposite angle; for _sleeve triangle_ (Figure 3c) the mid point of the two adajcent sides are connected; for the _junction triangle_ (Figure 3d) the mid points of each side are connected to the centre point of the triangle.  After centre line creation all the centre lines are merged together.  The Chordal Axis transform will preserve [Simplicity](#Simplicity) and [Intersection](#Intersection) topological relationships between the lines forming the skeleton and the outer and inner boundaries of the polygon.
 
 ![figure3](/image/figure3.png)
 
