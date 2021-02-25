@@ -119,7 +119,6 @@ class Test(unittest.TestCase):
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 3)
         out_qgs_geom0 = create_polygon([(10,0), (0,0), (0,10), (10,10), (10,0)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
-        print (qgs_feature_out[0])
         self.assertTrue(val0, title)
 
     def test_case04(self):
@@ -128,7 +127,6 @@ class Test(unittest.TestCase):
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
         out_qgs_geom0 = create_polygon([(10,0), (0,0), (0,10), (10,10), (10,0)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
-        print (qgs_feature_out[0])
         self.assertTrue (val0, title)
 
     def test_case05(self):
@@ -392,10 +390,21 @@ class Test(unittest.TestCase):
             self.assertTrue(val0, title)
 
 
-
-
     def test_case27(self):
-        title = "Test 27: Normalization of in vector layer"
+        title = "Test 27: Bend simplification with line smoothing but smoothing breaks spatial constraints"
+        coord0 = [(-50,-25), (0,0), (0,-1), (3,-1), (3,0), (50,-25)]
+        coord1 = [(1.5, .1), (1.5,3)]
+        qgs_geom0 = create_line(coord0)
+        qgs_geom1 = create_line(coord1)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0, qgs_geom1], 3, del_pol=True, del_hole=True, smooth_line=True)
+        coord0 = [(-50,-25), (0,0), (3,0), (50,-25)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+
+    def test_case28(self):
+        title = "Test 28: Normalization of in vector layer"
         print (title)
         vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
         pr = vl.dataProvider()
