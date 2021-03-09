@@ -10,7 +10,8 @@ from qgis.core import (QgsProcessing,
                        QgsGeometry,
                        QgsFeatureSink,
                        QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterBoolean)
+                       QgsProcessingParameterBoolean,
+                       QgsFeatureRequest)
 import os
 import inspect
 import processing
@@ -143,24 +144,29 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         <b>Usage</b>
         <u>Input</u>: A Line String or Polygon layer
         <u>Tolerance</u>: The tolerance in ground unit used to simplify the line
-
-        For more information: https://github.com/Dan-Eli/GeoSim
         """
-        source = self.parameterAsVectorLayer(parameters, "INPUT", context)
+
+        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+
+        source_in = self.parameterAsSource(parameters, "INPUT", context)
         tolerance = self.parameterAsDouble(parameters,"TOLERANCE", context)
         verbose = self.parameterAsBool(parameters, "VERBOSE", context)
 
-        if source is None:
+        if source_in is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, "INPUT"))
 
+        # Transform the in source into a vector layer
+        vector_layer_in = source_in.materialize(QgsFeatureRequest(), feedback)
+
+
         (sink, dest_id) = self.parameterAsSink(parameters, "OUTPUT", context,
-                                                   source.fields(),
-                                                   source.wkbType(),
-                                                   source.sourceCrs() )
+                                               vector_layer_in.fields(),
+                                               vector_layer_in.wkbType(),
+                                               vector_layer_in.sourceCrs() )
 
         # Execute MultiToSinglePart processing
         feedback.pushInfo("Start normalizing input layer")
-        params = {'INPUT': source,
+        params = {'INPUT': vector_layer_in,
                   'OUTPUT': 'memory:'}
         result_ms = processing.run("native:multiparttosingleparts", params, feedback=feedback)
         vector_layer_in = result_ms['OUTPUT']
@@ -181,7 +187,6 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         total = 100.0 / vector_layer_in.featureCount() if vector_layer_in.featureCount() else 0
         simplifier = QgsTopologyPreservingSimplifier(tolerance)
         features = vector_layer_in.getFeatures()
-        print ("Nbr features: ", vector_layer_in.featureCount())
         for i, feature in enumerate(features):
             geom = feature.geometry()
             s_geom = simplifier.simplify(geom)

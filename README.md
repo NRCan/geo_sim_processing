@@ -24,6 +24,8 @@ Reduce Bend is a processing script dicoverable in the QGIS Processing Tool Box u
 
 **Input vector layer**:   Input vector feature to simplify (LineString or Polygon)
 
+**Smooth line**:          If you want to smooth the reduced bends (when possible).
+
 **Diameter tolerance**:   Diameter of the minimum adjusted area bend to simplify (to remove) in ground units
 
 **Verbose**:              Flag for extra information

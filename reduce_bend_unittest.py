@@ -402,9 +402,41 @@ class Test(unittest.TestCase):
         val0 = qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
-
     def test_case28(self):
-        title = "Test 28: Normalization of in vector layer"
+        title = "Test 28: Bend simplification with line smoothing but with start/end segment going in opposite direction"
+        coord0 = [(-50,-25), (0,0), (0,-1), (3,-1), (3,0), (50,25)]
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True, smooth_line=True)
+        coord0 = [(-50, -25), (0, 0), (1, 0.15579156685976017), (2, -0.15579156685976017), (3, 0), (50, 25)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+    def test_case29(self):
+        title = "Test 29: Bend simplification with line smoothing but with self intersection"
+        coord0 = [(-50,-25), (0,0), (0,-1), (3,-1), (3,0), (50,25), (50,0.05), (-50,0.05)]
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True, smooth_line=True)
+        coord0 = [(-50, -25), (0, 0), (3, 0), (50, 25), (50,0.05), (-50,0.05)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+    def test_case30(self):
+        title = "Test 30: Bend simplification with line smoothing but with start/end segment going in opposite direction"
+        coord0 = [(-50, -25), (0, 0), (0, -1), (3, -1), (3, 0), (50, 25)]
+        coord1 = [(.9, .1), (1.1, .1)]
+        qgs_geom0 = create_line(coord0)
+        qgs_geom1 = create_line(coord1)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0, qgs_geom1], 3, del_pol=True, del_hole=True, smooth_line=True)
+        coord0 = [(-50, -25), (0, 0), (3, 0), (50, 25)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+
+    def test_case31(self):
+        title = "Test 31: Normalization of in vector layer"
         print (title)
         vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
         pr = vl.dataProvider()

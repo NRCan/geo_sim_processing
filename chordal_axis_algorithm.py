@@ -74,26 +74,19 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
         """
         help_str = """
     <b>Chordal Axis</b>
-    ChordalAxis is a geospatial tool that takes triangles, usually the result of a constraint \
-    Delauny trianglulation and creates a skeleton (the center line). ChordalAxis is an improvement \
-    of the algorithm based of the paper "Rectification of the Chordal Axis Transform and a \
-    New Criterion for Shape Decomposition", Lakshman Prasad, 2005".
-
-    <b>Medial Axis Versus Chordal Axis</b>
-    The skeleton (center line) is a linear feature representation of a polygonized feature. In \
-    computational geometry, it is known as the medial axis and many algorithms are approximating \
-    it very well. A major issue with those algorithms is the possible instability for very irregular \
-    complex polygons such as dense river or road network polygons. (Figure 4). The Chordal Axis has \
-    shown excellent stability in very very polygons while extracting a very representative skeleton.
+    ChordalAxis is a geospatial tool that creates a skeleton (the center line). ChordalAxis creates a \
+    triangulation (using QGIS Tessellate tools) and use it to extract the chordal axis (center line).
 
     <b>Usage</b>
-    <u>Input</u>: A Multipolygon layer where each triangle composing a polygon is part of the same multipolygon. \
-    For example the  output of Tessellate processing script.
+    <u>Input</u>: A polygon layer to extract the chordal axis.
 
     <u>Correct skeleton</u>:  Correct the skeleton for small centre line, T junction and X junction. Usefull in the case \
     of long any narrow polygon (ex.: polygonized road network)
+    
+    <b>Output</b>
+    <u>Chordal axis</u>: The center line of the polygons.
+    <u>Tessellate</u>: The result of the triangulation.
 
-    For more information: https:...
     """
         return self.tr(help_str)
 
@@ -144,11 +137,14 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
 
         context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
 
-        in_vector_layer = self.parameterAsVectorLayer(parameters, "INPUT", context)
+        in_source = self.parameterAsSource(parameters, "INPUT", context)
         correction = self.parameterAsBool(parameters, "CORRECTION", context)
 
-        if in_vector_layer is None:
+        if in_source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, "INPUT"))
+
+        # Transform the in source into a vector layer
+        in_vector_layer = in_source.materialize(QgsFeatureRequest(), feedback)
 
         (sink, dest_id) = self.parameterAsSink(parameters, "OUTPUT", context,
                                                QgsFields(),
@@ -501,8 +497,8 @@ class ChordalAxis(object):
         """
 
         # Execute MultiToSinglePart processing
-        params = { 'INPUT': source,
-                   'OUTPUT': 'memory:' }
+        params = {'INPUT': source,
+                  'OUTPUT': 'memory:'}
         result_ms = processing.run("native:multiparttosingleparts", params, feedback=feedback)
         ms_part_layer = result_ms['OUTPUT']
 
@@ -635,12 +631,12 @@ class ChordalAxis(object):
         """
 
         #
-        multi_geom = QgsGeometry(multi_geom.clone()) # create a geometry in order to iterate over it
+        multi_geom = QgsGeometry(multi_geom.clone())  # create a geometry in order to iterate over it
         lst_line_qgs_point = []
         if multi_geom.wkbType() in [QgsWkbTypes.MultiPolygon, QgsWkbTypes.MultiPolygonZ]:
-            lst_pol_qgs_point = multi_geom.asMultiPolygon() # Tranform the MultiPolygon into a list of QgsPoint
+            lst_pol_qgs_point = multi_geom.asMultiPolygon()  # Tranform the MultiPolygon into a list of QgsPoint
             for pol_qgs_point in lst_pol_qgs_point:
-                if len(pol_qgs_point) == 1: # Validate that the polygon has only an exterior
+                if len(pol_qgs_point) == 1:  # Validate that the polygon has only an exterior
                     if len(pol_qgs_point[0]) == 4:  # Validate that the polygon has 4 QgsPoint (a triangle)
                         #for qgs_point in pol_qgs_point[0]:
                         # Transform the QgsPointXY ==> QgsPoint of the exterior ring
@@ -653,7 +649,6 @@ class ChordalAxis(object):
             return lst_line_qgs_point
         else:
             raise QgsProcessingException("Can only process MultiPolygon")
-
 
         if len(lst_triangle) >= 1:
             triangle_type = lst_triangle[0].geom_type
