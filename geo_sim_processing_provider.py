@@ -34,6 +34,7 @@ from qgis.core import QgsProcessingProvider
 from .reduce_bend_algorithm import ReduceBendAlgorithm
 from .simplify_algorithm import SimplifyAlgorithm
 from .chordal_axis_algorithm import ChordalAxisAlgorithm
+from .building_pattern_algorithm import BuildingPatternAlgorithm
 import os
 import inspect
 from qgis.PyQt.QtGui import QIcon
@@ -60,6 +61,7 @@ class GeoSimplificationProvider(QgsProcessingProvider):
         """
         self.addAlgorithm(ChordalAxisAlgorithm())
         self.addAlgorithm(ReduceBendAlgorithm())
+        self.addAlgorithm(BuildingPatternAlgorithm())
         self.addAlgorithm(SimplifyAlgorithm())
         
         # add additional algorithms here
