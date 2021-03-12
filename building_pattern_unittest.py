@@ -31,7 +31,7 @@ def plot_lines(qgs_line_string, qgs_new_line):
     plt.show()
 
 
-def build_and_launch(title, qgs_geoms, rectangularity_tol):
+def build_and_launch(title, qgs_geoms, rectangularity_tol, compactness_tol):
 
     print(title)
     qgs_features = []
@@ -41,7 +41,7 @@ def build_and_launch(title, qgs_geoms, rectangularity_tol):
         qgs_feature.setGeometry(qgs_geom)
         qgs_features.append(qgs_feature)
 
-    bp_results = BuildingPattern.match(qgs_features, rectangularity_tol, feedback)
+    bp_results = BuildingPattern.match(qgs_features, rectangularity_tol, compactness_tol, feedback)
     log = feedback.textLog()
     print (log)
     qgs_features_out = bp_results.qgs_features_out
@@ -108,7 +108,7 @@ class Test(unittest.TestCase):
     def test_case02(self):
         title = "Test 02: Polygon with start/end point colinear"
         qgs_geom0 = create_polygon([(0,0), (0,10), (10,10), (8,0), (0,0)], [])
-        qgs_feature_out = build_and_launch(title,[qgs_geom0], .85)
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], .85, .9)
         out_qgs_geom0 = create_polygon([(0,10), (10,10), (10,0), (0,0), (0,10)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue (val0, title)

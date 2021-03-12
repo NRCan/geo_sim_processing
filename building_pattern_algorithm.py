@@ -94,10 +94,18 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
             self.tr('Input layer'),
             types=[QgsProcessing.TypeVectorAnyGeometry]))
 
-        # 'TOLERANCE' to be used bor bend reduction
+
+        # 'RECTANGULARITY' to be used bor bend reduction
         self.addParameter(QgsProcessingParameterDistance(
-            'TOLERANCE',
-            self.tr('Diameter tolerance'),
+            'RECTANGULARITY',
+            self.tr('Rectangularity tolerance [0..1]'),
+            defaultValue=0.0,
+            parentParameterName='INPUT'))  # Make distance units match the INPUT layer units
+
+        # 'COMPACTNESS' to be used bor bend reduction
+        self.addParameter(QgsProcessingParameterDistance(
+            'COMPACTNESS',
+            self.tr('Compactness tolerance [0..1]'),
             defaultValue=0.0,
             parentParameterName='INPUT'))  # Make distance units match the INPUT layer units
 
@@ -110,7 +118,7 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
         # 'OUTPUT' for the results
         self.addParameter(QgsProcessingParameterFeatureSink(
             'OUTPUT',
-            self.tr('Reduced bend')))
+            self.tr('Building pattern')))
 
     def processAlgorithm(self, parameters, context, feedback):
         """Main method that extract parameters and call ReduceBend algorithm.
@@ -120,7 +128,8 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
 
         # Extract parameter
         source_in = self.parameterAsSource(parameters, "INPUT", context)
-        rectangularity_tol = self.parameterAsDouble(parameters, "TOLERANCE", context)
+        rectangularity_tol = self.parameterAsDouble(parameters, "RECTANGULARITY", context)
+        compactness_tol = self.parameterAsDouble(parameters, "COMPACTNESS", context)
         verbose = self.parameterAsBool(parameters, "VERBOSE", context)
 
         if source_in is None:
@@ -149,20 +158,16 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(1)
 
         # Call BuildingPattern algorithm
-        rb_return = BuildingPattern.match(qgs_features_in, rectangularity_tol, feedback)
+        bp_return = BuildingPattern.match(qgs_features_in, rectangularity_tol, compactness_tol, feedback)
 
-        for qgs_feature_out in rb_return.qgs_features_out:
+        for qgs_feature_out in bp_return.qgs_features_out:
             sink.addFeature(qgs_feature_out, QgsFeatureSink.FastInsert)
 
         # Push some output statistics
-#        feedback.pushInfo("Number of features in: {0}".format(rb_return.in_nbr_features))
-#        feedback.pushInfo("Number of features out: {0}".format(rb_return.out_nbr_features))
-#        feedback.pushInfo("Number of iteration needed: {0}".format(rb_return.nbr_pass))
-#        feedback.pushInfo("Number of bends detected: {0}".format(rb_return.nbr_bend_detected))
-#        feedback.pushInfo("Number of bends reduced: {0}".format(rb_return.nbr_bend_reduced))
-#        feedback.pushInfo("Number of deleted polygons: {0}".format(rb_return.nbr_pol_del))
-#        feedback.pushInfo("Number of deleted polygon holes: {0}".format(rb_return.nbr_hole_del))
-#        feedback.pushInfo("Number of line smoothed: {0}".format(rb_return.nbr_line_smooth))
+        feedback.pushInfo("Number of features in: {0}".format(bp_return.in_nbr_features))
+        feedback.pushInfo("Number of features out: {0}".format(bp_return.out_nbr_features))
+        feedback.pushInfo("Number of rectangularity corrections: {0}".format(bp_return.nbr_rectangularity))
+        feedback.pushInfo("Number of compactness corrections: {0}".format(bp_return.nbr_compactness))
 
         return {"OUTPUT": dest_id}
 
@@ -172,16 +177,12 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
 # --------------------------------------------------------
 
 # Define global constant
-ANTI_CLOCK_WISE = -1
-CLOCK_WISE = 0
 
 
 class BpResults:
     """Class defining the stats and result"""
 
-    __slots__ = ('in_nbr_features', 'out_nbr_features', 'nbr_bend_reduced', 'nbr_bend_detected',
-                 'qgs_features_out', 'nbr_hole_del', 'nbr_pol_del', 'nbr_pass', 'is_structure_valid',
-                 'lines_log_info', 'nbr_line_smooth')
+    __slots__ = ('in_nbr_features', 'out_nbr_features', 'qgs_features_out', 'nbr_rectangularity', 'nbr_compactness')
 
     def __init__(self):
         """Constructor that initialize a RbResult object.
@@ -191,11 +192,11 @@ class BpResults:
         :rtype: None
         """
 
-        self.in_nbr_features = None
-        self.out_nbr_features = None
+        self.in_nbr_features = 0
+        self.out_nbr_features = 0
         self.qgs_features_out = []
-        self.nbr_line_smooth = 0
-        self.lines_log_info = []
+        self.nbr_rectangularity = 0
+        self.nbr_compactness = 0
 
 
 class Epsilon:
@@ -300,7 +301,7 @@ class BuildingPattern:
         return qgs_in_features, geom_type
 
     @staticmethod
-    def match(qgs_in_features, rectangularity_tol, feedback=None):
+    def match(qgs_in_features, rectangularity_tol, compactness_tol, feedback=None):
         """Main static method used to launch the bend reduction.
 
         :param: [QgsFeatures] qgs_features: List of features to process.
@@ -314,16 +315,16 @@ class BuildingPattern:
         :rtype: RbResult
         """
 
-        pb = BuildingPattern(qgs_in_features, rectangularity_tol, feedback)
+        pb = BuildingPattern(qgs_in_features, rectangularity_tol, compactness_tol, feedback)
         results = pb.building_pattern()
 
         return results
 
 
 
-    __slots__ = ('qgs_in_features', 'rectangularity_tol', 'feedback', 'eps', 'bp_results')
+    __slots__ = ('qgs_in_features', 'rectangularity_tol', 'compactness_tol', 'feedback', 'eps', 'bp_results')
 
-    def __init__(self, qgs_in_features, rectangularity_tol, feedback):
+    def __init__(self, qgs_in_features, rectangularity_tol, compactness_tol, feedback):
         """Constructor for the bend reduction.
 
        :param: qgs_in_features: List of features to process.
@@ -337,16 +338,58 @@ class BuildingPattern:
 
         self.qgs_in_features = qgs_in_features
         self.rectangularity_tol = rectangularity_tol
+        self.compactness_tol = compactness_tol
         self.feedback = feedback
         self.eps = None
         self.bp_results = None
 
     def building_pattern(self):
+
         """Main method to manage bend reduction.
 
         :return: Statistics and result object.
         :rtype: RbResult
         """
+        def rectangularity():
+            growth = ratio_rectangularity ** .5
+            xmin = growth
+            ymin = growth
+            xmax = width_orient_bbox - growth
+            ymax = height_orient_bbox - growth
+            qgs_pnt0 = QgsPoint(xmin, ymin)
+            qgs_pnt1 = QgsPoint(xmin, ymax)
+            qgs_pnt2 = QgsPoint(xmax, ymax)
+            qgs_pnt3 = QgsPoint(xmax, ymin)
+            qgs_pnts = [qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3]
+            qgs_rect_target = QgsGeometry(QgsPolygon(QgsLineString(qgs_pnts)))
+            qgs_rect_target.rotate(angle_orient_bbox, QgsPointXY(0., 0.))
+            qgs_centroid_rect = qgs_rect_target.centroid()
+            qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
+            delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
+            delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
+            qgs_rect_target.translate(delta_x, delta_y)
+
+            return qgs_rect_target
+
+        def compactness():
+
+            growth = ratio_rectangularity ** .5
+            xmin = growth
+            ymin = growth
+            xmax = width_orient_bbox - growth
+            ymax = height_orient_bbox - growth
+            qgs_pnt0 = QgsPoint(xmin, ymin)
+            qgs_pnt1 = QgsPoint(xmin, ymax)
+            qgs_pnt2 = QgsPoint(xmax, ymax)
+            qgs_pnt3 = QgsPoint(xmax, ymin)
+            qgs_pnts = [qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3]
+            qgs_rect_target = QgsGeometry(QgsPolygon(QgsLineString(qgs_pnts)))
+            qgs_rect_target.rotate(angle_orient_bbox, QgsPointXY(0., 0.))
+            qgs_centroid_rect = qgs_rect_target.centroid()
+            qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
+            delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
+            delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
+            qgs_rect_target.translate(delta_x, delta_y)
 
         #  Code used for the profiler (uncomment if needed)
         #        import cProfile, pstats, io
@@ -362,36 +405,27 @@ class BuildingPattern:
         self.bp_results = BpResults()
 
         for qgs_feature in self.qgs_in_features:
+            self.bp_results.in_nbr_features += 1
             qgs_geom_target = qgs_feature.geometry()
             area_geom_target = qgs_geom_target.area()
+            perimeter_geom_target = qgs_geom_target.constGet().perimeter()
             qgs_geom_centroid = qgs_geom_target.centroid()
             qgs_pnt_centroid_target = qgs_geom_centroid.constGet().clone()
             tuple_results = qgs_geom_target.orientedMinimumBoundingBox()
-            qgs_geom_orient_bbox = tuple_results[0]
             area_orient_bbox = tuple_results[1]
             angle_orient_bbox = tuple_results[2]
             width_orient_bbox = tuple_results[3]
             height_orient_bbox = tuple_results[4]
             ratio_rectangularity = area_geom_target / area_orient_bbox
+            ratio_compactness = 4.* area_geom_target * 3.1416 / (perimeter_geom_target**2)
             if ratio_rectangularity > self.rectangularity_tol:
-                growth = ratio_rectangularity**.5
-                xmin = growth
-                ymin = growth
-                xmax = width_orient_bbox - growth
-                ymax = height_orient_bbox - growth
-                qgs_pnt0 = QgsPoint(xmin,ymin)
-                qgs_pnt1 = QgsPoint(xmin, ymax)
-                qgs_pnt2 = QgsPoint(xmax, ymax)
-                qgs_pnt3 = QgsPoint(xmax, ymin)
-                qgs_pnts = [qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3]
-                qgs_rect_target = QgsGeometry(QgsPolygon(QgsLineString(qgs_pnts)))
-                qgs_rect_target.rotate(angle_orient_bbox, QgsPointXY(0.,0.))
-                qgs_centroid_rect = qgs_rect_target.centroid()
-                qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
-                delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
-                delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
-                qgs_rect_target.translate(delta_x, delta_y)
-                qgs_feature.setGeometry(qgs_rect_target)
+                qgs_geom = rectangularity()
+                qgs_feature.setGeometry(qgs_geom)
+                self.bp_results.nbr_rectangularity += 1
+            elif ratio_compactness > self.compactness_tol:
+                qgs_geom = rectangularity()
+                qgs_feature.setGeometry(qgs_geom)
+                self.bp_results.nbr_compactness += 1
 
             self.bp_results.qgs_features_out.append(qgs_feature)
 
