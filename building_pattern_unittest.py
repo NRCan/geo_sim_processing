@@ -113,6 +113,14 @@ class Test(unittest.TestCase):
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue (val0, title)
 
+    def test_case03(self):
+        title = "Test 03: Pattern in L form"
+        qgs_geom0 = create_polygon([(0,0), (0,10), (10,10), (10,8), (8,8), (8,0), (0,0)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], .85, .9)
+        out_qgs_geom0 = create_polygon([(0,10), (10,10), (10,0), (0,0), (0,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
 
 # Supply path to qgis install location
 QgsApplication.setPrefixPath("/usr/bin/qgis", True)
@@ -120,7 +128,7 @@ QgsApplication.setPrefixPath("/usr/bin/qgis", True)
 # profile_folder = 'C:\\Users\\berge\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\test12'
 #profile_folder = '.'
 # Create a reference to the QgsApplication.  Setting the second argument to False disables the GUI.
-app = QgsApplication([], False)
+app = QgsApplication([], True)
 
 # Load providers and init QGIS
 app.initQgis()

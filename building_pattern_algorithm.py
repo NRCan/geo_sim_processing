@@ -1,4 +1,5 @@
 from qgis.PyQt.QtCore import QCoreApplication
+from PyQt5.QtGui import QTransform
 from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterDistance,
@@ -15,7 +16,9 @@ from qgis.core import QgsFeatureSink, QgsFeatureRequest, QgsFeature, QgsPoint, Q
 import os
 import inspect
 import processing
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QPainter
+from qgis.utils import iface
+from qgis.gui import QgsRubberBand
 
 
 class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
@@ -168,6 +171,7 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Number of features out: {0}".format(bp_return.out_nbr_features))
         feedback.pushInfo("Number of rectangularity corrections: {0}".format(bp_return.nbr_rectangularity))
         feedback.pushInfo("Number of compactness corrections: {0}".format(bp_return.nbr_compactness))
+        feedback.pushInfo("Number of pattern corrections: {0}".format(bp_return.nbr_pattern))
 
         return {"OUTPUT": dest_id}
 
@@ -182,7 +186,8 @@ class BuildingPatternAlgorithm(QgsProcessingAlgorithm):
 class BpResults:
     """Class defining the stats and result"""
 
-    __slots__ = ('in_nbr_features', 'out_nbr_features', 'qgs_features_out', 'nbr_rectangularity', 'nbr_compactness')
+    __slots__ = ('in_nbr_features', 'out_nbr_features', 'qgs_features_out', 'nbr_rectangularity', 'nbr_compactness',\
+                 'nbr_pattern')
 
     def __init__(self):
         """Constructor that initialize a RbResult object.
@@ -197,6 +202,7 @@ class BpResults:
         self.qgs_features_out = []
         self.nbr_rectangularity = 0
         self.nbr_compactness = 0
+        self.nbr_pattern = 0
 
 
 class Epsilon:
@@ -343,117 +349,204 @@ class BuildingPattern:
         self.eps = None
         self.bp_results = None
 
+    def create_geom(self, points):
+
+        qgs_pnts = []
+        for point in points:
+            qgs_pnts.append(point[0], point[1])
+        qgs_geom_pol = QgsGeometry(QgsLineString(qgs_pnts))
+
+        return qgs_geom_pol
+
     def building_pattern(self):
-
-        """Main method to manage bend reduction.
-
-        :return: Statistics and result object.
-        :rtype: RbResult
-        """
-        def rectangularity():
-            growth = ratio_rectangularity ** .5
-            xmin = growth
-            ymin = growth
-            xmax = width_orient_bbox - growth
-            ymax = height_orient_bbox - growth
-            qgs_pnt0 = QgsPoint(xmin, ymin)
-            qgs_pnt1 = QgsPoint(xmin, ymax)
-            qgs_pnt2 = QgsPoint(xmax, ymax)
-            qgs_pnt3 = QgsPoint(xmax, ymin)
-            qgs_pnts = [qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3]
-            qgs_rect_target = QgsGeometry(QgsPolygon(QgsLineString(qgs_pnts)))
-            qgs_rect_target.rotate(angle_orient_bbox, QgsPointXY(0., 0.))
-            qgs_centroid_rect = qgs_rect_target.centroid()
-            qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
-            delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
-            delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
-            qgs_rect_target.translate(delta_x, delta_y)
-
-            return qgs_rect_target
-
-        def compactness():
-
-            growth = ratio_rectangularity ** .5
-            xmin = growth
-            ymin = growth
-            xmax = width_orient_bbox - growth
-            ymax = height_orient_bbox - growth
-            qgs_pnt0 = QgsPoint(xmin, ymin)
-            qgs_pnt1 = QgsPoint(xmin, ymax)
-            qgs_pnt2 = QgsPoint(xmax, ymax)
-            qgs_pnt3 = QgsPoint(xmax, ymin)
-            qgs_pnts = [qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3]
-            qgs_rect_target = QgsGeometry(QgsPolygon(QgsLineString(qgs_pnts)))
-            qgs_rect_target.rotate(angle_orient_bbox, QgsPointXY(0., 0.))
-            qgs_centroid_rect = qgs_rect_target.centroid()
-            qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
-            delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
-            delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
-            qgs_rect_target.translate(delta_x, delta_y)
-
-        #  Code used for the profiler (uncomment if needed)
-        #        import cProfile, pstats, io
-        #        from pstats import SortKey
-        #        pr = cProfile.Profile()
-        #        pr.enable()
-
-        # Calculates the epsilon and initialize some stats and results value
-#        self.eps = Epsilon(self.qgs_in_features)
-#        self.eps.set_class_variables()
-#        self.rb_results = RbResults()
 
         self.bp_results = BpResults()
 
+        patterns = []
+        # Pattern in L form
+        qgs_geom = QgsLineString([QgsPoint(0,0), QgsPoint(0,1), QgsPoint(1,1), QgsPoint(1,.8), QgsPoint(.8,.8), QgsPoint(.8,0), QgsPoint(0,0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .8), QgsPoint(.6, .8), QgsPoint(.6, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .8), QgsPoint(.5, .8), QgsPoint(.5, 0),QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .8), QgsPoint(.4, .8), QgsPoint(.4, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .6), QgsPoint(.6, .6), QgsPoint(.6, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .5), QgsPoint(.5, .5), QgsPoint(.5, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(1, 1), QgsPoint(1, .4), QgsPoint(.4, .4), QgsPoint(.4, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        # Pattern in T form
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(.8, 1), QgsPoint(.8, .8), QgsPoint(1, .8), QgsPoint(1, .6), QgsPoint(.8, .6), QgsPoint(.8, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(.8, 1), QgsPoint(.8, .8), QgsPoint(1, .8), QgsPoint(1, .4), QgsPoint(.8, .4), QgsPoint(.8, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+        qgs_geom = QgsLineString([QgsPoint(0, 0), QgsPoint(0, 1), QgsPoint(.6, 1), QgsPoint(.6, .8), QgsPoint(1, .8), QgsPoint(1, .4), QgsPoint(.6, .4), QgsPoint(.6, 0), QgsPoint(0, 0)])
+        qgs_geom = QgsGeometry(QgsPolygon(qgs_geom.clone()))
+        patterns += Pattern.build_pattern(qgs_geom)
+
+#        y_delta = 0
+#        for i in range(len(patterns)):
+#            qgs_geom = patterns[i].qgs_geom_in_pattern
+#            qgs_geom.translate(0, y_delta)
+#            y_delta += 2
+#            feat = QgsFeature()
+#            feat.setGeometry(qgs_geom)#
+#            self.bp_results.qgs_features_out.append(feat)
+#        return self.bp_results
+
         for qgs_feature in self.qgs_in_features:
             self.bp_results.in_nbr_features += 1
-            qgs_geom_target = qgs_feature.geometry()
-            area_geom_target = qgs_geom_target.area()
-            perimeter_geom_target = qgs_geom_target.constGet().perimeter()
-            qgs_geom_centroid = qgs_geom_target.centroid()
-            qgs_pnt_centroid_target = qgs_geom_centroid.constGet().clone()
-            tuple_results = qgs_geom_target.orientedMinimumBoundingBox()
-            area_orient_bbox = tuple_results[1]
-            angle_orient_bbox = tuple_results[2]
-            width_orient_bbox = tuple_results[3]
-            height_orient_bbox = tuple_results[4]
-            ratio_rectangularity = area_geom_target / area_orient_bbox
-            ratio_compactness = 4.* area_geom_target * 3.1416 / (perimeter_geom_target**2)
-            if ratio_rectangularity > self.rectangularity_tol:
-                qgs_geom = rectangularity()
-                qgs_feature.setGeometry(qgs_geom)
+            tf = TargetFeature(qgs_feature)
+            replaced = False
+            if tf.replace_bbox_rectangularity(self.rectangularity_tol):
+                replaced = True
                 self.bp_results.nbr_rectangularity += 1
-            elif ratio_compactness > self.compactness_tol:
-                qgs_geom = rectangularity()
-                qgs_feature.setGeometry(qgs_geom)
+            elif tf.replace_bbox_compactness(self.compactness_tol):
+                replaced = True
                 self.bp_results.nbr_compactness += 1
+            elif tf.replace_pattern(patterns, .7):
+                replaced = True
+                self.bp_results.nbr_pattern += 1
 
-            self.bp_results.qgs_features_out.append(qgs_feature)
-
-#            area_orient_bbox = qgs_geom_orient_bbox.area()
-#            ratio_rectangularity = area_geom_target / area_orient_bbox
-#            if ratio_rectangularity > self.rectangularity_tol:
-#                qgs_rect_ext_ring = qgs_geom_orient_bbox.constGet().exteriorRing()
-#                qgs_points = qgs_rect_ext_ring.points()
-#                qgs_l0 = QgsLineString(qgs_points[0], qgs_points[1])
-#                qgs_l1 = QgsLineString(qgs_points[1], qgs_points[2])
-#                qgs_l2 = QgsLineString(qgs_points[2], qgs_points[3])
-#                qgs_l3 = QgsLineString(qgs_points[3], qgs_points[4])
-#                ratio_rect_square = ratio_rectangularity**0.5
-#                qgs_pnt0 = qgs_l0.interpolatePoint(ratio_rect_square*qgs_l0.length())
-#                qgs_pnt1 = qgs_l1.interpolatePoint(ratio_rect_square*qgs_l1.length())
-#                qgs_pnt2 = qgs_l2.interpolatePoint(ratio_rect_square*qgs_l2.length())
-#                qgs_pnt3 = qgs_l3.interpolatePoint(ratio_rect_square*qgs_l3.length())
-#                print (qgs_l0.length(), qgs_l1.length(), qgs_l2.length(), qgs_l3.length())
-#                qgs_geom_rect = QgsGeometry(QgsPolygon(QgsLineString([qgs_pnt0, qgs_pnt1, qgs_pnt2, qgs_pnt3])))
-#                qgs_geom_centroid_rect = qgs_geom_rect.centroid()
-#                qgs_pnt_centroid_rect = qgs_geom_centroid_rect.constGet().clone()
-#                delta_x = qgs_pnt_centroid_target.x() - qgs_pnt_centroid_rect.x()
-#                delta_y = qgs_pnt_centroid_target.y() - qgs_pnt_centroid_rect.y()
-#                qgs_geom_rect.translate(delta_x,delta_y)
-#                qgs_feature.setGeometry(qgs_geom_rect)
-#
-#            self.bp_results.qgs_features_out.append(qgs_feature)
+            self.bp_results.qgs_features_out.append(tf.qgs_feature)
 
         return self.bp_results
+
+class TargetFeature:
+
+    __slots__ = ('qgs_feature', 'qgs_geom', 'qgs_pnt_centroid', 'area', 'perimeter', 'area_bbox', 'angle',\
+                 'width', 'height', 'rectangularity_ratio', 'compactness_ratio')
+
+    def __init__(self, qgs_feature):
+
+        self.qgs_feature = qgs_feature
+        self.qgs_geom = qgs_feature.geometry()
+        qgs_geom_centroid = self.qgs_geom.centroid()
+        self.qgs_pnt_centroid = qgs_geom_centroid.constGet().clone()
+        self.area = self.qgs_geom.area()
+        self.perimeter = self.qgs_geom.constGet().perimeter()
+        tuple_results = self.qgs_geom.orientedMinimumBoundingBox()
+        self.area_bbox = tuple_results[1]
+        self.angle = tuple_results[2]
+        self.width = tuple_results[3]
+        self.height = tuple_results[4]
+        self.rectangularity_ratio = self.area/(self.width*self.height)
+        self.compactness_ratio = 4.* self.area * math.pi / (self.perimeter**2)
+
+    def replace_bbox_rectangularity(self, rectangularity_tol):
+
+        feature_replaced = False
+        if self.rectangularity_ratio > rectangularity_tol:
+            self._replace_bbox()
+            feature_replaced = True
+
+        return feature_replaced
+
+    def replace_bbox_compactness(self, compactness_tol):
+
+        feature_replaced = False
+        if self.compactness_ratio > compactness_tol:
+            self._replace_bbox()
+            feature_replaced = True
+
+        return feature_replaced
+
+    def replace_pattern(self, patterns, tolerance_ratio):
+
+        max_tolerance_ratio = 0.0
+        for pattern in patterns:
+            qgs_geom_pattern = QgsGeometry(pattern.qgs_geom_in_pattern)
+            qgs_geom_pattern.transform(QTransform().scale(self.width, self.height))
+            qgs_geom_pattern.rotate(self.angle, QgsPointXY(0,0))
+            qgs_centroid_pattern = qgs_geom_pattern.centroid()
+            qgs_pnt_centroid_rect = qgs_centroid_pattern.constGet().clone()
+            delta_x = self.qgs_pnt_centroid.x() - qgs_pnt_centroid_rect.x()
+            delta_y = self.qgs_pnt_centroid.y() - qgs_pnt_centroid_rect.y()
+            qgs_geom_pattern.translate(delta_x, delta_y)
+            area_pattern = qgs_geom_pattern.area()
+
+            qgs_a_diff_b = qgs_geom_pattern.difference(self.qgs_geom)
+            qgs_b_diff_a = self.qgs_geom.difference(qgs_geom_pattern)
+            qgs_symmetric_diff = QgsGeometry.unaryUnion([qgs_a_diff_b, qgs_b_diff_a])
+
+            area_ratio = 1 - (qgs_symmetric_diff.area() / ((area_pattern+self.area)/2.))
+            if area_ratio > tolerance_ratio:
+                if area_ratio > max_tolerance_ratio:
+                    max_tolerance_ratio = area_ratio
+                    self.qgs_feature.setGeometry(qgs_geom_pattern)
+        if max_tolerance_ratio > tolerance_ratio:
+            replaced = True
+        else:
+            replaced = False
+
+        return replaced
+
+
+    def _replace_bbox(self):
+        shrink_bbox = self.rectangularity_ratio ** .5
+        xmin = shrink_bbox
+        ymin = shrink_bbox
+        xmax = self.width - shrink_bbox
+        ymax = self.height - shrink_bbox
+        qgs_rect_feature = QgsLineString([xmin, xmin, xmax, xmax], [ymin, ymax, ymax,ymin])
+        qgs_rect_target = QgsGeometry(QgsPolygon(qgs_rect_feature.clone()))
+        qgs_rect_target.rotate(self.angle, QgsPointXY(0., 0.))
+        qgs_centroid_rect = qgs_rect_target.centroid()
+        qgs_pnt_centroid_rect = qgs_centroid_rect.constGet().clone()
+        delta_x = self.qgs_pnt_centroid.x() - qgs_pnt_centroid_rect.x()
+        delta_y = self.qgs_pnt_centroid.y() - qgs_pnt_centroid_rect.y()
+        qgs_rect_target.translate(delta_x, delta_y)
+        self.qgs_feature.setGeometry(qgs_rect_target)
+
+
+class Pattern:
+
+    @staticmethod
+    def scale_geom(qgs_geom_pattern, x_scale, y_scale):
+
+        qgs_geom = QgsGeometry(qgs_geom_pattern)
+        qgs_geom.transform(QTransform().scale(x_scale, y_scale))
+        qgs_geom_bbox = qgs_geom.boundingBox()
+        xmin = qgs_geom_bbox.xMinimum()
+        ymin = qgs_geom_bbox.yMinimum()
+        qgs_geom.translate(-xmin, -ymin)
+
+        return qgs_geom
+
+    @staticmethod
+    def build_pattern(qgs_geom_in_pattern, qgs_geom_out_pattern=None):
+
+        if qgs_geom_out_pattern is None:
+            qgs_geom_out_pattern = QgsGeometry(qgs_geom_in_pattern)
+
+        patterns = []
+
+        for x_scale, y_scale in ((1.,1.), (-1.,1),(1,-1.),(-1., -1.)):
+            qgs_geom_in = Pattern.scale_geom(qgs_geom_in_pattern, x_scale, y_scale)
+            qgs_geom_out = Pattern.scale_geom(qgs_geom_out_pattern, x_scale, y_scale)
+            patterns.append(Pattern(qgs_geom_in, qgs_geom_out))
+
+        return patterns
+
+    def __init__(self, qgs_geom_in_pattern, qgs_geom_out_pattern):
+
+        self.qgs_geom_in_pattern = qgs_geom_in_pattern
+        self.qgs_geom_out_pattern = qgs_geom_out_pattern
+
+
+
+
 
 
