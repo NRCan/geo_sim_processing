@@ -65,6 +65,7 @@ jobs:
 
       - name: Install packages
         run: |
+          ls -l REQUIREMENTS_TESTING.txt
           pip install -r REQUIREMENTS_TESTING.txt
           pip install pylint pycodestyle
 #      - name: Pylint
