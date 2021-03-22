@@ -45,8 +45,10 @@ jobs:
           docker exec qgis-testing-environment sh -c "rm -f /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
           docker exec qgis-testing-environment sh -c "ln -s /tests_directory/$PLUGIN_NAME /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
         
+          docker logs --follow qgis-testing-environment
           docker exec qgis-testing-environment sh -c "echo $(ls -1 /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins)"
           docker exec qgis-testing-environment sh -c "echo $(ls --1 /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME)"
+          docker logs --follow qgis-testing-environment
           
           
           docker exec qgis-testing-environment sh -c "pip3 install -r /tests_directory/REQUIREMENTS_TESTING.txt"
