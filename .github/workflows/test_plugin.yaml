@@ -12,7 +12,7 @@ on:
 
 env:
   # plugin name/directory where the code for the plugin is stored
-  PLUGIN_NAME: geo_simplification
+  PLUGIN_NAME: GeoSim
   # python notation to test running inside plugin
   TESTS_RUN_FUNCTION: slyr_community.test_suite.test_package
   # Docker settings
