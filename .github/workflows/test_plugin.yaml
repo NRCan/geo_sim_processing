@@ -14,7 +14,7 @@ env:
   # plugin name/directory where the code for the plugin is stored
   PLUGIN_NAME: geo_sim_processing
   # python notation to test running inside plugin
-  TESTS_RUN_FUNCTION: geo_simplification.test_suite.test_package
+  TESTS_RUN_FUNCTION: geo_sim_processing.test_suite.test_package
   # Docker settings
   DOCKER_IMAGE: qgis/qgis
 
@@ -27,7 +27,8 @@ jobs:
 
     strategy:
       matrix:
-        docker_tags: [release-3_16, release-3_18, latest]
+        docker_tags: [release-3_16]
+        # docker_tags: [release-3_16, release-3_18, latest]
 
     steps:
 
