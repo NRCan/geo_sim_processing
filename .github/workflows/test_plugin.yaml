@@ -14,7 +14,7 @@ env:
   # plugin name/directory where the code for the plugin is stored 
   PLUGIN_NAME: geo_sim_processing
   # python notation to test running inside plugin
-  TESTS_RUN_FUNCTION: geo_sim_processing.test_suite.test_package
+  TESTS_RUN_FUNCTION: test.test_bend
   # Docker settings
   DOCKER_IMAGE: qgis/qgis
 
