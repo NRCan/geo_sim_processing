@@ -3,18 +3,18 @@ name: Test plugin
 on:
   push:
     paths:
-    - "GeoSim/**"
+    - "geo_sim_processing/**"
     - ".github/workflows/test_plugin.yaml"
   pull_request:
     paths:
-    - "GeoSim/**"
+    - "geo_sim_processing/**"
     - ".github/workflows/test_plugin.yaml"
 
 env:
   # plugin name/directory where the code for the plugin is stored
-  PLUGIN_NAME: GeoSim
+  PLUGIN_NAME: geo_sim_processing
   # python notation to test running inside plugin
-  TESTS_RUN_FUNCTION: GeoSim.test_suite.test_package
+  TESTS_RUN_FUNCTION: geo_simplification.test_suite.test_package
   # Docker settings
   DOCKER_IMAGE: qgis/qgis
 
