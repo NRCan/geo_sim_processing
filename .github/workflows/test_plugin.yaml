@@ -4,7 +4,7 @@ on:
   push:
     paths:
     - "test/**"
-    - ".github/workflows/test_plugin.yaml"
+    - ".github/workflows/test_plugin.yaml" 
   pull_request:
     paths:
     - "test/**"
