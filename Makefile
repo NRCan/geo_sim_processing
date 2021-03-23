@@ -111,8 +111,8 @@ pylint:
 	@echo "-----------------"
 	@echo "Pylint violations"
 	@echo "-----------------"
-	@echo pwd
-	@echo ls -l
+	pwd
+	ls -l
 	@pylint --reports=n --rcfile=pylintrc geo_sim_processing
 	@echo
 	@echo "----------------------"
