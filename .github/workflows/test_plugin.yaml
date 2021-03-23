@@ -72,7 +72,6 @@ jobs:
           ls -l REQUIREMENTS_TESTING.txt
           pip install -r REQUIREMENTS_TESTING.txt
           pip install pylint pycodestyle
-          pip install pylint-exit
       - name: Pylint
         run: make pylint
 
