@@ -132,31 +132,20 @@ pycodestyle:
 	@echo "Ignored in PEP8 check:"
 	@echo $(PEP8EXCLUDE)
 
-# The dclean target removes compiled python files from plugin directory
-# also deletes any .git entry
-dclean:
-	@echo
-	@echo "-----------------------------------"
-	@echo "Removing any compiled python files."
-	@echo "-----------------------------------"
-	find $(PLUGIN_NAME) -iname "*.pyc" -delete
-	find $(PLUGIN_NAME) -iname "*.orig" -delete
-	find $(PLUGIN_NAME) -iname ".git" -prune -exec rm -Rf {} \;
-
 zip:
 	@echo
 	@echo "---------------------------"
 	@echo "Creating plugin zip bundle."
 	@echo "---------------------------"
 	# At the root of geo_sim_processing folder type "make zip"
-	# The zip target deploys the plugin and creates a zip file with the deployed
+	# The zip target creates a zip file with only the needed deployed
 	# content. You can then upload the zip file on http://plugins.qgis.org
 	rm -f $(PLUGIN_NAME).zip
-	zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) \
+	zip -9 -r  $(PLUGIN_NAME).zip . \
 	    -x '*.git*' \
 	    -x '*__pycache__*' \
 	    -x '*unittest*.py' \
 	    -x '*.pyc' \
-	    -x 'REQUIREMENTS_TESTING.txt' \
-	    -x 'pylintrc' \
-	    -x 'Makefile'
+	    -x './REQUIREMENTS_TESTING.txt' \
+	    -x './pylintrc' \
+	    -x './Makefile'
