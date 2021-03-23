@@ -143,7 +143,7 @@ dclean:
 	find $(PLUGIN_NAME) -iname "*.orig" -delete
 	find $(PLUGIN_NAME) -iname ".git" -prune -exec rm -Rf {} \;
 
-zip: dclean
+zip:
 	@echo
 	@echo "---------------------------"
 	@echo "Creating plugin zip bundle."
@@ -151,4 +151,11 @@ zip: dclean
 	# The zip target deploys the plugin and creates a zip file with the deployed
 	# content. You can then upload the zip file on http://plugins.qgis.org
 	rm -f $(PLUGIN_NAME).zip
-	zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) -x '*.git*' -x '*__pycache__*' -x '*test*' -x '*/tools/*'
+	zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) \
+	    -x '*.git*' \
+	    -x '*__pycache__*' \
+	    -x '*unittest*.py' \
+	    -x '*.pyc' \
+	    -x 'REQUIREMENTS_TESTING.txt' \
+	    -x 'pylintrc' \
+	    -x 'Makefile'
