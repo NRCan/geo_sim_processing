@@ -111,8 +111,6 @@ pylint:
 	@echo "-----------------"
 	@echo "Pylint violations"
 	@echo "-----------------"
-	pwd
-	ls -l
 	@pylint --reports=n --rcfile=pylintrc *.py
 	@echo
 	@echo "----------------------"
