@@ -11,7 +11,7 @@ on:
     - ".github/workflows/test_plugin.yaml"
 
 env:
-  # plugin name/directory where the code for the plugin is stored 
+  # plugin name/directory where the code for the plugin is stored
   PLUGIN_NAME: test
   # python notation to test running inside plugin
   TESTS_RUN_FUNCTION: test.test_bend.run_all
