@@ -50,11 +50,9 @@ jobs:
 #          # docker exec qgis-testing-environment sh -c "apt-get install -y python3-pyqt5.qtwebkit"
       - name: Docker run plugin tests
         run: |
-          docker exec qgis-testing-environment sh -c  "ls -l"
-          docker exec qgis-testing-environment sh -c  "ls -l /home"
           docker exec qgis-testing-environment sh -c  "ls -l /tests_directory"
-          docker exec qgis-testing-environment sh -c  "cd tests_directory; pwd"
           docker exec qgis-testing-environment sh -c  "cd tests_directory;python3 -m unittest reduce_bend_unittest.py"
+          docker exec qgis-testing-environment sh -c  "cd tests_directory;python3 -m unittest chordl_axis_unittest.py"
 #          docker exec qgis-testing-environment sh -c "qgis_testrunner.sh $TESTS_RUN_FUNCTION"
   Check-code-quality:
     runs-on: ubuntu-latest
@@ -74,8 +72,8 @@ jobs:
           ls -l REQUIREMENTS_TESTING.txt
           pip install -r REQUIREMENTS_TESTING.txt
           pip install pylint pycodestyle
-#      - name: Pylint
-#        run: make pylint
+      - name: Pylint
+        run: make pylint
 
-#      - name: Pycodestyle
-#        run: make pycodestyle
+      - name: Pycodestyle
+        run: make pycodestyle
