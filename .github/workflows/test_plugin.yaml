@@ -54,6 +54,7 @@ jobs:
           docker exec qgis-testing-environment sh -c  "ls -l /home"
           docker exec qgis-testing-environment sh -c  "ls -l /tests_directory"
           docker exec qgis-testing-environment sh -c  "cd tests_directory"
+          docker exec qgis-testing-environment sh -c  "pwd"
           docker exec qgis-testing-environment sh -c  "python3 -m unittest reduce_bend_unittest.py"
 #          docker exec qgis-testing-environment sh -c "qgis_testrunner.sh $TESTS_RUN_FUNCTION"
   Check-code-quality:
