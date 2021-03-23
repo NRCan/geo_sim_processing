@@ -476,16 +476,18 @@ class Test(unittest.TestCase):
         self.assertTrue(val0 and val1, title)
 
 
-# Supply path to qgis install location
-QgsApplication.setPrefixPath("/usr/bin/qgis", True)
+    def run_all()
+      print ("coco")
+      # Supply path to qgis install location
+      QgsApplication.setPrefixPath("/usr/bin/qgis", True)
 
-# profile_folder = 'C:\\Users\\berge\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\test12'
-#profile_folder = '.'
-# Create a reference to the QgsApplication.  Setting the second argument to False disables the GUI.
-app = QgsApplication([], False)
+      # profile_folder = 'C:\\Users\\berge\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\test12'
+      #profile_folder = '.'
+      # Create a reference to the QgsApplication.  Setting the second argument to False disables the GUI.
+      app = QgsApplication([], False)
 
-# Load providers and init QGIS
-app.initQgis()
-from processing.core.Processing import Processing
-Processing.initialize()
-QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
+      # Load providers and init QGIS
+      app.initQgis()
+      from processing.core.Processing import Processing
+      Processing.initialize()
+      QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
