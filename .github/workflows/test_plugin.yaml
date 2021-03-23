@@ -50,7 +50,7 @@ jobs:
 #          # docker exec qgis-testing-environment sh -c "apt-get install -y python3-pyqt5.qtwebkit"
       - name: Docker run plugin tests
         run: |
-          docker exec qgis-testing-environment sh -c  "python -m unittest reduce_bend_unittest.py"
+          docker exec qgis-testing-environment sh -c  "python3 -m unittest reduce_bend_unittest.py"
 #          docker exec qgis-testing-environment sh -c "qgis_testrunner.sh $TESTS_RUN_FUNCTION"
   Check-code-quality:
     runs-on: ubuntu-latest
