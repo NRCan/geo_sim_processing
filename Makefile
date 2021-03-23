@@ -140,12 +140,12 @@ zip:
 	# At the root of geo_sim_processing folder type "make zip"
 	# The zip target creates a zip file with only the needed deployed
 	# content. You can then upload the zip file on http://plugins.qgis.org
-	rm -f $(PLUGIN_NAME).zip
-	zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) \
-	    -x '*.git*' \
-	    -x '*__pycache__*' \
-	    -x '*unittest*.py' \
-	    -x '*.pyc' \
-	    -x '$(PLUGIN_NAME)/REQUIREMENTS_TESTING.txt' \
-	    -x '$(PLUGIN_NAME)/pylintrc' \
-	    -x '$(PLUGIN_NAME)/Makefile'
+	cd ..; rm -f $(PLUGIN_NAME).zip
+	cd ..; zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) \
+	    	-x '*.git*' \
+	        -x '*__pycache__*' \
+	        -x '*unittest*.py' \
+	        -x '*.pyc' \
+	        -x '$(PLUGIN_NAME)/REQUIREMENTS_TESTING.txt' \
+	        -x '$(PLUGIN_NAME)/pylintrc' \
+	        -x '$(PLUGIN_NAME)/Makefile'
