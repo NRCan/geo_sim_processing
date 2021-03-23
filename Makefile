@@ -111,7 +111,7 @@ pylint:
 	@echo "-----------------"
 	@echo "Pylint violations"
 	@echo "-----------------"
-	@pylint --reports=n --rcfile=pylintrc reduce_bend_algorithm.py
+	@pylint --reports=n --rcfile=pylintrc reduce_bend_algorithm.py  || pylint-exit $?
 	@echo
 	@echo "----------------------"
 	@echo "If you get a 'no module named qgis.core' error, try sourcing"
