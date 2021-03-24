@@ -46,7 +46,7 @@ EXTRAS = metadata.txt icon.png
 
 EXTRA_DIRS =
 
-PEP8EXCLUDE=reduce_bend_unittest.py, chordal_axis_unittest.py
+PEP8EXCLUDE=reduce_bend_unittest.py,chordal_axis_unittest.py
 
 VERSION=$(shell grep "^version" metadata.txt | cut -d'=' -f2)
 ZIP_FILE_NAME=$(PLUGIN_NAME)-$(VERSION).zip
