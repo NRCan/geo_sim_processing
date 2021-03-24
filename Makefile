@@ -2,11 +2,11 @@
 # GeoSimplification
 #
 # This plugin contains different tools for line simplification
-#							 -------------------
-#		begin				: 2021-01-27
-#		git sha				: $Format:%H$
-#		copyright			: (C) 2021 by Daniel Pilon
-#		email				: daniel.pilon@canada.ca
+#                                               -------------------
+#               begin                           : 2021-01-27
+#               git sha                         : $Format:%H$
+#               copyright                       : (C) 2021 by NRCan
+#               email                           : daniel.pilon@canada.ca
 # ***************************************************************************/
 #
 #/***************************************************************************
@@ -46,7 +46,10 @@ EXTRAS = metadata.txt icon.png
 
 EXTRA_DIRS =
 
-PEP8EXCLUDE=pydev,conf.py,third_party,ui,slyr_community/parser/color_lut.py
+PEP8EXCLUDE=*unittest*.py
+
+VERSION=$(shell grep "^version" metadata.txt | cut -d'=' -f2)
+ZIP_FILE_NAME=$(PLUGIN_NAME)-$(VERSION).zip
 
 default:
 
@@ -140,10 +143,6 @@ zip:
 	@echo "---------------------------"
 	@echo "Creating plugin zip bundle."
 	@echo "---------------------------"
-	VERSION=$(shell grep "^version" metadata.txt | cut -d'=' -f2)
-	@echo $(VERSION)
-	ZIP_FILE_NAME = $(PLUGIN_NAME)-$(VERSION).zip
-	@echo $(ZIP_FILE_NAME)
 	cd ..; rm -f $(ZIP_FILE_NAME)
 	cd ..; zip -9 -r  $(ZIP_FILE_NAME) $(PLUGIN_NAME) \
 	    	-x '*.git*' \
