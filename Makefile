@@ -133,15 +133,18 @@ pycodestyle:
 	@echo $(PEP8EXCLUDE)
 
 zip:
+	# At the root of geo_sim_processing folder type "make zip"
+	# The zip target creates a zip file with only the needed deployed
+	# content. You can then upload the zip file on http://plugins.qgis.org
 	@echo
 	@echo "---------------------------"
 	@echo "Creating plugin zip bundle."
 	@echo "---------------------------"
-	# At the root of geo_sim_processing folder type "make zip"
-	# The zip target creates a zip file with only the needed deployed
-	# content. You can then upload the zip file on http://plugins.qgis.org
-	cd ..; rm -f $(PLUGIN_NAME).zip
-	cd ..; zip -9 -r  $(PLUGIN_NAME).zip $(PLUGIN_NAME) \
+	VERSION=$(grep "^version" metadata.txt | cut -d'=' -f2)
+	ZIP_FILE_NAME = $(PLUGIN_NAME)-$(VERSION)-.zip
+	@echo $ZIP_FILE_NAME
+	cd ..; rm -f $(ZIP_FILE_NAME)
+	cd ..; zip -9 -r  $(ZIP_FILE_NAME) $(PLUGIN_NAME) \
 	    	-x '*.git*' \
 	        -x '*__pycache__*' \
 	        -x '*unittest*.py' \
