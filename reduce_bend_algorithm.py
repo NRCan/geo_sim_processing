@@ -23,6 +23,10 @@ QGIS Plugin for Bend reduction
 """
 
 
+import os
+import inspect
+import sys
+import math
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
@@ -32,13 +36,10 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterBoolean)
 
 from abc import ABC, abstractmethod
-import sys
-import math
 from qgis.core import QgsFeatureSink, QgsFeatureRequest, QgsFeature, QgsPoint, QgsPointXY, QgsLineString, QgsPolygon, \
                       QgsWkbTypes,  QgsSpatialIndex,  QgsGeometry, QgsGeometryUtils, QgsRectangle, \
                       QgsProcessingException, QgsMultiLineString, QgsMultiPolygon
-import os
-import inspect
+
 import processing
 from qgis.PyQt.QtGui import QIcon
 
@@ -47,22 +48,22 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     """Main class defining the Reduce Bend as a QGIS processing algorithm.
     """
 
-    def tr(self, string):
+    def tr(self, string):  # pylint: disable=no-self-use
         """Returns a translatable string with the self.tr() function.
         """
         return QCoreApplication.translate('Processing', string)
 
-    def createInstance(self):
+    def createInstance(self):  # pylint: disable=no-self-use
         """Returns a new copy of the algorithm.
         """
         return ReduceBendAlgorithm()
 
-    def name(self):
+    def name(self):  # pylint: disable=no-self-use
         """Returns the unique algorithm name.
         """
         return 'reducebend'
 
-    def displayName(self):
+    def displayName(self):  # pylint: disable=no-self-use
         """Returns the translated algorithm name.
         """
         return 'Reduce Bend'
@@ -72,7 +73,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
         """
         return self.tr(self.groupId())
 
-    def groupId(self):
+    def groupId(self):  # pylint: disable=no-self-use
         """Returns the unique ID of the group this algorithm belongs to.
         """
         return ''
@@ -115,7 +116,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
         icon = QIcon(os.path.join(os.path.join(cmd_folder, 'logo.png')))
         return icon
 
-    def initAlgorithm(self):
+    def initAlgorithm(self, config=None):  # pylint: disable=unused-argument
         """Define the inputs and outputs of the algorithm.
         """
 
