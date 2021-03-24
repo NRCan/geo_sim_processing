@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-name-in-module
+# pylint: disable=too-many-lines
+# pylint: disable=useless-return
 
 # /***************************************************************************
 # reduce_bend_algorithm.py
@@ -27,21 +30,19 @@ import os
 import inspect
 import sys
 import math
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (QgsProcessing,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterDistance,
-                       QgsProcessingParameterFeatureSource,
-                       QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterBoolean)
-
 from abc import ABC, abstractmethod
-from qgis.core import QgsFeatureSink, QgsFeatureRequest, QgsFeature, QgsPoint, QgsPointXY, QgsLineString, QgsPolygon, \
-                      QgsWkbTypes,  QgsSpatialIndex,  QgsGeometry, QgsGeometryUtils, QgsRectangle, \
-                      QgsProcessingException, QgsMultiLineString, QgsMultiPolygon
+from qgis.PyQt.QtCore import QCoreApplication
+
+from qgis.PyQt.QtGui import QIcon
+
+from qgis.core import (QgsFeature, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParameterDistance,
+                       QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,
+                       QgsProcessingParameterBoolean, QgsFeatureSink, QgsFeatureRequest, QgsPoint,
+                       QgsPointXY, QgsLineString, QgsPolygon, QgsWkbTypes,  QgsSpatialIndex,  QgsGeometry,
+                       QgsGeometryUtils, QgsRectangle, QgsProcessingException, QgsMultiLineString,
+                       QgsMultiPolygon)
 
 import processing
-from qgis.PyQt.QtGui import QIcon
 
 
 class ReduceBendAlgorithm(QgsProcessingAlgorithm):
@@ -108,7 +109,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
 
         return self.tr(help_str)
 
-    def icon(self):
+    def icon(self):  # pylint: disable=no-self-use
         """Define the logo of the algorithm.
         """
 
@@ -125,7 +126,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
                           'INPUT',
                           self.tr('Input layer'),
                           types=[QgsProcessing.TypeVectorAnyGeometry]))
-        
+
         # 'TOLERANCE' to be used bor bend reduction
         self.addParameter(QgsProcessingParameterDistance(
                           'TOLERANCE',
@@ -432,7 +433,7 @@ class RbPoint(RbFeature):
         return self.qgs_feature
 
 
-class RbCollection(object):
+class RbCollection:
     """Class used for managing the feature spatially.
 
     QgsSpatialIndex class is used to store and retrieve the features.
@@ -1007,7 +1008,7 @@ class BendReduced:
 
         p0_y = math.tan(angle_smooth) * p0_x  # Trigonometric formula to find length of opposite side (value of y)
 
-        if smooth_case == BendReduced.CASE_1 or smooth_case == BendReduced.CASE_2:
+        if smooth_case in [BendReduced.CASE_1, BendReduced.CASE_2]:
             if qgs_points_ro[0].y() > 0.:
                 p0_y *= -1
             qgs_point_smooth_0 = QgsPoint(p0_x, p0_y)
@@ -1419,10 +1420,8 @@ class ReduceBend:
                 del orientation[0]  # Do not process the first angle as it is the angle of the start/end
 
         if len(orientation) >= 1:
-            orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE \
-                                                   else orientation.insert(0, CLOCK_WISE)
-            orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE \
-                                                else orientation.append(CLOCK_WISE)
+            orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE else orientation.insert(0, CLOCK_WISE)
+            orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE else orientation.append(CLOCK_WISE)
 
         # Find the inflexion points in the line.
         inflexion = [i for i in range(0, len(orientation)-1) if orientation[i] != orientation[(i + 1)]]
@@ -1716,7 +1715,7 @@ class ReduceBend:
             str_value = "Iteration: {}; Bends detected: {}; Bend reduced: {}; Tolerance used: {}"\
                   .format(self.rb_results.nbr_pass, nbr_bend_detected, nbr_bend_reduced, self.diameter_tol)
             self.rb_results.lines_log_info.append(str_value)
-            if self.rb_results.nbr_pass == 0: 
+            if self.rb_results.nbr_pass == 0:
                 self.rb_results.nbr_bend_detected = nbr_bend_detected
 
             # While loop breaking condition
@@ -1733,7 +1732,7 @@ class ReduceBend:
 
         nbr_done = 0
         for rb_geom in self.rb_geoms:
-            if rb_geom.is_simplest: 
+            if rb_geom.is_simplest:
                 nbr_done += 1
 
         return nbr_done
