@@ -141,9 +141,9 @@ zip:
 	@echo "Creating plugin zip bundle."
 	@echo "---------------------------"
 	VERSION=$(shell grep "^version" metadata.txt | cut -d'=' -f2)
-	@echo $VERSION
+	@echo $(VERSION)
 	ZIP_FILE_NAME = $(PLUGIN_NAME)-$(VERSION).zip
-	@echo $ZIP_FILE_NAME
+	@echo $(ZIP_FILE_NAME)
 	cd ..; rm -f $(ZIP_FILE_NAME)
 	cd ..; zip -9 -r  $(ZIP_FILE_NAME) $(PLUGIN_NAME) \
 	    	-x '*.git*' \
