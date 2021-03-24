@@ -3,11 +3,11 @@ name: Test plugin
 on:
   push:
     paths:
-    - "test/**"
+    - "/**"
     - ".github/workflows/test_plugin.yaml" 
   pull_request:
     paths:
-    - "test/**"
+    - "/**"
     - ".github/workflows/test_plugin.yaml"
 
 env:
