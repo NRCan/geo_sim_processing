@@ -18,6 +18,10 @@
 #  *                                                                         *
 #  ***************************************************************************/
 
+"""
+QGIS Plugin for Bend reduction
+"""
+
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -100,9 +104,9 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     1:50 000 for example a diameter of 25m should be a good starting point
 
     """
-        
+
         return self.tr(help_str)
-        
+
     def icon(self):
         """Define the logo of the algorithm.
         """
@@ -111,7 +115,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
         icon = QIcon(os.path.join(os.path.join(cmd_folder, 'logo.png')))
         return icon
 
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self):
         """Define the inputs and outputs of the algorithm.
         """
 
@@ -252,11 +256,8 @@ class RbFeature(ABC):
         :rtype: bool
         """
 
-        if feature_type in [QgsWkbTypes.Point, QgsWkbTypes.Point25D, QgsWkbTypes.PointM, QgsWkbTypes.PointZ,
-                            QgsWkbTypes.PointZM]:
-            val = True
-        else:
-            val = False
+        val = feature_type in [QgsWkbTypes.Point, QgsWkbTypes.Point25D, QgsWkbTypes.PointM, QgsWkbTypes.PointZ,
+                               QgsWkbTypes.PointZM]
 
         return val
 
@@ -269,11 +270,8 @@ class RbFeature(ABC):
         :rtype: bool
         """
 
-        if feature_type in [QgsWkbTypes.LineString, QgsWkbTypes.LineString25D, QgsWkbTypes.LineStringZ,
-                            QgsWkbTypes.LineStringM, QgsWkbTypes.LineStringZM]:
-            val = True
-        else:
-            val = False
+        val = feature_type in [QgsWkbTypes.LineString, QgsWkbTypes.LineString25D, QgsWkbTypes.LineStringZ,
+                               QgsWkbTypes.LineStringM, QgsWkbTypes.LineStringZM]
 
         return val
 
@@ -285,11 +283,8 @@ class RbFeature(ABC):
         :return: True if a Polygon False otherwise
         :rtype: bool
         """
-        if feature_type in [QgsWkbTypes.Polygon, QgsWkbTypes.Polygon25D, QgsWkbTypes.PolygonZ, QgsWkbTypes.PolygonM,
-                            QgsWkbTypes.PolygonZM]:
-            val = True
-        else:
-            val = False
+        val = feature_type in [QgsWkbTypes.Polygon, QgsWkbTypes.Polygon25D, QgsWkbTypes.PolygonZ, QgsWkbTypes.PolygonM,
+                               QgsWkbTypes.PolygonZM]
 
         return val
 
@@ -311,17 +306,14 @@ class RbFeature(ABC):
         """Define an abstract method.
         """
 
-        pass
-
     @abstractmethod
     def get_qgs_feature(self):
         """Define an abstract method.
         """
 
-        pass
-
 
 class RbPolygon(RbFeature):
+    """Class description for RbPolygon"""
 
     def __init__(self, qgs_feature):
         """Constructor that breaks the Polygon into a list of closed LineString (RbGeom).
@@ -477,8 +469,6 @@ class RbCollection(object):
         self._dict_qgs_segment = {}  # Contains a reference to the original geometry
         self._id_qgs_segment = 0
         self.rb_results = rb_results
-
-        return
 
     def _get_next_id_segment(self):
         """Increment the id of the segment.
@@ -1428,8 +1418,10 @@ class ReduceBend:
                 del orientation[0]  # Do not process the first angle as it is the angle of the start/end
 
         if len(orientation) >= 1:
-            orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE else orientation.insert(0, CLOCK_WISE)
-            orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE else orientation.append(CLOCK_WISE)
+            orientation.insert(0, ANTI_CLOCK_WISE) if orientation[0] == CLOCK_WISE \
+                                                   else orientation.insert(0, CLOCK_WISE)
+            orientation.append(ANTI_CLOCK_WISE) if orientation[-1] == CLOCK_WISE \
+                                                else orientation.append(CLOCK_WISE)
 
         # Find the inflexion points in the line.
         inflexion = [i for i in range(0, len(orientation)-1) if orientation[i] != orientation[(i + 1)]]
