@@ -14,7 +14,7 @@ about=This plugin contains the following tool for line simplification: <p>- Chor
 
 tracker=http://bugs
 repository=http://repo
-# End of mandatory metadata
+# End of mandatory metadata 
 
 # Recommended items:
 
