@@ -40,13 +40,13 @@ QGISDIR=.local/share/QGIS/QGIS3/profiles/default
 # translation
 #SOURCES =
 
-PLUGIN_NAME = geo_sim_processing
+PLUGIN_NAME = geo_sim_processing, chordal_axis_unittest.py
 
 EXTRAS = metadata.txt icon.png
 
 EXTRA_DIRS =
 
-PEP8EXCLUDE=*unittest*.py
+PEP8EXCLUDE=reduce_bend_algorithm.py, 
 
 VERSION=$(shell grep "^version" metadata.txt | cut -d'=' -f2)
 ZIP_FILE_NAME=$(PLUGIN_NAME)-$(VERSION).zip
