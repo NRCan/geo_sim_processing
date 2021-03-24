@@ -3,10 +3,12 @@ name: Test plugin
 on:
   push:
     paths:
+    - "**"
     - "/geo_sim_processing/**"
     - ".github/workflows/test_plugin.yaml" 
   pull_request:
     paths:
+    - "**"
     - "/geo_sim_processing/**"
     - ".github/workflows/test_plugin.yaml"
 
