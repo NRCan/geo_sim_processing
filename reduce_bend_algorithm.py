@@ -38,7 +38,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.core import (QgsFeature, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParameterDistance,
                        QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,
                        QgsProcessingParameterBoolean, QgsFeatureSink, QgsFeatureRequest, QgsPoint,
-                       QgsPointXY, QgsLineString, QgsPolygon, QgsWkbTypes,  QgsSpatialIndex,  QgsGeometry,
+                       QgsPointXY, QgsLineString, QgsPolygon, QgsWkbTypes, QgsSpatialIndex, QgsGeometry,
                        QgsGeometryUtils, QgsRectangle, QgsProcessingException, QgsMultiLineString,
                        QgsMultiPolygon)
 
@@ -67,7 +67,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     def displayName(self):  # pylint: disable=no-self-use
         """Returns the translated algorithm name.
         """
-        return 'Reduce Bend'
+        return self.tr('Reduce bend')
 
     def group(self):
         """Returns the name of the group this algorithm belongs to.
@@ -89,7 +89,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     to simplify or generalize a line. Reduce bend will accept lines and polygons as input.  Reduce bend will \
     preserve the topology (spatial relations) within and between the features during the bend reduction. \
     Reduce bend also accept multi lines and multi polygons but will output lines and polygons.
-    
+
     <b>Usage</b>
     <u>Input layer</u> : Any LineString or Polygon layer.  Multi geometry are transformed into single geometry.
     <u>Diameter tolerance</u>: Theoretical diameter of a bend to remove.
@@ -97,7 +97,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     <u>Exclude hole</u>: If you want to exclude (delete )holes below the diameter of the bend.
     <u>Exclude polygon</u>: If you want to exclude (delete) polygon below the diameter of the bend.
     <u>Reduced bend</u> : Output layer of the algorithm.
-        
+
     <b>Rule of thumb for the diameter tolerance</b>
     Reduce bend can be used for line simplifying in the context of line generalization. The big \
     question will often be what diameter should we use? A good starting point is the cartographic rule of \

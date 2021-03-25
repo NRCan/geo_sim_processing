@@ -64,7 +64,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         """
         Returns the translated algorithm name.
         """
-        return 'Simplify'
+        return self.tr('Simplify')
 
     def group(self):
         """

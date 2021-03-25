@@ -69,7 +69,7 @@ class GeoSimplificationProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'Geo Simplification'
+        return 'geo_sim_processing'
 
     def name(self):
         """

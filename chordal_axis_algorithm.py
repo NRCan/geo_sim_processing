@@ -72,7 +72,7 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
         """
         Returns the translated algorithm name.
         """
-        return 'Chordal Axis'
+        return self.tr('Chordal axis')
 
     def group(self):
         """
