@@ -172,7 +172,7 @@ class Test(unittest.TestCase):
         coords0 = [(0, 0), (0, 5), (2.5,4), (5, 5), (5, 0), (0,0)]
         qgs_geom0 = create_polygon(coords0, [])
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 3)
-        qgs_geom0_out = create_polygon([(5, 5), (5, 0), (0, 0), (0, 5), (2.5, 4), (5, 5)], [])
+        qgs_geom0_out = create_polygon(coords0, [])
         val0 = qgs_geom0_out.equals(qgs_feature_out[0])
         self.assertTrue (val0, title)
 
@@ -285,7 +285,6 @@ class Test(unittest.TestCase):
         qgs_geom0 = create_polygon(coord, [])
         qgs_geom1 = create_line([(10.1, 20.5), (10.2, 20.6), (10.3, 20.5)])
         qgs_feature_out = build_and_launch(title, [qgs_geom0, qgs_geom1], 3)
-        coord = [(20, 20), (20, 0), (0, 0), (0, 20), (10, 20), (10, 21), (11, 21), (11, 20), (20,20)]
         out_geom0 = create_polygon(coord, [])
         out_geom1 = create_line([(10.1, 20.5), (10.3, 20.5)])
         val0 = out_geom0.equals(qgs_feature_out[0])
@@ -298,7 +297,6 @@ class Test(unittest.TestCase):
         qgs_geom0 = create_polygon(coord, [])
         qgs_geom1 = create_point((10.1,20.5))
         qgs_feature_out = build_and_launch(title, [qgs_geom0, qgs_geom1], 3)
-        coord = [(20, 20), (20, 0), (0, 0), (0, 20), (10, 20), (10, 21), (11, 21), (11, 20), (20,20)]
         out_geom0 = create_polygon(coord, [])
         val0 = out_geom0.equals(qgs_feature_out[0])
         val1 = qgs_geom1.equals(qgs_feature_out[1])
@@ -455,9 +453,19 @@ class Test(unittest.TestCase):
         val0 = qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
-
     def test_case31(self):
-        title = "Test 31: Normalization of in vector layer"
+        title = "Test 31: Co-linear vertices at first/last vertice"
+        coord0 = [(5,0), (0,0), (0,10), (5, 10), (10,10), (10,0), (5,0)]
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True, smooth_line=True)
+        coord0 = [(0,0), (0,10), (10,10), (10,0), (0,0)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+
+    def test_case32(self):
+        title = "Test 32: Normalization of in vector layer"
         print (title)
         vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
         pr = vl.dataProvider()
