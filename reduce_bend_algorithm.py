@@ -1576,12 +1576,12 @@ class ReduceBend:
             self.rb_collection.validate_integrity(self.rb_geoms)
 
         #  Code used for the profiler (uncomment if needed)
- #       pr.disable()
- #       s = io.StringIO()
- #       sortby = SortKey.CUMULATIVE
- #       ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
- #       ps.print_stats()
- #       print(s.getvalue())
+#        pr.disable()
+#        s = io.StringIO()
+#        sortby = SortKey.CUMULATIVE
+#        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+#        ps.print_stats()
+#        print(s.getvalue())
 
         return self.rb_results
 
