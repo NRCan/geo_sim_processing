@@ -6,14 +6,14 @@
 name=Geo Simplification (processing)
 qgisMinimumVersion=3.14
 description=This plugin contains different tools for generalization
-version=0.6.1
+version=1.0.0
 author=Natural Resources Canada
-email=daniel.pilon@canada.ca
+email=nrcan.qgis-plugins.rncan@canada.ca
 
 about=This plugin contains the following tool for line simplification: <p>- Chordal Axis</p> <p>- Reduce Bend</p> <p>- Topological Simplifier (D Peuker+)</p>
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/NRCan/geo_sim_processing
+repository=https://github.com/NRCan/geo_sim_processing
 # End of mandatory metadata
 
 # Recommended items:
@@ -21,6 +21,9 @@ repository=http://repo
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    1.0.0 2021-04-05
+        - First publication of geo_sim_processing on QGIS repository
+        - Code optimization of Reduce bend
     0.6.1 2021-03-17
         - Reorganize the zip deployment file and tag numbering
     0.6.0 2021-02-15
