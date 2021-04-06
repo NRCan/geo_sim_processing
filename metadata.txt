@@ -12,7 +12,7 @@ email=nrcan.qgis-plugins.rncan@canada.ca
 
 about=This plugin contains the following tool for line simplification: <p>- Chordal Axis</p> <p>- Reduce Bend</p> <p>- Topological Simplifier (D Peuker+)</p>
 
-tracker=https://github.com/NRCan/geo_sim_processing
+tracker=https://github.com/NRCan/geo_sim_processing/issues
 repository=https://github.com/NRCan/geo_sim_processing
 # End of mandatory metadata
 
@@ -38,11 +38,10 @@ changelog=
 # Tags are comma separated with spaces allowed
 tags=vector, topography, generalization
 
-homepage=http://homepage
-category=Analysis
+homepage=https://github.com/NRCan/geo_sim_processing
 icon=logo.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
@@ -53,7 +52,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category=Vector
+category=Vector
 
 # If the plugin can run on QGIS Server.
 server=False
