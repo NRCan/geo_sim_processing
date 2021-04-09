@@ -81,7 +81,7 @@ Decomposition", Lakshman Prasad, 2005".
 
 ## Medial Axis Versus Chordal Axis
 
-The skeleton (center line) is a linear feature representation of a polygonized feature. In computational geometry, it is known as the medial axis and many algorithms are approximating it very well.  A major issue with those algorithms is the possible instability for very irregular complex polygons such as dense river or road network polygons. (Figure 5).  The Chordal Axis has shown excellent stability in very complex and irregular polygons while extracting a good approximation of the skeleton.
+The skeleton (center line) is a linear feature representation of a polygonized feature. In computational geometry, it is known as the medial axis and many algorithms are approximating it very well.  A major issue with those algorithms is the possible instability for very irregular complex polygons such as dense river or road network polygons. (Figure 5).  The Chordal Axis has shown excellent stability in very complex and irregular polygons while extracting a good approximation of the skeleton. 
 
 ## Usage
 
