@@ -160,7 +160,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         small interior hole is very close to an edge, simplification may result in the hole being moved \
         outside the polygon. Toposim will detect these situations where one or more rings (interior \
         parts) fall outside the polygon after being simplified and make the polygon invalid. \
-        The algoritm will remove (delete) these ring(s) so the feature remains valid after simplification.
+        The algorithm will remove (delete) these ring(s) so the feature remains valid after simplification.
 
         <b>Usage</b>
         <u>Input</u>: A Line String or Polygon layer

@@ -6,7 +6,7 @@
 name=Geo Simplification (processing)
 qgisMinimumVersion=3.14
 description=This plugin contains different tools for generalization
-version=1.0.0
+version=1.0.1
 author=Natural Resources Canada
 email=nrcan.qgis-plugins.rncan@canada.ca
 
@@ -21,6 +21,9 @@ repository=https://github.com/NRCan/geo_sim_processing
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    1.0.1 2021-04-12
+        - Bug correction in Simplify processing script when handling polygon features
+        - Correction some typo errors
     1.0.0 2021-04-05
         - First publication of geo_sim_processing on QGIS repository
         - Code optimization of Reduce bend
