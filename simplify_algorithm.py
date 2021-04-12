@@ -220,7 +220,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
                     s_geom_parts = s_geom.asPolygon() # Extract the outer and inner rings in a list
                     # Recreate independant Polygon for each part
                     s_geom_pols = [QgsGeometry.fromPolygonXY([s_geom_part]) for s_geom_part in s_geom_parts ]
-                    s_geom_pols.sort(key=polygon_area())  # Sort polygon by ascending area size
+                    s_geom_pols.sort(key=polygon_area)  # Sort polygon by ascending area size
                     s_geom_outer = s_geom_pols.pop()  # extract the outer ring
                     while s_geom_pols:
                         # Extract each inner ring and test if located inside the polygon in construction
