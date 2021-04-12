@@ -99,7 +99,7 @@ class ChordalAxisAlgorithm(QgsProcessingAlgorithm):
     <b>Usage</b>
     <u>Input</u>: A polygon layer to extract the chordal axis.
 
-    <u>Correct skeleton</u>:  Correct the skeleton for small centre line, T junction and X junction. Usefull in the case \
+    <u>Correct skeleton</u>:  Correct the skeleton for small centre line, T junction and X junction. Useful in the case \
     of long any narrow polygon (ex.: polygonized road network)
     
     <b>Output</b>
