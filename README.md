@@ -2,24 +2,25 @@
 
 geo_sim_processing is a QGIS plugin that aims to simplify/generalize line and polygon features. It is composed of 3 processing tools: 
  - [Reduce Bend](#Reduce-Bend) for line simplification and generalization
- - [Chordal Axis](#Chordal-Axis) for polygon to line simplification (skeletenization)
+ - [Chordal Axis](#Chordal-Axis) for polygon to line simplification (skeletonization)
  - [Simplify](#Simplify) for line simplification
 
 ## Requirements  
 - [QGIS](https://www.qgis.org) >3.14
 
 ## QGIS plugin installation
-From the GitHub repo download the zip file of the latest tag (or the tag you whish to install) and unzip the content in the QGIS plugin directory _geo_sim_processing_ and reload the plugin geo_sim_processing.  If the _Plugin Reloader_ is not present install it from the menu Plugins > Manage and Install Plugins 
+
+From the GitHub repo download the zip file of the latest tag (or the tag you wish to install) and unzip the content in the QGIS plugin directory _geo_sim_processing_ and reload the plugin geo_sim_processing.  If the _Plugin Reloader_ is not present install it from the menu Plugins > Manage and Install Plugins
 
 Plugin directory in Linux: /home/_usename_/.local/share/QGIS/QGIS3/profiles/default/plugins/geo_sim_processing
 
 Plugin directory in Windows: C:\Users\\_usename_\AppData\Roaming\QGIS\QGIS3\profiles\default\plugins\geo_sim_processing
 
-Note: Other locations are possible but these are the default one
+Note: Other locations are possible, but these are the default one
 
 # Reduce Bend
 
-Reduce Bend is a geospatial simplification and generalization tool for lines and polygons.  Reduce Bend is an implementation and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyzes its bends (curves) and decides which one needs to be simplified, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Reduce Bend will accept lines and polygons as input.
+Reduce Bend is a geospatial simplification and generalization tool for lines and polygons.  Reduce Bend is an implementation, and an improvement of the algorithm described in the paper "Line Generalization Based on Analysis of Shape Characteristics, Zeshen Wang and Jean-Claude Müller, 1998" often known as "Bend Simplify" or "Wang Algorithm".  The particularity of this algorithm is that for each line it analyzes its bends (curves) and decides which one needs to be simplified, trying to emulate what a cartographer would do manually to simplify or generalize a line.  Reduce Bend will accept lines and polygons as input.
 
 ## Usage
 
@@ -39,15 +40,15 @@ Reduce Bend is a processing script discoverable in the QGIS Processing Tool Box 
 
 ## Line Simplification versus Line Generalization
 
-
-*Line Simplification* is the process of removing vertices in a line while trying to keep the maximum number of details within the line whereas *Line Generalization* is the process of removing meaningless (unwanted) details in a line usually for scaling down.  The well known Douglas-Peucker algorithm is a very good example of line simplification tool and Reduce Bend falls more in the category of line generalization tools. Keep in mind that both algorithms can be complementary because Reduce Bend will not remove unnecessary vertices in the case of very high densities of vertices.  It may be a good idea to use [Simplifier](#Simplifier) before Reduce Bend in the case of very dense geometries.
+*Line Simplification* is the process of removing vertices in a line while trying to keep the maximum number of details within the line whereas *Line Generalization* is the process of removing meaningless (unwanted) details in a line usually for scaling down.  The well known Douglas-Peucker algorithm is a very good example of line simplification tool and Reduce Bend falls more in the category of line generalization tools. Keep in mind they both algorithms can be complementary because Reduce Bend will not remove unnecessary vertices in the case of very high densities of vertices.  It may be a good idea to use [Simplify](#Simplify) before Reduce Bend in the case of very densed geometries.
 
 ## How it works
 Reduce Bend will simplify (generalize) lines as well as polygons.  Reduce Bend consists of three main steps: detect bends, determine which bends to simplify and preserve the topological (spatial) relationships.  These 3 steps are detailed below.
 
 * __Detecting bends__ -
 For each line and ring composing polygon features, Reduce Bend will detect the position of each bend.  Wang and Müller defined a bend as being the part of a line which contains a number of subsequent vertices with the inflection angles on all vertices being in opposite sign.
-Figure 1a shows a line.  Figure 1b depicts the same line with inflexion signs on each vertice.  Figure 1c shows the position of the 3 bends each forming an area.
+
+Figure 1a shows a line.  Figure 1b depicts the same line with inflection signs on ech vertice.  Figure 1c shows the position of the 3 bends each forming an area.
 
 * __Determining the bends to simplify__ -
 For each bend of a line or polygon ring, Reduce Bend calculates an adjusted area value using the following formula: *\.75\*A/cmpi* where *A* is the area of the bend *(1)* and *cmpi* the compactness index of the bend.  The compactness index is computed using the following formula: *4\*π\*A/p\*\*2* where *A* is the area of the bend and *p* is the perimeter of the bend. The compactness index varies between \[0..1].  The more circular the bend, the closer the index to 1.  Conversely, the flatter the bend, the closer the index to 0.  The Reduce Bend Diameter tolerance: 4 represents the diameter of a theoretical circle to define the minimum adjusted area value using *\.75\*2\*π\*r\*\*2/cmpi* where *r* is d/2.  Finally, each bend of a line that is below the minimum adjusted area value is replaced by a straight line.  Figure 1d shows the result with the middle bend of the line removed (simplified).
@@ -73,11 +74,11 @@ Note: For any given line or polygon ring, only those bends the simplification of
 ![Figure2](/image/figure2.png)
 
 ### Rule of thumb for the diameter
-Reduce Bend can be used for line simplifying often in the context of line generalization. The big question will often be what diameter should we use?  A good starting point is the following cartographic rule of thumb -- the *.5mm on the map* -- which says that the minimum distance between two lines should be greater than 0.5mm on a paper map. So to simplify (generalize) a line for representation at a scale of 1:50 000 for example a diameter of 25m should be a good starting point...
+Reduce Bend can be used for line simplifying often in the context of line generalization. The big question will often be what diameter should we use?  A good starting point is the following cartographic rule of thumb -- the * 0.5 mm on the map* -- which says that the minimum distance between two lines should be greater than 0.5 mm on a paper map. So to simplify (generalize) a line for representation at a scale of 1:50 000 for example a diameter of 25 m should be a good starting point...
 
 # Chordal Axis
 
-ChordalAxis is a geospatial tool that uses polygon to create triangles (usually the result of a constraint Delauny trianglulation) in order to extract a skeleton (the center line).  ChordalAxis is an improvement of the algorithm based of the paper "Rectification of the Chordal Axis Transform and a New Criterion for Shape
+ChordalAxis is a geospatial tool that uses polygon to create triangles (usually the result of a constraint Delaunay triangulation) in order to extract a skeleton (the center line).  ChordalAxis is an improvement of the algorithm based of the paper "Rectification of the Chordal Axis Transform and a New Criterion for Shape
 Decomposition", Lakshman Prasad, 2005".
 
 ## Medial Axis Versus Chordal Axis
@@ -119,16 +120,16 @@ Chordal Axis can be used for skeleton extraction and polygon to line transformat
 
 # Simplify
 
-Simplify is a geospatial simplification (generalization) tool for lines and polygons. Simplify implements an improved version of the classic Douglas-Peucker algorithm with spatial constraints validation during geometry simplification.  Simplify will preserve the following [topologicial relationships](#Preserving-Topological-Relationship):  Simplicity (within the geometry), Intersection (with other geometries) and Sidedness (with other geometries).
+Simplify is a geospatial simplification (generalization) tool for lines and polygons. Simplify implements an improved version of the classic Douglas-Peucker algorithm with spatial constraints validation during geometry simplification.  Simplify will preserve the following [topological relationships](#Preserving-Topological-Relationship):  Simplicity (within the geometry), Intersection (with other geometries) and Sidedness (with other geometries).
 
-The figure 6  below shows the differences between the regular and the improved version of the classic Douglas-Peucker algorithm. Figure 6a represents the original contours.  Figure 6b represents the results of the simplified contours using the classic Douglas-Peucker algorithm with line intersections identified by the red dots.  Figure 6c represents the results of the simplified contours using the improved version of the Douglas-Peucker algorithm without line intersection. Results of Figure 6b and 6c used the same simplifiction tolerance. 
+The figure 6  below shows the differences between the regular and the improved version of the classic Douglas-Peucker algorithm. Figure 6a represents the original contours.  Figure 6b represents the results of the simplified contours using the classic Douglas-Peucker algorithm with line intersections identified by the red dots.  Figure 6c represents the results of the simplified contours using the improved version of the Douglas-Peucker algorithm without line intersection. Results of Figure 6b and 6c used the same simplification tolerance. 
 
 ![figure6a](/image/Figure6-abc.png "Figure 6abc")
      Figure 6a: Original contour            Figure 6b: Classic Douglas-Peucker     Figure 6c: Improved Douglas-Peucker
 
 ## Usage
 
-Simplify is a processing script dicoverable in the QGIS Processing Tool Box under Geo Simplification
+Simplify is a processing script discoverable in the QGIS Processing Tool Box under Geo Simplification
 
 **Input layer**: The Line String or Polygon layer to simplify
 
