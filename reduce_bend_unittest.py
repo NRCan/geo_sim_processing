@@ -25,7 +25,7 @@ Unit test for reduce_bend algorithm
 
 import unittest
 from qgis.core import QgsApplication
-from reduce_bend_algorithm import ReduceBend
+from .reduce_bend_algorithm import ReduceBend
 from qgis.core import QgsPoint, QgsLineString, QgsPolygon, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
                       QgsVectorLayer, QgsWkbTypes, QgsPointXY
 from qgis.analysis import QgsNativeAlgorithms
@@ -178,7 +178,7 @@ class Test(unittest.TestCase):
 
 
     def test_case08(self):
-        title = "Test 08: 1 point and 3 line string to validate bounding box sub dividing"
+        title = "Test 08: 1 line string with one bend to simplify"
         qgs_geom0 = create_line([(0, 0), (1, 1), (2,0)])
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 3)
         out_qgs_geom0 = create_line([(0, 0), (2, 0)])
@@ -186,7 +186,7 @@ class Test(unittest.TestCase):
         self.assertTrue (val0, title)
 
     def test_case09(self):
-        title = "Test 09: 1 point and 3 line string to validate bounding box sub dividing"
+        title = "Test 09: 1 point and 3 line string no simplification"
         qgs_geom0 = create_point((0,0))
         qgs_geom1 = create_line([(0, 0), (100, 0)])
         qgs_geom2 = create_line([(0, 0), (0, 100)])
@@ -222,7 +222,7 @@ class Test(unittest.TestCase):
         title = "Test 12: Degenerated line"
         qgs_geom0 = create_line([(10, 10), (10, 20), (10,10)])
         qgs_feature_out = build_and_launch(title, [qgs_geom0], 3)
-        out_qgs_geom0 = create_line([(10, 10), (10,20), (10,10)])
+        out_qgs_geom0 = create_line([(10, 10), (10,10)])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
@@ -463,9 +463,18 @@ class Test(unittest.TestCase):
         val0 = qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
-
     def test_case32(self):
-        title = "Test 32: Normalization of in vector layer"
+        title = "Test 31: Non simple line"
+        coord0 = [(0,0), (5,0), (4,1), (6,1), (5,0), (10,0)]
+        qgs_geom0 = create_line(coord0)
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3)
+        coord0 = [(0,0), (10,0)]
+        qgs_geom0 = create_line(coord0)
+        val0 = qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue(val0, title)
+
+    def test_case33(self):
+        title = "Test 33: Normalization of in vector layer"
         print (title)
         vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
         pr = vl.dataProvider()

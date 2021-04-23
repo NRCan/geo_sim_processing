@@ -1,6 +1,9 @@
 # geo_sim_processing
 
-geo_sim_processing is a QGIS plugin that aims to simplify/generalize line and polygon features. It is composed of 3 tools: [Reduce Bend](#Reduce-Bend), [Chordal Axis](#Chordal-Axis) and [Simplifier](#Simplifier)
+geo_sim_processing is a QGIS plugin that aims to simplify/generalize line and polygon features. It is composed of 3 processing tools: 
+ - [Reduce Bend](#Reduce-Bend) for line simplification and generalization
+ - [Chordal Axis](#Chordal-Axis) for polygon to line simplification (skeletenization)
+ - [Simplify](#Simplify) for line simplification
 
 ## Requirements  
 - [QGIS](https://www.qgis.org) >3.14
@@ -28,8 +31,6 @@ Reduce Bend is a processing script discoverable in the QGIS Processing Tool Box 
 
 **Diameter tolerance**:   Diameter of the minimum adjusted area bend to simplify (to remove) in ground units
 
-**Verbose**:              Flag for extra information
-
 **Exclude polygon**:      Exclude (delete) polygons exteriors below the minimum adjusted area (delete also any interior holes if present)
 
 **Exclude hole**:         Exclude (delete) polygon rings (interior holes) below the minimum adjusted area
@@ -38,10 +39,10 @@ Reduce Bend is a processing script discoverable in the QGIS Processing Tool Box 
 
 ## Line Simplification versus Line Generalization
 
+
 *Line Simplification* is the process of removing vertices in a line while trying to keep the maximum number of details within the line whereas *Line Generalization* is the process of removing meaningless (unwanted) details in a line usually for scaling down.  The well known Douglas-Peucker algorithm is a very good example of line simplification tool and Reduce Bend falls more in the category of line generalization tools. Keep in mind that both algorithms can be complementary because Reduce Bend will not remove unnecessary vertices in the case of very high densities of vertices.  It may be a good idea to use [Simplifier](#Simplifier) before Reduce Bend in the case of very dense geometries.
 
 ## How it works
-
 Reduce Bend will simplify (generalize) lines as well as polygons.  Reduce Bend consists of three main steps: detect bends, determine which bends to simplify and preserve the topological (spatial) relationships.  These 3 steps are detailed below.
 
 * __Detecting bends__ -
@@ -55,7 +56,7 @@ For each bend of a line or polygon ring, Reduce Bend calculates an adjusted area
 
 ![Figure1](/image/figure1.png)
 
-* __Preserving topological relationship__ -
+## Preserving Topological Relationship
 Before any bend simplification is applied, Reduce Bend will always analyze the following 3 topological relationships to ensure they are not affected by the simplification operation: simplicity, intersection and sidedness.  If simplification alters any of those relationships, then it is not performed.  Thereby Reduce Bend preserves the existing relative topology between the geospatial features to simplify.  
 
 ### Simplicity
@@ -113,31 +114,28 @@ Chordal Axis can be used for skeleton extraction and polygon to line transformat
 
 ![figure4](/image/figure4.png)
 
-Figure 5
+&nbsp;Figure 5
 
 
-# Simplifier
+# Simplify
 
-Simplify is a geospatial simplification tool for lines and polygons. Simplify implements QGIS's QgsTopologyPreservingSimplifier tool. For line and polygon simplification that tool implements an algorithm similar to the Douglas Peucker algorithm. The implementation preserves the topology within one vector feature but not between vector features. There is also a known bug where the algorithm may create invalid topologies if there are components which are small relative to the tolerance value. In particular, if a small interior hole is very close to an edge, the resulting simplification may result in the hole being moved outside the polygon. This algorithm will detect these situations where one or more rings (interior parts) fall outside the polygon after being simplified and make the polygon invalid. The algorithm will remove (delete) these ring(s) so the feature remains valid after simplification.
+Simplify is a geospatial simplification (generalization) tool for lines and polygons. Simplify implements an improved version of the classic Douglas-Peucker algorithm with spatial constraints validation during geometry simplification.  Simplify will preserve the following [topologicial relationships](#Preserving-Topological-Relationship):  Simplicity (within the geometry), Intersection (with other geometries) and Sidedness (with other geometries).
 
+The figure 6  below shows the differences between the regular and the improved version of the classic Douglas-Peucker algorithm. Figure 6a represents the original contours.  Figure 6b represents the results of the simplified contours using the classic Douglas-Peucker algorithm with line intersections identified by the red dots.  Figure 6c represents the results of the simplified contours using the improved version of the Douglas-Peucker algorithm without line intersection. Results of Figure 6b and 6c used the same simplifiction tolerance. 
 
-Note: While most GIS tools will handle and display invalid geometries like figure 6b, some spatial operation will not be allowed and this is why it's important to keep validity of the geometry after a simplification operation.
-
-![figure6a](/image/figure6a.png "Figure 6a") ![figure6b](/image/figure6b.png "Figure 6b")
-
-        Figure 6a                    Figure 6b
-
+![figure6a](/image/Figure6-abc.png "Figure 6abc")
+     Figure 6a: Original contour            Figure 6b: Classic Douglas-Peucker     Figure 6c: Improved Douglas-Peucker
 
 ## Usage
 
-Simplifier is a processing script discoverable in the QGIS Processing Tool Box under Geo Simplification
+Simplify is a processing script dicoverable in the QGIS Processing Tool Box under Geo Simplification
 
 **Input layer**: The Line String or Polygon layer to simplify
 
-**Tolerance**: The tolerance in ground unit used to simplify the line
+**Tolerance**: The tolerance in ground unit used by the Douglas-Peucker algorithm
 
 **Simplified**: The simplified Line String or Polygon Layer
 
-## How it works
+## Rule of thumb for the use of Simplify
 
-Simplifier is an excellent tool to remove vertices on features with high vertex densities.  Try it with small tolerance value and then use [Reduce Bend](#Reduce-Bend) to [generalize features](#Line-Simplification-versus-Line-Generalization).
+Simplify (Douglas-Peucker) is an excellent tool to remove vertices on features with high vertex densities while preserving a maximum of details within the geometries.  Try it with small tolerance value and then use [Reduce Bend](#Reduce-Bend) to [generalize features](#Line-Simplification-versus-Line-Generalization).
