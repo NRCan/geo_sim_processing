@@ -676,8 +676,8 @@ class ReduceBend:
 
         return qgs_polygon
 
-    @staticmethod
-    def pivot_closed_line(rb_geom, diameter_tol):
+#    @staticmethod
+#    def pivot_closed_line(rb_geom, diameter_tol):
         """For closed LineString, this method will move the start/end vertice.
 
         The start/end vertice of a closed LineString is moved over a bend that does not need to be simplified.
@@ -688,28 +688,28 @@ class ReduceBend:
         :param: diameter_tol: float tolerance used for determining if a bend must be reduced
         """
 
-        if rb_geom.need_pivot:
-            bend_location = None
-            bend_area = 0.0
-            for bend in rb_geom.bends:
-                if bend.area > bend_area:
-                    bend_location = bend
-                    bend_area = bend.area
-                if bend.j - bend.i >= 4:  # Ideal bend for pivot. The bend  has 4 vertices
-                    if bend.area >= Bend.calculate_min_adj_area(diameter_tol):
-                        bend_location = bend
-                        rb_geom.need_pivot = False  # Optimal bend found
-                        break
-
-            if bend_location is not None:
-                # There is bend candidate for a line rotation
-                # Move the start/end of the line in the middle of the bend candidate
-                qgs_points = rb_geom.qgs_geom.constGet().points()
-                new_start_end = (bend_location.j + bend_location.i) // 2
-                new_qgs_points = qgs_points[new_start_end:] + qgs_points[1:new_start_end + 1]
-                rb_geom.qgs_geom = QgsGeometry(QgsLineString(new_qgs_points))
-
-        return
+#        if rb_geom.need_pivot:
+#            bend_location = None
+#            bend_area = 0.0
+#            for bend in rb_geom.bends:
+#                if bend.area > bend_area:
+#                    bend_location = bend
+#                    bend_area = bend.area
+#                if bend.j - bend.i >= 4:  # Ideal bend for pivot. The bend  has 4 vertices
+#                    if bend.area >= Bend.calculate_min_adj_area(diameter_tol):
+#                        bend_location = bend
+#                        rb_geom.need_pivot = False  # Optimal bend found
+#                        break
+#
+#            if bend_location is not None:
+#                # There is bend candidate for a line rotation
+#                # Move the start/end of the line in the middle of the bend candidate
+#                qgs_points = rb_geom.qgs_geom.constGet().points()
+#                new_start_end = (bend_location.j + bend_location.i) // 2
+#                new_qgs_points = qgs_points[new_start_end:] + qgs_points[1:new_start_end + 1]
+#                rb_geom.qgs_geom = QgsGeometry(QgsLineString(new_qgs_points))
+#
+#        return
 
     @staticmethod
     def detect_bends(rb_geom):
