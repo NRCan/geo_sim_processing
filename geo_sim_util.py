@@ -65,6 +65,8 @@ class Epsilon:
         delta_x = abs(b_box.xMinimum()) + abs(b_box.xMaximum())
         delta_y = abs(b_box.yMinimum()) + abs(b_box.yMaximum())
         dynamic_xy = max(delta_x, delta_y)  # Dynamic of the bounding box
+        if dynamic_xy == 0.0:
+            dynamic_xy = 1.0E-15
         log_loss = int(math.log(dynamic_xy, 10)+1)
         max_digit = 15  # Number of meaningful digits for real number
         security = 2  # Keep 2 order of magnitude of security
@@ -746,8 +748,12 @@ class Bend:
        :rtype: Real
        """
 
-        compactness_index = 4 * area * math.pi / perimeter ** 2
-        adj_area = area * (.75 / compactness_index)
+        if perimeter > 0.0:
+            compactness_index = 4 * area * math.pi / perimeter ** 2
+            adj_area = area * (.75 / compactness_index)
+        else:
+            # Avoid division by zero
+            adj_area = Epsilon.ZERO_RELATIVE
 
         return adj_area
 

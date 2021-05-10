@@ -653,7 +653,22 @@ class Test(unittest.TestCase):
         self.assertTrue(val0, title)
 
     def test_case33(self):
-        title = "Test 33: Normalization of in vector layer"
+        title = "Test 33: Zero area polygon"
+        coord0 = [(0, 0), (0, 0), (0, 0), (0, 0)]
+        qgs_geom0 = create_polygon(coord0, [])
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True)
+        self.assertEqual(len(qgs_feature_out), 0, title)
+
+    def test_case34(self):
+        title = "Test 34: Area polygon with zero area hole"
+        coord0 = [(0, 0), (10, 0), (10, 10), (0, 10), (0,0)]
+        coord1 = [(5, 5), (5, 5), (5, 5), (5, 5)]
+        qgs_geom0 = create_polygon(coord0, [coord1])
+        qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True)
+        self.assertEqual(len(qgs_feature_out), 1, title)
+
+    def test_case35(self):
+        title = "Test 35: Normalization of in vector layer"
         print (title)
         vl = QgsVectorLayer("LineString", "temporary_polygon", "memory")
         pr = vl.dataProvider()
