@@ -6,7 +6,7 @@
 name=Geo Simplification (processing)
 qgisMinimumVersion=3.14
 description=This plugin contains different tools for line/polygon simplification and generalization
-version=1.1.0
+version=1.2.0
 author=Natural Resources Canada
 email=nrcan.qgis-plugins.rncan@canada.ca
 
@@ -21,6 +21,9 @@ repository=https://github.com/NRCan/geo_sim_processing
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    1.2.0 2021-05-07
+        - Code refactoring and major performace improvement for Reduce Bend
+        - Progress bar status improvement
     1.1.0 2021-04-22
         - Complete rewrite of Simplify processing tool
         - Simplify processing tool implements topological validation within and between features
@@ -46,7 +49,7 @@ changelog=
         - First release as a plugin
 
 # Tags are comma separated with spaces allowed
-tags=vector, topography, generalization, simplification
+tags=vector, topography, generalization, simplification, topology, constraint
 
 homepage=https://github.com/NRCan/geo_sim_processing
 icon=logo.png
