@@ -88,6 +88,39 @@ class Epsilon:
         return
 
 
+class ProgressBar:
+    """Class used for managing the progress bar in the QGIS desktop
+
+    """
+
+    def __init__(self, feedback, max_value, message=None):
+        """Constructor of the ProgressBar class
+
+        :param: feedback: feedback handle for interaction with the QGIS desktop
+        :param: max_value: Integer of the maximum value """
+
+        self.feedback = feedback
+        self.max_value  = max_value
+        self.progress_bar_value = 0
+        self.feedback.setProgress(self.progress_bar_value)
+        if message is not None or message != "":
+            self.feedback.pushInfo(message)
+
+    def set_value(self, value):
+        """Set the value of the progress bar
+
+        :param: value: Integer value to use to set the progress bar
+
+        """
+
+        percent_value = int(value/self.max_value*100.)
+        if percent_value != self.progress_bar_value:
+            self.progress_bar_value = percent_value
+            self.feedback.setProgress(self.progress_bar_value)
+
+
+
+
 class GsCollection:
     """Class used for managing the QgsFeature spatially.
 
@@ -119,7 +152,7 @@ class GsCollection:
     def _create_rectangle(self, geom_id, qgs_geom):
         """Creates a new QgsRectangle to load in the QgsSpatialIndex.
 
-        :param geom_id: Integer ID of the geometry
+        :param: geom_id: Integer ID of the geometry
         :param: qgs_geom: QgsGeometry to use for bounding box extraction
         :return: The feature created
         :rtype: QgsFeature
@@ -130,16 +163,19 @@ class GsCollection:
 
         return id_segment, qgs_geom.boundingBox()
 
-    def add_features(self, rb_geoms):
+    def add_features(self, rb_geoms, feedback):
         """Add a RbGeom object in the spatial index.
 
         For the LineString geometries. The geometry is broken into each line segment that are individually
         loaded in the QgsSpatialIndex.  This strategy accelerate the validation of the spatial constraints.
 
-        :param [RbGeom] rb_geoms: List of RbGeom to load in the QgsSpatialIndex
+        :param: rb_geoms: List of RbGeom to load in the QgsSpatialIndex
+        :feedback: QgsFeedback handle used to update the progress bar
         """
 
-        for rb_geom in rb_geoms:
+        progress_bar = ProgressBar(feedback, len(rb_geoms), "Building internal structure...")
+        for val, rb_geom in enumerate(rb_geoms):
+            progress_bar.set_value(val)
             qgs_rectangles = []
             if rb_geom.qgs_geom.wkbType() == QgsWkbTypes.Point:
                 qgs_rectangles.append(self._create_rectangle(rb_geom.id, rb_geom.qgs_geom))
@@ -217,8 +253,8 @@ class GsCollection:
 
         return
 
-    def delete_vertex(self, rb_geom, v_id_start, v_id_end):
-        """Delete a vertex in the line and update the spatial index.
+    def _delete_vertex(self, rb_geom, v_id_start, v_id_end):
+        """Delete consecutive vertex in the line and update the spatial index.
 
         When a vertex in a line string is deleted.  Two line segments are deleted and one line segment is
         created in the spatial index.  Cannot delete the first/last vertex of a line string
@@ -262,6 +298,39 @@ class GsCollection:
                 rb_geom.qgs_geom.deleteVertex(nbr_vertice)
 
         return
+
+    def delete_vertex(self, rb_geom, v_id_start, v_id_end):
+        """Manage deletion of consecutives vertex.
+
+        If v_id_start is greater than v_id_end the delete is broken into up to 3 calls
+
+        :param rb_geom: LineString object to update.
+        :param v_id_start: start of the vertex to delete.
+        :param v_id_end: end of the vertex to delete.
+        """
+
+        num_points = rb_geom.qgs_geom.constGet().numPoints()
+        # Manage closes line where first/last vertice are the same
+        if v_id_start == num_points-1:
+            v_id_start = 0  # Last point is the same as the first vertice
+        if v_id_end == -1:
+            v_id_end = num_points -2  # Preceding point the first/last vertice
+
+        if v_id_start <= v_id_end:
+            self._delete_vertex(rb_geom, v_id_start, v_id_end)
+        else:
+            self._delete_vertex(rb_geom, v_id_start, num_points-2)
+            self._delete_vertex(rb_geom, 0, 0)
+            if v_id_end > 0:
+                self._delete_vertex(rb_geom, 1, v_id_end)
+#            lst_vertex_to_del = list(range(v_id_start, num_points)) + list(range(0, v_id_end+1))
+#            for vertex_to_del in lst_vertex_to_del:
+#                self._delete_vertex(rb_geom, vertex_to_del, vertex_to_del)
+
+#        num_points = rb_geom.qgs_geom.constGet().numPoints()
+#        lst_vertex_to_del = list(range(v_id_start, num_points)) + list(range(0, v_id_end + 1))
+#        for vertex_to_del in lst_vertex_to_del:
+#            self._delete_vertex(rb_geom, vertex_to_del, vertex_to_del)
 
     def add_vertex(self, rb_geom, bend_i, bend_j, qgs_geom_new_subline):
         """Update the line segment in the spatial index
@@ -311,7 +380,7 @@ class GsCollection:
             if qgs_line_string.wkbType() == QgsWkbTypes.LineString:
                 qgs_points = qgs_line_string.points()
                 for i in range(len(qgs_points)-1):
-                    self._delete_segment(qgs_points[i], qgs_points[i+1])
+                    self._delete_segment(rb_geom.id, qgs_points[i], qgs_points[i+1])
 
         if is_structure_valid:
             # Verify that there are no other feature in the spatial index; except for QgsPoint
@@ -582,7 +651,7 @@ class RbGeom:
         self.qgs_geom = QgsGeometry(qgs_geometry.clone())
         self.is_simplest = False
         self.need_pivot = False
-        self.bends = []
+        self.bends = None
         # Set some variable depending on the geometry of the feature
         if self.original_geom_type == QgsWkbTypes.Point:
             self.is_simplest = True  # A point cannot be simplified
@@ -737,14 +806,18 @@ class GeoSimUtil:
         """
 
         constraints_valid = True
-        geom_engine_subline = QgsGeometry.createGeometryEngine(qgs_geom_new_subline.constGet().clone())
-        for qgs_geom_potential in qgs_geoms_with_itself:
-            de_9im_pattern = geom_engine_subline.relate(qgs_geom_potential.constGet().clone())
-            # de_9im_pattern[0] == '0' means that their interiors intersect (crosses)
-            # de_9im_pattern[1] == '0' means that one extremity is touching the interior of the other (touches)
-            if de_9im_pattern[0] == '0' or de_9im_pattern[1] == '0':
-                constraints_valid = False
-                break
+        if qgs_geom_new_subline.length() > Epsilon.ZERO_RELATIVE:
+            geom_engine_subline = QgsGeometry.createGeometryEngine(qgs_geom_new_subline.constGet().clone())
+            for qgs_geom_potential in qgs_geoms_with_itself:
+                de_9im_pattern = geom_engine_subline.relate(qgs_geom_potential.constGet().clone())
+                # de_9im_pattern[0] == '0' means that their interiors intersect (crosses)
+                # de_9im_pattern[1] == '0' means that one extremity is touching the interior of the other (touches)
+                if de_9im_pattern[0] == '0' or de_9im_pattern[1] == '0':
+                    constraints_valid = False
+                    break
+        else:
+            # Special case do not validate simplicity for almost zero length line (equivalent to a point)
+            pass
 
         return constraints_valid
 

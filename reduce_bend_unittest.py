@@ -138,7 +138,7 @@ class Test(unittest.TestCase):
         title = "Test 03: Polygon with one bend the first/end vertice located on the bend to reduce"
         qgs_geom0 = create_polygon([(5,10), (5,11), (6,11), (6,10), (10,10), (10,0), (0,0), (0,10), (5,10)], [])
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 3)
-        out_qgs_geom0 = create_polygon([(10,0), (0,0), (0,10), (10,10), (10,0)], [])
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
@@ -146,7 +146,7 @@ class Test(unittest.TestCase):
         title = "Test 04: Square polygon with one bend"
         qgs_geom0 = create_polygon([(0,10), (5,9), (10,10), (10,0), (0,0), (0,10)], [])
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
-        out_qgs_geom0 = create_polygon([(10,0), (0,0), (0,10), (10,10), (10,0)], [])
+        out_qgs_geom0 = create_polygon([(0,10), (10,10), (10,0), (0,0), (0,10)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue (val0, title)
 
@@ -154,7 +154,7 @@ class Test(unittest.TestCase):
         title = "Test 05: triangle polygon with one bend"
         qgs_geom0 = create_polygon([(0,10), (5,9), (10,10), (5,0), (0,10)], [])
         qgs_feature_out = build_and_launch(title,[qgs_geom0], 3000)
-        out_qgs_geom0 = create_polygon([(10,10), (5,0), (0,10), (10,10)], [])
+        out_qgs_geom0 = create_polygon([(0,10), (10,10), (5,0), (0,10)], [])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue (val0, title)
 
@@ -209,6 +209,185 @@ class Test(unittest.TestCase):
         val2 = qgs_geom2.equals(qgs_feature_out[2])
         self.assertTrue (val0 and val1 and val2, title)
 
+    def test_case10_1_1(self):
+        title = "Test 10_1_1: Triangle with one bend (1/4)"
+        qgs_geom0 = create_polygon([(10,10),(15,20), (20,10), (15,11), (10,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10),(15,20), (20,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_1_2(self):
+        title = "Test 10_1_2: Triangle with one bend (2/4 pivot first vertice)"
+        qgs_geom0 = create_polygon([(15,20), (20,10), (15,11), (10,10), (15,20)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(15,20), (20,10), (10,10), (15,20)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_1_3(self):
+        title = "Test 10_1_3: Triangle with one bend (3/4 pivot first vertice)"
+        qgs_geom0 = create_polygon([(20,10), (15,11), (10,10), (15,20), (20,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(20,10), (10,10), (15,20), (20,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_1_4(self):
+        title = "Test 10_1_4: Triangle with one bend (4/4 pivot first vertice)"
+        qgs_geom0 = create_polygon([(15,11), (10,10), (15,20), (20,10), (15,11)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (15,20), (20,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_2_1(self):
+        title = "Test 10_2_1: Square with 2 bends (1/4)"
+        qgs_geom0 = create_polygon([(0,0),(1,1),(0,2),(10,2), (9,1),(10,0), (0,0)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,0),(0,2),(10,2),(10,0), (0,0)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_2_2(self):
+        title = "Test 10_2_2: Square with 2 bends (2/4) pivot first vertice"
+        qgs_geom0 = create_polygon([(1,1),(0,2),(10,2), (9,1),(10,0), (0,0), (1,1)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,2),(10,2),(10,0), (0,0), (0,2)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_2_3(self):
+        title = "Test 10_7: Square with 2 bends (3/4) pivot first vertice"
+        qgs_geom0 = create_polygon([(0,2),(10,2), (9,1),(10,0), (0,0), (1,1), (0,2)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,2),(10,2),(10,0), (0,0), (0,2)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_2_4(self):
+        title = "Test 10_8: Square with 2 bends (4/4) pivot first vertice"
+        qgs_geom0 = create_polygon([(10,2), (9,1),(10,0), (0,0), (1,1), (0,2), (10,2)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,2),(10,0), (0,0), (0,2), (10,2)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_1(self):
+        title = "Test 10_3_1: Square with 2 bends each bend with 2 vertices (1/7)"
+        qgs_geom0 = create_polygon([(0,0), (0,10), (4,10), (4,9), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,0), (0,10), (10,10), (10,0), (0,0)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_2(self):
+        title = "Test 10_3_2: Square with 2 bends each bend with 2 vertices (2/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(0,10), (4,10), (4,9), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,10), (10,10), (10,0), (0,0), (0,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_3(self):
+        title = "Test 10_9_2: Square with 2 bends each bend with 2 vertices (3/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(4,10), (4,9), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10), (4,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_4(self):
+        title = "Test 10_3_4: Square with 2 bends each bend with 2 vertices (4/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(4,9), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10), (4,10), (4,9)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_5(self):
+        title = "Test 10_3_5: Square with 2 bends each bend with 2 vertices (5/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(6,9), (6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (6,9)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_6(self):
+        title = "Test 10_3_6: Square with 2 bends each bend with 2 vertices (6/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(6,10), (10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (6,9), (6,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_3_7(self):
+        title = "Test 10_3_7: Square with 2 bends each bend with 2 vertices (7/7) pivot first vertice"
+        qgs_geom0 = create_polygon([(10,10), (10,0), (6,0), (6,1),(4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (6,9), (6,10), (10,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+
+    def test_case10_4_1(self):
+        title = "Test 10_4_1: Square with 2 bends each bend with 3 vertices (1/7)"
+        qgs_geom0 = create_polygon([(0,0), (0,10), (4,10), (4,9), (5,9.5), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,0), (0,10), (10,10), (10,0), (0,0)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_4_2(self):
+        title = "Test 10_4_2: Square with 2 bends each bend with 3 vertices (2/7)"
+        qgs_geom0 = create_polygon([(0,10), (4,10), (4,9), (5,9.5), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(0,10), (10,10), (10,0), (0,0), (0,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+
+    def test_case10_4_3(self):
+        title = "Test 10_4_3: Square with 2 bends each bend with 3 vertices (3/7)"
+        qgs_geom0 = create_polygon([(4,10), (4,9), (5,9.5), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10), (4,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_4_4(self):
+        title = "Test 10_4_4: Square with 2 bends each bend with 3 vertices (4/7)"
+        qgs_geom0 = create_polygon([(4,9), (5,9.5), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10), (4,10), (4,9)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_4_5(self):
+        title = "Test 10_4_5: Square with 2 bends each bend with 3 vertices (5/7)"
+        qgs_geom0 = create_polygon([(5,9.5), (6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (5,9.5)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_4_6(self):
+        title = "Test 10_4_6: Square with 2 bends each bend with 3 vertices (6/7)"
+        qgs_geom0 = create_polygon([(6,9), (6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (5,9.5), (6,9)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+    def test_case10_4_7(self):
+        title = "Test 10_4_7: Square with 2 bends each bend with 3 vertices (7/7)"
+        qgs_geom0 = create_polygon([(6,10), (10,10), (10,0), (6,0), (6,1), (5,1.5), (4,1), (4,0), (0,0), (0,10), (4,10), (4,9), (5,9.5), (6,9), (6,10)], [])
+        qgs_feature_out = build_and_launch(title,[qgs_geom0], 30)
+        out_qgs_geom0 = create_polygon([(10,10), (10,0), (0,0), (0,10), (10,10)], [])
+        val0 = out_qgs_geom0.equals(qgs_feature_out[0])
+        self.assertTrue (val0, title)
+
+
     def test_case11(self):
         title = "Test 11: Zero length line"
         qgs_geom0 = create_line([(10, 10), (10, 10)])
@@ -219,10 +398,10 @@ class Test(unittest.TestCase):
         self.assertTrue (val0 and val1, title)
 
     def test_case12(self):
-        title = "Test 12: Degenerated line"
+        title = "Test 12: Degenerated polygon"
         qgs_geom0 = create_line([(10, 10), (10, 20), (10,10)])
         qgs_feature_out = build_and_launch(title, [qgs_geom0], 3)
-        out_qgs_geom0 = create_line([(10, 10), (10,10)])
+        out_qgs_geom0 = create_line([(10, 10), (10, 20), (10,10)])
         val0 = out_qgs_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
 
@@ -273,7 +452,7 @@ class Test(unittest.TestCase):
         inner = [(5, 5), (5, 6), (6, 6), (6, 5)]
         in_geom0 = create_polygon(outer, [inner])
         qgs_feature_out = build_and_launch(title, [in_geom0], 300)
-        outer = [(20, 20), (20, 0), (0, 0), (0,20), (20,20)]
+        outer = [(0, 0), (0,20), (20,20), (20,0), (0,0)]
         inner = [(5, 5), (5, 6), (6, 6), (6, 5), (5, 5)]
         out_geom0 = create_polygon(outer, [inner])
         val0 = out_geom0.equals(qgs_feature_out[0])
@@ -316,7 +495,7 @@ class Test(unittest.TestCase):
         coord1 = [(10.1, 20.1), (10.1, 20.2), (10.2, 20.2), (10.2, 20.1), (10.1, 20.1)]
         qgs_geom0 = create_polygon(coord0, [coord1])
         qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True)
-        coord = [(20,20), (20,0), (0,0), (0,20), (20,20)]
+        coord = [(0,0), (0,20), (20,20), (20,0), (0,0)]
         out_geom0 = create_polygon(coord, [])
         val0 = out_geom0.equals(qgs_feature_out[0])
         self.assertTrue(val0, title)
@@ -349,7 +528,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(qgs_feature_out), 0, title)
 
     def test_case24(self):
-        title = "Test 24: A line with a bend where the length of the base is zero"
+        title = "Test 24: A line with a bend where the length of the base is zero (non simple line)"
         coord0 = [(0, 0), (50, 0), (49, 1), (51, 1), (50, 0), (100, 0)]
         qgs_geom0 = create_line(coord0)
         qgs_feature_out = build_and_launch(title, [qgs_geom0], 3, del_pol=True, del_hole=True)
