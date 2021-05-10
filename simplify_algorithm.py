@@ -36,7 +36,7 @@ from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParam
                        QgsFeatureSink, QgsFeatureRequest, QgsLineString, QgsWkbTypes, QgsGeometry,
                        QgsProcessingException)
 import processing
-from .geo_sim_util import Epsilon, GsCollection, GeoSimUtil, GsFeature
+from .geo_sim_util import Epsilon, GsCollection, GeoSimUtil, GsFeature, ProgressBar
 
 
 class SimplifyAlgorithm(QgsProcessingAlgorithm):
@@ -351,7 +351,7 @@ class Simplify:
 
         # Create the GsCollection a spatial index to accelerate search for spatial relationships
         self.rb_collection = GsCollection()
-        self.rb_collection.add_features(self.rb_geoms)
+        self.rb_collection.add_features(self.rb_geoms, self.feedback)
 
         # Execute the line simplification for each LineString
         self._simplify_lines()
@@ -404,16 +404,13 @@ class Simplify:
         while True:
             progress_bar_value = 0
             self.rb_results.nbr_pass += 1
-            self.feedback.pushInfo("Iteration: {0}".format(self.rb_results.nbr_pass))
-            self.feedback.setProgress(progress_bar_value)
+            progress_bar = ProgressBar(self.feedback, len(self.rb_geoms),
+                                       "Iteration: {0}".format(self.rb_results.nbr_pass))
             nbr_vertice_deleted = 0
             for i, rb_geom in enumerate(self.rb_geoms):
                 if self.feedback.isCanceled():
                     break
-                new_progress_bar_value = int(i/len(self.rb_geoms)*100)
-                if new_progress_bar_value > progress_bar_value:
-                    progress_bar_value = new_progress_bar_value
-                    self.feedback.setProgress(progress_bar_value)
+                progress_bar.set_value(i)
                 if not rb_geom.is_simplest:  # Only process geometry that are not at simplest form
                     nbr_vertice_deleted += self.process_line(rb_geom)
 
@@ -459,13 +456,7 @@ class Simplify:
                                                      qgs_geom_old_subline)
 
         # First: check if the bend reduce line string is an OGC simple line
-        # We test with a tiny smaller line to ease the testing and false positive error
-        if qgs_geom_new_subline.length() >= Epsilon.ZERO_RELATIVE:
-            constraints_valid = GeoSimUtil.validate_simplicity(qgs_geoms_with_itself, qgs_geom_new_subline)
-        else:
-            # Error in the input file
-            text = "Possibly non valid geometry: {},{} use Fix Geometries".format(qgs_points[0].x(), qgs_points[0].y())
-            self.feedback.pushInfo(text)
+        constraints_valid = GeoSimUtil.validate_simplicity(qgs_geoms_with_itself, qgs_geom_new_subline)
 
         # Second: check that the new line does not intersect with any other line or points
         if constraints_valid and len(qgs_geoms_with_others) >= 1:

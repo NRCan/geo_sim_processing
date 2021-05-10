@@ -26,10 +26,10 @@
 QGIS Plugin for Bend reduction
 """
 
-
 import os
 import inspect
 import math
+from dataclasses import dataclass
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParameterDistance,
@@ -38,7 +38,7 @@ from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParam
                        QgsPointXY, QgsLineString, QgsPolygon, QgsWkbTypes, QgsGeometry,
                        QgsGeometryUtils, QgsProcessingException, QgsMultiPolygon)
 import processing
-from .geo_sim_util import Epsilon, GsCollection, GsFeature, GsPolygon, Bend, GeoSimUtil
+from .geo_sim_util import Epsilon, GsCollection, GsFeature, GsPolygon, Bend, GeoSimUtil, ProgressBar
 
 
 class ReduceBendAlgorithm(QgsProcessingAlgorithm):
@@ -95,7 +95,7 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
     <u>Reduced bend</u> : Output layer of the algorithm.
 
     <b>Rule of thumb for the diameter tolerance</b>
-    Reduce bend can be used for line simplifying in the context of line generalization. The big \
+    Reduce bend can be used for line (polygon) simplifying in the context of line (polygon) generalization. The big \
     question will often be what diameter should we use? A good starting point is the cartographic rule of \
     thumb -- the .5mm on the map -- which says that the minimum distance between two lines should be \
     greater than 0.5mm on a paper map. So to simplify (generalize) a line for representation at a scale of \
@@ -230,7 +230,8 @@ class ReduceBendAlgorithm(QgsProcessingAlgorithm):
 
 # Define global constant
 ANTI_CLOCK_WISE = -1
-CLOCK_WISE = 0
+CLOCK_WISE = 1
+FLAT_ANGLE = 0
 
 
 class BendReduced:
@@ -350,7 +351,7 @@ class BendReduced:
         return ind
 
     def _calculate_smooth_line(self):
-        """This method will transform a straight subline into a "smooth" sub line
+        """This method will transform a straight sub line (result of a bend reduction) into a "smooth" sub line
 
         To ease the smoothing of the sub line, the subline is translate so that the start of the bend (bend.i)
         is at (0,0).  The sub line is than rotate to align on the x axis. If the sub line meet the requirements
@@ -457,6 +458,16 @@ class BendReduced:
 
         return
 
+@dataclass
+class Inflexion:
+    """Data class used to stored information
+
+    """
+    __slots__ = ('start', 'end', )
+
+    start: int  # Index of the start of the inflexion
+    end: int  # Index of the end of the inflexion
+
 
 class RbResults:
     """Class defining the stats and result"""
@@ -532,33 +543,6 @@ class ReduceBend:
         return qgs_in_features, geom_type
 
     @staticmethod
-    def get_angles(qgs_line_string):
-        """Extract the list of angles of a LineString
-
-        The angle of a vertice is the angle formed by the preceding, the current and the next vertice.
-        For an open LineString the start/end vertice do not have angles
-
-        :param: qgs_line_string: QgsLineString to extract angles
-        :return: Angle of each vertice of the LineString
-        :rtype: [real]
-        """
-
-        xy = [(qgs_line_string.xAt(i), qgs_line_string.yAt(i)) for i in range(qgs_line_string.numPoints())]
-        if len(xy) >= 3:
-            if qgs_line_string.isClosed():
-                # Add two vertice at the start/end for the circularity of a closed line
-                end_xy = xy[-2]  # Not the last vertice because it's the same position as the first vertice
-                xy.insert(0, end_xy)
-
-            angles = [QgsGeometryUtils.angleBetweenThreePoints(xy[i-1][0], xy[i-1][1], xy[i][0], xy[i][1],
-                                                               xy[i+1][0], xy[i+1][1]) for i in range(1, len(xy)-1)]
-        else:
-            # A line string must have 3 vertice in order to calculate an angle
-            angles = []
-
-        return angles
-
-    @staticmethod
     def reduce(qgs_in_features, diameter_tol, smooth_line=False, flag_del_outer=False,
                flag_del_inner=False, validate_structure=False, feedback=None):
         """Main static method used to launch the bend reduction.
@@ -597,7 +581,7 @@ class ReduceBend:
         return area, perimeter
 
     @staticmethod
-    def flag_bend_to_reduce(rb_geom, diameter_tol):
+    def flag_bend_to_reduce(feedback, rb_geom, diameter_tol):
         """This method identifies the bend that need to be reduced
 
         The method starts by finding all the bends that are below the minimum adjusted area. It starts with the
@@ -607,161 +591,74 @@ class ReduceBend:
         Note: For closed line it deleted the first and last bend because the line was pivoted on a bend that do not
         need to be reduced
 
+        :param: feedback: QgisFeedback handle used to communicate with QGIS desktop
         :param: rb_geom: Geometry to delete co-linear vertices
         :param: diameter_tol: float tolerance for bend reduction
         """
 
+        def is_next_bend_to_reduce(i):
+            """Nested method returning if the next bend is to be reduced
+
+            :param: i: Index of the list to test
+            :return: State of the next bend
+            :rtype: Boolean
+            """
+
+            if rb_geom.qgs_geom.constGet().isClosed():
+                ret_value = rb_geom.bends[(i+1)%len(rb_geom.bends)].to_reduce  # Circular array
+            else:
+                if i+1 == len(rb_geom.bends):
+                    ret_value = False  # No next bend always OK
+                else:
+                    ret_value = rb_geom.bends[i+1].to_reduce
+
+            return ret_value
+
+        def is_previous_bend_to_reduce(i):
+            """Nested method returning if the previous bend is to be reduced
+
+            :param: i: Index of the list to test
+            :return: State of the previous bend
+            :rtype: Boolean
+            """
+
+            if rb_geom.qgs_geom.constGet().isClosed():
+                ret_value = rb_geom.bends[(i-1)%len(rb_geom.bends)].to_reduce  # Circular array
+            else:
+                if i-1 == -1:
+                    ret_value = False  # No previous bend always OK
+                else:
+                    ret_value = rb_geom.bends[i-1].to_reduce
+
+            return ret_value
+
         min_adj_area = Bend.calculate_min_adj_area(diameter_tol)
-        if rb_geom.qgs_geom.constGet().isClosed() and len(rb_geom.bends) >= 3:
-            # The closed line start/end point lie on a bend that do not need to be reduced
-            del rb_geom.bends[0]  # Remove the first bend
-            del rb_geom.bends[-1]  # Remove the last bend
+        if rb_geom.qgs_geom.constGet().isClosed() and len(rb_geom.bends) == 1:
+            # A closed line cannot have only one bend
+            x = rb_geom.qgs_geom.constGet().startPoint().x()
+            y = rb_geom.qgs_geom.constGet().startPoint().y()
+            text = "Internal error with line string at {},{} No bend reduction done".format(x, y)
+            feedback.pushInfo(text)
+            rb_geom.bends = []  # Empty the bend list
 
         lst_bends = [(bend.adj_area, i) for i, bend in enumerate(rb_geom.bends) if bend.area < min_adj_area]
         lst_bends.sort(key=lambda item: item[0])
 
-        start = 0
-        end = len(rb_geom.bends) - 1
-
         for (adj_area, i) in lst_bends:
             if adj_area <= min_adj_area:
-                if len(lst_bends) == 1:
-                    rb_geom.bends[i].to_reduce = True  # Only one bend process it...
+                if is_previous_bend_to_reduce(i) or is_next_bend_to_reduce(i):
+                    pass  # Cannot reduce a bend is previous or next marked for reduction
                 else:
-                    if i == start:
-                        if rb_geom.bends[i + 1].to_reduce:
-                            pass  # Cannot reduce two bend adjacent
-                        else:
-                            rb_geom.bends[i].to_reduce = True
-                    elif i == end:
-                        if rb_geom.bends[i - 1].to_reduce:
-                            pass  # Cannot reduce two bend adjacent
-                        else:
-                            rb_geom.bends[i].to_reduce = True
-                    elif rb_geom.bends[i - 1].to_reduce or rb_geom.bends[i + 1].to_reduce:
-                        pass  # Cannot reduce two bend adjacent
-                    else:
-                        rb_geom.bends[i].to_reduce = True
+                    rb_geom.bends[i].to_reduce = True
             else:
                 # Over minimum adjusted area
                 break
 
-        if len(rb_geom.bends) == 0:
-            # No more bends to reduce
+        if len(lst_bends) == 0:
+            # No potential bend to simplify
             rb_geom.is_simplest = True
 
         return
-
-    @staticmethod
-    def create_polygon(i, j, qgs_points):
-        """This method create a polygon from a subset of point (vertice)
-
-        Note: The first vertice is also the last vertice
-
-        :param: i: Start of point in the list
-        :param: j: End of point in the list
-        :param: qgs_points: List of QgsPoint
-        :return: A polygon formed by a subset of the list of QgsPoint
-        :rtype: QgsPolygon
-        """
-
-        # Create the list of point to create
-        if i < j:
-            index = list(range(i, j+1)) + [i]
-        else:
-            index = list(range(i, len(qgs_points))) + list(range(0, j+1)) + [i]  # Manage circular array
-
-        qgs_sub_points = [qgs_points[k] for k in index]
-        qgs_polygon = QgsPolygon(QgsLineString(qgs_sub_points))
-
-        return qgs_polygon
-
-#    @staticmethod
-#    def pivot_closed_line(rb_geom, diameter_tol):
-        """For closed LineString, this method will move the start/end vertice.
-
-        The start/end vertice of a closed LineString is moved over a bend that does not need to be simplified.
-        By moving the first/start vertice at a position that we know does not need bend reduction, this algorithm
-        does not have to deal with the complexity of circular array
-
-        :param: rb_geom: Geometry to set bend direction
-        :param: diameter_tol: float tolerance used for determining if a bend must be reduced
-        """
-
-#        if rb_geom.need_pivot:
-#            bend_location = None
-#            bend_area = 0.0
-#            for bend in rb_geom.bends:
-#                if bend.area > bend_area:
-#                    bend_location = bend
-#                    bend_area = bend.area
-#                if bend.j - bend.i >= 4:  # Ideal bend for pivot. The bend  has 4 vertices
-#                    if bend.area >= Bend.calculate_min_adj_area(diameter_tol):
-#                        bend_location = bend
-#                        rb_geom.need_pivot = False  # Optimal bend found
-#                        break
-#
-#            if bend_location is not None:
-#                # There is bend candidate for a line rotation
-#                # Move the start/end of the line in the middle of the bend candidate
-#                qgs_points = rb_geom.qgs_geom.constGet().points()
-#                new_start_end = (bend_location.j + bend_location.i) // 2
-#                new_qgs_points = qgs_points[new_start_end:] + qgs_points[1:new_start_end + 1]
-#                rb_geom.qgs_geom = QgsGeometry(QgsLineString(new_qgs_points))
-#
-#        return
-
-    @staticmethod
-    def detect_bends(rb_geom):
-        """This method detect the bends in a LineString
-
-        In order to detect bends the algorithm is doing two distinct operation:
-         - First: for each vertice in the LineString it calculates if the angle is going clockwise or anticlockwise
-         - Second: The algorithm is grouping together all the clockwise and all the anticlockwise vertice; when
-           there is a change in direction there is a new bend created. A convex figure will only have one bend.
-
-        Process is also slightly different for open and closed LineString
-
-        :param rb_geom: The geometry LineString for which to detect the bends
-        :return: Number of bend created on the LineString
-        :rtype: int
-        """
-
-        rb_geom.bends = []  # Reset the list of bends
-        angles = ReduceBend.get_angles(rb_geom.qgs_geom.constGet())
-        # Modify the angle to binary orientation: clockwise or anti clockwise
-        orientation = [CLOCK_WISE if angle >= math.pi else ANTI_CLOCK_WISE for angle in angles]
-        if rb_geom.qgs_geom.constGet().isClosed() and len(orientation) >= 1:
-            if len(set(orientation)) == 1:
-                orientation = []  # All the angles have the same orientation.  No bend to reduce
-            else:
-                del orientation[0]  # Do not process the first angle as it is the angle of the start/end
-
-        if len(orientation) >= 1:
-            if orientation[0] == CLOCK_WISE:
-                orientation.insert(0, ANTI_CLOCK_WISE)
-            else:
-                orientation.insert(0, CLOCK_WISE)
-
-            if orientation[-1] == CLOCK_WISE:
-                orientation.append(ANTI_CLOCK_WISE)
-            else:
-                orientation.append(CLOCK_WISE)
-
-        # Find the inflexion points in the line.
-        inflexion = [i for i in range(0, len(orientation)-1) if orientation[i] != orientation[(i + 1)]]
-        qgs_points = rb_geom.qgs_geom.constGet().points()
-        if len(inflexion) != 0:
-            for k in range(len(inflexion)-1):
-                i = inflexion[k]
-                j = (inflexion[(k+1)]+1)
-                rb_geom.bends.append(Bend(i, j, qgs_points[i:j+1]))
-
-        else:
-            rb_geom.is_simplest = True  # The line has no inflexion; it cannot be simplified
-
-
-        return len(rb_geom.bends)
 
     @staticmethod
     def find_alternate_bends(ind, rb_geom):
@@ -856,14 +753,14 @@ class ReduceBend:
 
         # Create the GsCollection a spatial index to accelerate search
         self.rb_collection = GsCollection()
-        self.rb_collection.add_features(self.rb_geoms)
+        self.rb_collection.add_features(self.rb_geoms, self.feedback)
 
         # Execute the bend reduction for each LineString
         self._manage_reduce_bend()
 
         # Manage the line smoothing if needed
         if self.smooth_line:
-            self.manage_smooth_line()
+            self.manage_smooth_line(self.feedback)
 
         # Recreate the QgsFeature
         qgs_features_out = [rb_feature.get_qgs_feature() for rb_feature in self.rb_features]
@@ -876,32 +773,6 @@ class ReduceBend:
         if self.rb_results.is_structure_valid:
             self.rb_collection.validate_integrity(self.rb_geoms)
 
-#        from guppy import hpy
-#        h = hpy()
-#        print(h.heap())
-        # Free some memory
-#        for rb_geom in self.rb_geoms:
-#            rb_geom.delete()
-#        del self.rb_geoms
-
-#        for rb_feature in self.rb_features:
-#            rb_feature.delete()
-#        del self.rb_features
-
-#        import sip
-#        sip.delete(self.rb_collection._spatial_index)
-#        for key in self.rb_collection._dict_qgs_segment:
-#            value = self.rb_collection._dict_qgs_segment[key]
-#            self.rb_collection._dict_qgs_segment[key] = None
-#        del self.rb_collection._dict_qgs_segment
-#        del self.rb_collection._spatial_index
-
-#        from guppy import hpy
-#        h = hpy()
-#        print(h.heap())
-
-
-
         #  Code used for the profiler (uncomment if needed)
  #       pr.disable()
  #       s = io.StringIO()
@@ -909,7 +780,6 @@ class ReduceBend:
  #       ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
  #       ps.print_stats()
  #       print(s.getvalue())
-
 
         return self.rb_results
 
@@ -963,91 +833,6 @@ class ReduceBend:
                         if self.flag_del_inner and adj_area < min_adj_area:
                             del self.rb_features[i].rb_geom[j]  # Delete the ring
                             self.rb_results.nbr_hole_del += 1
-
-        return
-
-    def _manage_reduce_bend(self):
-        """Loop over the geometry until there is no more bend to reduce
-
-        An iterative process for bend reduction is needed in order to maximise the bend reduction.  The process
-        will always stabilize and exit when there are no more bends to reduce.
-
-        """
-
-        min_nbr_pass = 3
-        while True:
-            progress_bar_value = 0
-            self.rb_results.nbr_pass += 1
-            self.feedback.pushInfo("Iteration: {0}".format(self.rb_results.nbr_pass))
-            self.feedback.setProgress(progress_bar_value)
-            nbr_bend_reduced = 0
-            nbr_bend_detected = 0
-            for i, rb_geom in enumerate(self.rb_geoms):
-                if self.feedback.isCanceled():
-                    break
-                if not rb_geom.is_simplest:  # Only process geometry that are not at simplest form
-                    self.delete_co_linear(rb_geom)
-                    tmp_nbr_bend_detected = ReduceBend.detect_bends(rb_geom)
-                    if rb_geom.need_pivot:
-                        #  Pivoting a closed line moves the first/last vertice on a bend that do not need simplification
-                        ReduceBend.pivot_closed_line(rb_geom, self.diameter_tol)
-                        tmp_nbr_bend_detected = ReduceBend.detect_bends(rb_geom)  # Bend detection needed after pivot
-                    nbr_bend_detected += tmp_nbr_bend_detected
-                    ReduceBend.flag_bend_to_reduce(rb_geom, self.diameter_tol)
-                    nbr_bend_reduced += self.process_bends(rb_geom)
-                    new_progress_bar_value = int(i / len(self.rb_geoms) * 100)
-                    if new_progress_bar_value > progress_bar_value:
-                        progress_bar_value = new_progress_bar_value
-                        self.feedback.setProgress(progress_bar_value)
-
-            self.rb_results.nbr_bend_reduced += nbr_bend_reduced
-            self.rb_results.nbr_bend_detected += nbr_bend_detected
-
-            # Breaking condition for the while loop
-            self.feedback.pushInfo("Bend detected: {}; Bend reduced: {}".format(nbr_bend_detected, nbr_bend_reduced))
-            if self.rb_results.nbr_pass > min_nbr_pass and nbr_bend_reduced == 0:
-                break
-
-        return
-
-    def delete_co_linear(self, rb_geom):
-        """Delete co-linear vertice on a LineString
-
-        This method delete co-linear and near co-linear vertice because they are unnecessary but moreover in certain
-        condition when they are forming near 0 (empty) area these vertices are creating spatial calculus errors
-
-        :param: RbGeom rb_geom: Geometry to delete co-linear vertices
-        """
-
-        # Build the list of angles for each vertice
-        vertex_ids_to_del = []
-        angles = ReduceBend.get_angles(rb_geom.qgs_geom.constGet())
-        if rb_geom.qgs_geom.constGet().isClosed() and len(angles) >= 1:
-            del angles[0]  # Do not process the start/end vertice (even if co-linear)
-        for i, angle in enumerate(angles):
-            if abs(angle - math.pi) <= Epsilon.ZERO_ANGLE or abs(angle) <= Epsilon.ZERO_ANGLE:
-                # Co-linear point or flat angle delete the current point
-                vertex_ids_to_del.append(i+1)
-
-        # Delete co-linear vertex
-        for vertex_id_to_del in reversed(vertex_ids_to_del):
-            self.rb_collection.delete_vertex(rb_geom, vertex_id_to_del, vertex_id_to_del)
-
-        # Special case to process closed line string to find and delete co-linear points at the first/last vertice
-        if rb_geom.qgs_geom.constGet().isClosed():
-            num_points = rb_geom.qgs_geom.constGet().numPoints()
-            if num_points >= 5:  # Minimum of 5 vertices are needed to have co-linear vertices in closed line
-                qgs_ls = QgsLineString([rb_geom.qgs_geom.vertexAt(num_points-2),
-                                        rb_geom.qgs_geom.vertexAt(0),
-                                        rb_geom.qgs_geom.vertexAt(1)])
-                angles = ReduceBend.get_angles(qgs_ls)
-                angle = angles[0]
-                if abs(angle - math.pi) <= Epsilon.ZERO_ANGLE or abs(angle) <= Epsilon.ZERO_ANGLE:
-                    self.rb_collection.delete_vertex(rb_geom, 0, 0)
-
-        if rb_geom.qgs_geom.length() <= Epsilon.ZERO_RELATIVE:
-            # Something wrong.  do not try to simplify the LineString
-            rb_geom.is_simplest = True
 
         return
 
@@ -1120,20 +905,11 @@ class ReduceBend:
             self.rb_collection.get_segment_intersect(rb_geom.id, b_box, bend.qgs_geom_old_subline)
 
         # First: check if the bend reduce line string is an OGC simple line
-        # We test with a tiny smaller line to ease the testing and false positive error
-        if bend.qgs_geom_new_subline.length() >= Epsilon.ZERO_RELATIVE:
-            constraints_valid = GeoSimUtil.validate_simplicity(qgs_geoms_with_itself, bend.qgs_geom_new_subline)
-            if not constraints_valid:
-                # The bend reduction caused self intersection; try to find an alternate bend
-                alternate_bends = ReduceBend.find_alternate_bends(ind, rb_geom)
-                constraints_valid = self.validate_alternate_bend(alternate_bends, ind, rb_geom)
-        else:
-            # Error in the input file
-            qgs_line_string = bend.qgs_geom_new_subline.constGet()
-            x = qgs_line_string.startPoint().x()
-            y = qgs_line_string.startPoint().y()
-            text = "Possibly non OGC simple feature at {},{} use Fix Geometries".format(x, y)
-            self.feedback.pushInfo(text)
+        constraints_valid = GeoSimUtil.validate_simplicity(qgs_geoms_with_itself, bend.qgs_geom_new_subline)
+        if not constraints_valid:
+            # The bend reduction caused self intersection; try to find an alternate bend
+            alternate_bends = ReduceBend.find_alternate_bends(ind, rb_geom)
+            constraints_valid = self.validate_alternate_bend(alternate_bends, ind, rb_geom)
 
         # Second: check that the new line does not intersect any other line or points
         if constraints_valid:
@@ -1199,31 +975,62 @@ class ReduceBend:
         :rtype: Bool
         """
 
-        nbr_bend_reduced = 0
-        for ind in reversed(range(len(rb_geom.bends))):  # Work reversely to be able to delete easily in the list
+        def _process_one_bend(ind):
+            """Nested method processing one bend
+
+            :param: ind: Index of the bend to reduce
+            :return: Flag if the bend is reduced (0: No and 1: Yes)
+            :rtype: Integer
+            """
+
+            counter = 0
             if rb_geom.bends[ind].to_reduce:
                 # Check spatial constraints
-                spatial_constraints = self.validate_constraints(ind, rb_geom)
-                if spatial_constraints:
+                if self.validate_constraints(ind, rb_geom):
+                    counter = 1
                     bend = rb_geom.bends[ind]
-                    if self.smooth_line:
-                        qgs_pnt_i = rb_geom.qgs_geom.vertexAt(bend.i)
-                        qgs_pnt_j = rb_geom.qgs_geom.vertexAt(bend.j)
-                        self.bends_reduced.append(BendReduced(rb_geom, qgs_pnt_i, qgs_pnt_j, bend.qgs_geom_bend))
-                    self.rb_collection.delete_vertex(rb_geom, bend.i+1, bend.j-1)
-                    nbr_bend_reduced += 1
-        rb_geom.bends = []  # Free memory
+                    qgs_pnt_i = rb_geom.qgs_geom.vertexAt(bend.i)
+                    qgs_pnt_j = rb_geom.qgs_geom.vertexAt(bend.j)
+                    self.bends_reduced.append(BendReduced(rb_geom, qgs_pnt_i, qgs_pnt_j, bend.qgs_geom_bend))
+                    self.rb_collection.delete_vertex(rb_geom, bend.i + 1, bend.j - 1)
+
+            return counter
+
+        nbr_bend_reduced = 0
+        if len(rb_geom.bends) >= 1:
+            is_closed = rb_geom.qgs_geom.constGet().isClosed()
+            if is_closed:
+                for ind in reversed(range(1,len(rb_geom.bends)-1)):  # Do not process the first/last bend
+                    nbr_bend_reduced += _process_one_bend(ind)
+                if nbr_bend_reduced == 0:
+                    # Only process the first/last bend of a closed line when no other bend need to be reduced
+                    for ind in [0, -1]:
+                        if rb_geom.bends[ind].to_reduce:
+                            nbr_bend_reduced += _process_one_bend(ind)  # Process last bend that was omitted previouly
+                            break
+            else:
+                for ind in reversed(range(len(rb_geom.bends))):
+                    nbr_bend_reduced += _process_one_bend(ind)
+
+            if nbr_bend_reduced >= 1:
+                rb_geom.bends = None  # Reset the bends
+            else:
+                pass  # No need to recalculate the bends position as no bend was simplified (performance issue)
 
         return nbr_bend_reduced
 
-    def manage_smooth_line(self):
+    def manage_smooth_line(self, feedback):
         """Manage the line smoothing of all the bend reduced to a straight line
 
         The smoothing of the line is done after all bend reduction is done.  The spatial constraints are validated
         ob the smoothed line to make sure the smooth line respect spatial constraints
+
+        :param: feedback: QgsFeedback handle to update the progress bar
         """
 
-        for bend_reduced in self.bends_reduced:
+        progress_bar = ProgressBar(feedback, len(self.bends_reduced), "Bend smoothing...")
+        for i, bend_reduced in enumerate(self.bends_reduced):
+            progress_bar.set_value(i)
             bend_reduced.set_values(self.diameter_tol)
             if bend_reduced.is_line_smoothable:
                 if self.validate_constraints_smooth(bend_reduced):
@@ -1236,3 +1043,161 @@ class ReduceBend:
             else:
                 # Smoothing of the line impossible
                 pass
+
+    @staticmethod
+    def get_angles(rb_geom):
+        """Extract the list of angles of a LineString
+
+        The angle of a vertice is the angle formed by the preceding, the current and the next vertice.
+        For an open LineString the start/end vertice do not have angles
+
+        :param: rb_geom: RbGeom to extract angles
+        :return: Angle of each vertice of the LineString
+        :rtype: [real]
+        """
+
+        qgs_line_string = rb_geom.qgs_geom.constGet()
+        xy = [(qgs_line_string.xAt(i), qgs_line_string.yAt(i)) for i in range(qgs_line_string.numPoints())]
+        if len(xy) >= 3:
+            if qgs_line_string.isClosed():
+                # Manage circularity of a closed line
+                xy.insert(0, xy[-2])  # To compensate the fact that first/last vertice are the same
+
+            angles = [QgsGeometryUtils.angleBetweenThreePoints(xy[i - 1][0], xy[i - 1][1], xy[i][0], xy[i][1],
+                                                               xy[i + 1][0], xy[i + 1][1]) for i in
+                      range(1, len(xy) - 1)]
+        else:
+            angles = []
+
+        # Transform each angle into: Flat, Clockwise or anti clockwise
+        for i, angle in enumerate(angles):
+            if abs(angle - math.pi) <= Epsilon.ZERO_ANGLE or abs(angle) <= Epsilon.ZERO_ANGLE:
+                angles[i] = FLAT_ANGLE
+            elif angle >= math.pi:
+                angles[i] = CLOCK_WISE
+            else:
+                angles[i] = ANTI_CLOCK_WISE
+
+        return angles
+
+    def delete_co_linear(self, angles, rb_geom):
+        """Delete co-linear vertice on a LineString
+
+        This method delete co-linear and near co-linear vertice because they are unnecessary but moreover in certain
+        condition when they are forming near 0 (empty) area these vertices are creating spatial calculus errors
+
+        :param: angles: list of the direction of each vertice (Clockwise, anticlockwise, or flat)
+        :param: rb_geom: RbGeom geometry to process
+        """
+
+        is_closed = rb_geom.qgs_geom.constGet().isClosed()
+        num_points = rb_geom.qgs_geom.constGet().numPoints()
+        for i in reversed(range(len(angles))):
+            if angles[i] == FLAT_ANGLE:
+                num_points -= 1
+                if is_closed and num_points <= 3:
+                    rb_geom.is_simplest = True
+                    break  # A closed line cannot have less than 4 vertice
+                # Delete vertex and update the spatial structure
+                if is_closed:
+                    self.rb_collection.delete_vertex(rb_geom, i, i)
+                else:
+                    self.rb_collection.delete_vertex(rb_geom, i+1, i+1)
+                # Update the list of angles
+                del angles[i]
+
+        if not is_closed and len(angles) >= 1:
+            # Duplicate angle at the start/end of the list of angles (for open line)
+            angles.insert(0, angles[0])
+            angles.append(angles[-1])
+
+        if rb_geom.qgs_geom.length() <= Epsilon.ZERO_RELATIVE:
+            rb_geom.is_simplest = True  # Degenerated line.  Do not try to simplify
+
+        return
+
+    @staticmethod
+    def detect_bends(angles, rb_geom):
+        """Detect and create the bends in a line string
+
+        :param: angles: list of the direction of each vertice (Clockwise or anticlockwise)
+        :param: rb_geom: RbGeom geometry to process
+        :return: Number of bend detected
+        :rtype: Integer
+
+        """
+
+        rb_geom.bends = []
+        if len(angles) >= 1:
+            # Create the list of inflexions
+            inflexions = [Inflexion(start=None, end=None)]  # Initialize with empty inflexion
+            for k in range(len(angles)-1):
+                if angles[k] * angles[k+1] == -1:
+                    inflexions[-1].end = k+1  # Change of inflexion in the line
+                    inflexions.append(Inflexion(start=k, end=None))
+
+            qgs_points = rb_geom.qgs_geom.constGet().points()
+            if rb_geom.qgs_geom.constGet().isClosed():
+                if angles[-1] * angles[0] == -1:  # circular
+                    inflexions[-1].end = 0  # Change of inflexion in the line
+                    inflexions.append(Inflexion(start=len(angles)-1, end=None))
+                # Adjust inflexion for circular line
+                inflexions[0].start = inflexions[-1].start
+                del inflexions[-1]
+            else:
+                # Adjust bend for open line
+                inflexions[0].start = 0
+                inflexions[-1].end = len(qgs_points)-1
+
+            # Transform inflexions into a list of bend
+            for inflexion in inflexions:
+                if inflexion.start < inflexion.end:
+                    sub_qgs_points = qgs_points[inflexion.start:inflexion.end+1]
+                elif inflexion.start > inflexion.end:
+                    sub_qgs_points = qgs_points[inflexion.start:] + qgs_points[:inflexion.end+1]
+                else:
+                    # Special case (first=start) when there is only 2 bends in a closed line
+                    sub_qgs_points = qgs_points[0:len(qgs_points)-1]
+                rb_geom.bends.append(Bend(inflexion.start, inflexion.end, sub_qgs_points))
+
+        else:
+            rb_geom.is_simplest = True
+
+        return len(rb_geom.bends)
+
+    def _manage_reduce_bend(self):
+        """Manage the bend reduction of the lines
+
+        The method will loop over each line and over each bend in order to reduce all the possible bends.
+        The bend reduction will stop when there is no more bend to reduce.
+        """
+
+        while True:
+            self.rb_results.nbr_pass += 1
+            progress_bar = ProgressBar(self.feedback, len(self.rb_geoms),
+                                       "Iteration: {0}".format(self.rb_results.nbr_pass))
+            nbr_bend_reduced = 0
+            nbr_bend_detected = 0
+            for i, rb_geom in enumerate(self.rb_geoms):
+                if self.feedback.isCanceled():
+                    break
+                progress_bar.set_value(i)
+                if not rb_geom.is_simplest:  # Only process geometry that are not at simplest form
+
+                    if rb_geom.bends is None:
+                        # Recalculate new bend position
+                        angles = ReduceBend.get_angles(rb_geom)
+                        self.delete_co_linear(angles, rb_geom)
+                        tmp_nbr_bend_detected = ReduceBend.detect_bends(angles, rb_geom)
+                        ReduceBend.flag_bend_to_reduce(self.feedback, rb_geom, self.diameter_tol)
+                    nbr_bend_reduced += self.process_bends(rb_geom)
+                    nbr_bend_detected += tmp_nbr_bend_detected
+
+            self.rb_results.nbr_bend_reduced += nbr_bend_reduced
+            if self.rb_results.nbr_pass == 1:
+                self.rb_results.nbr_bend_detected = nbr_bend_detected  # Only keep the value of the first pass
+
+            # Breaking condition for the while loop
+            self.feedback.pushInfo("Bend reduced: {}".format(nbr_bend_reduced))
+            if nbr_bend_reduced == 0:
+                break
