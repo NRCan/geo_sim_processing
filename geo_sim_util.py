@@ -748,11 +748,11 @@ class Bend:
        :rtype: Real
        """
 
-        if perimeter > 0.0:
+        try:
             compactness_index = 4 * area * math.pi / perimeter ** 2
             adj_area = area * (.75 / compactness_index)
-        else:
-            # Avoid division by zero
+        except ZeroDivisionError:
+            # Catch division by zero
             adj_area = Epsilon.ZERO_RELATIVE
 
         return adj_area
