@@ -34,7 +34,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingParameterDistance,
                        QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,
                        QgsFeatureSink, QgsFeatureRequest, QgsLineString, QgsWkbTypes, QgsGeometry,
-                       QgsProcessingException)
+                       QgsProcessingException,QgsProcessingParameterNumber)
 import processing
 from .geo_sim_util import Epsilon, GsCollection, GeoSimUtil, GsFeature, ProgressBar
 
@@ -120,6 +120,12 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
                           self.tr('Diameter tolerance'),
                           defaultValue=0.0,
                           parentParameterName='INPUT'))  # Make distance units match the INPUT layer units
+        
+        # vertices 'Threshold' under which the iterations stop
+        self.addParameter(QgsProcessingParameterNumber(
+                            'VERTICES',
+                            self.tr('Vertices threshold'),
+                            defaultValue=0))
 
         # 'OUTPUT' for the results
         self.addParameter(QgsProcessingParameterFeatureSink(
@@ -135,6 +141,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         # Extract parameter
         source_in = self.parameterAsSource(parameters, "INPUT", context)
         tolerance = self.parameterAsDouble(parameters, "TOLERANCE", context)
+        threshold = self.parameterAsInt(parameters, "VERTICES", context)
         validate_structure = self.parameterAsBool(parameters, "VALIDATE_STRUCTURE", context)
 
         if source_in is None:
@@ -163,7 +170,7 @@ class SimplifyAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(1)
 
         # Call ReduceBend algorithm
-        rb_return = Simplify.douglas_peucker(qgs_features_in, tolerance, validate_structure, feedback)
+        rb_return = Simplify.douglas_peucker(qgs_features_in, tolerance, threshold, validate_structure, feedback)
 
         for qgs_feature_out in rb_return.qgs_features_out:
             sink.addFeature(qgs_feature_out, QgsFeatureSink.FastInsert)
@@ -260,18 +267,19 @@ class Simplify:
         return qgs_in_features, geom_type
 
     @staticmethod
-    def douglas_peucker(qgs_in_features, tolerance, validate_structure=False, feedback=None):
+    def douglas_peucker(qgs_in_features, tolerance, threshold, validate_structure=False, feedback=None):
         """Main static method used to launch the simplification of the Douglas-Peucker algorithm.
 
         :param: qgs_features: List of QgsFeatures to process.
         :param: tolerance: Simplification tolerance in ground unit.
+        :param: threshold: number of vertices removed under which the iteration stop
         :param: validate_structure: Validate internal data structure after processing (for debugging only)
         :param: feedback: QgsFeedback handle for interaction with QGIS.
         :return: Statistics and results object.
         :rtype: RbResults
         """
 
-        dp = Simplify(qgs_in_features, tolerance, validate_structure, feedback)
+        dp = Simplify(qgs_in_features, tolerance, threshold, validate_structure, feedback)
         results = dp.reduce()
 
         return results
@@ -300,19 +308,21 @@ class Simplify:
 
         return farthest_index, farthest_dist
 
-    __slots__ = ('tolerance', 'validate_structure', 'feedback', 'rb_collection', 'eps', 'rb_results', 'rb_geoms',
+    __slots__ = ('tolerance', 'threshold', 'validate_structure', 'feedback', 'rb_collection', 'eps', 'rb_results', 'rb_geoms',
                  'gs_features')
 
-    def __init__(self, qgs_in_features, tolerance, validate_structure, feedback):
+    def __init__(self, qgs_in_features, tolerance, threshold, validate_structure, feedback):
         """Constructor for Simplify algorithm.
 
        :param: qgs_in_features: List of features to process.
        :param: tolerance: Float tolerance distance of the Douglas Peucker algorithm.
+       :param: threshold: number of vertices removed under which the iteration stop
        :param: validate_structure: flag to validate internal data structure after processing (for debugging)
        :param: feedback: QgsFeedback handle for interaction with QGIS.
        """
 
         self.tolerance = tolerance
+        self.threshold = threshold
         self.validate_structure = validate_structure
         self.feedback = feedback
 
@@ -416,8 +426,8 @@ class Simplify:
 
             self.feedback.pushInfo("Vertice deleted: {0}".format(nbr_vertice_deleted))
 
-            # While loop breaking condition (when no vertice deleted in a loop)
-            if nbr_vertice_deleted == 0:
+            # While loop breaking condition (when number of vertices deleted in a loop smaller than threshold)
+            if nbr_vertice_deleted < self.threshold:
                 break
             self.rb_results.nbr_vertice_deleted += nbr_vertice_deleted
 
